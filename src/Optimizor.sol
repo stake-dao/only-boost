@@ -21,6 +21,7 @@ contract Optimizor {
     uint256 public constant FEES_STAKEDAO = 16e16; // 16% StakeDAO
 
     //////////////////////////////// Optimization ////////////////////////////////
+    // 47899 gas
     function optimization1() public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
@@ -31,16 +32,18 @@ contract Optimizor {
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply();
+        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
 
         // Additional boost
-        uint256 boost = (1 - cvxTotal / 10e8) * veCRVConvex / vlCVXTotal;
+        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
         // Result
-        uint256 result = balanceConvex * veCRVStakeDAO * (1 - FEES_STAKEDAO) / (veCRVConvex * (1 - FEES_CONVEX + boost));
-        return result;
+        uint256 result =
+            balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost));
+        return result / 1e18;
     }
 
+    // 65263 gas
     function optimization2() public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
@@ -53,20 +56,21 @@ contract Optimizor {
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply();
+        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
 
         // Additional boost
-        uint256 boost = (1 - cvxTotal / 10e8) * veCRVConvex / vlCVXTotal;
+        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
         // Result
-        uint256 result = 3 * (1 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO * totalSupply
+        uint256 result = 3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
             / (
-                2 * (FEES_STAKEDAO - FEES_CONVEX + boost) * balanceConvex * veCRVTotal
-                    + 3 * veCRVConvex * totalSupply * (1 - FEES_CONVEX + boost)
+                ((2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply)
+                    + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
             );
-        return result;
+        return result / 1e18;
     }
 
+    // 47612 gas
     function optimization3() public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
@@ -77,13 +81,13 @@ contract Optimizor {
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply();
+        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
 
         // Additional boost
-        uint256 boost = (1 - cvxTotal / 10e8) * veCRVConvex / vlCVXTotal;
+        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
         // Result
-        uint256 result = balanceConvex * veCRVStakeDAO / (veCRVConvex * (1 + boost));
+        uint256 result = balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost));
         return result;
     }
 }
