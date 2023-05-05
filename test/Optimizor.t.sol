@@ -2,12 +2,14 @@
 
 pragma solidity 0.8.19;
 
-import "lib/forge-std/src/Test.sol";
+import "forge-std/Test.sol";
 
 import {Optimizor} from "src/Optimizor.sol";
 
 contract OptimizorTest is Test {
     Optimizor public optimizor;
+
+    address public constant LIQUIDITY_GAUGE = 0x1E212e054d74ed136256fc5a5DDdB4867c6E003F; // 3EURPool Gauge
 
     function setUp() public {
         // 17136445 : 27 April 2023 08:51:23 UTC
@@ -21,14 +23,14 @@ contract OptimizorTest is Test {
     }
 
     function test_Optimization1() public view {
-        optimizor.optimization1();
+        optimizor.optimization1(LIQUIDITY_GAUGE);
     }
 
     function test_Optimization2() public view {
-        optimizor.optimization2();
+        optimizor.optimization2(LIQUIDITY_GAUGE);
     }
 
     function test_Optimization3() public view {
-        optimizor.optimization3();
+        optimizor.optimization3(LIQUIDITY_GAUGE);
     }
 }

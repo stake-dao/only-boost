@@ -2,13 +2,11 @@
 
 pragma solidity 0.8.19;
 
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
 contract Optimizor {
     //////////////////////////////// Constants ////////////////////////////////
-    address public constant LIQUDITY_GAUGE = 0x1E212e054d74ed136256fc5a5DDdB4867c6E003F; // 3EURPool Gauge
-
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV Token
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B); // CVX Token
 
@@ -22,13 +20,13 @@ contract Optimizor {
 
     //////////////////////////////// Optimization ////////////////////////////////
     // 47899 gas
-    function optimization1() public view returns (uint256) {
+    function optimization1(address liquidityGauge) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
 
         // Liquidity Gauge
-        uint256 balanceConvex = ERC20(LIQUDITY_GAUGE).balanceOf(LOCKER_CONVEX);
+        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
@@ -44,15 +42,15 @@ contract Optimizor {
     }
 
     // 65263 gas
-    function optimization2() public view returns (uint256) {
+    function optimization2(address liquidityGauge) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
         uint256 veCRVTotal = ERC20(LOCKER_CRV).totalSupply();
 
         // Liquidity Gauge
-        uint256 totalSupply = ERC20(LIQUDITY_GAUGE).totalSupply();
-        uint256 balanceConvex = ERC20(LIQUDITY_GAUGE).balanceOf(LOCKER_CONVEX);
+        uint256 totalSupply = ERC20(liquidityGauge).totalSupply();
+        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
@@ -71,13 +69,13 @@ contract Optimizor {
     }
 
     // 47612 gas
-    function optimization3() public view returns (uint256) {
+    function optimization3(address liquidityGauge) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
 
         // Liquidity Gauge
-        uint256 balanceConvex = ERC20(LIQUDITY_GAUGE).balanceOf(LOCKER_CONVEX);
+        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
