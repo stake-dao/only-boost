@@ -18,9 +18,11 @@ contract Optimizor {
     uint256 public constant FEES_CONVEX = 17e16; // 17% Convex
     uint256 public constant FEES_STAKEDAO = 16e16; // 16% StakeDAO
 
+    uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
+
     //////////////////////////////// Optimization ////////////////////////////////
     // 47899 gas
-    function optimization1(address liquidityGauge) public view returns (uint256) {
+    function optimization1(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
@@ -35,14 +37,16 @@ contract Optimizor {
         // Additional boost
         uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
+        // Additional boost for Convex FRAX
+        boost = isMeta ? boost + extraConvexFraxBoost : boost;
+
         // Result
-        uint256 result =
-            balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost));
-        return result / 1e18;
+        return
+            balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost)) / 1e18;
     }
 
     // 65263 gas
-    function optimization2(address liquidityGauge) public view returns (uint256) {
+    function optimization2(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
@@ -59,17 +63,19 @@ contract Optimizor {
         // Additional boost
         uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
+        // Additional boost for Convex FRAX
+        boost = isMeta ? boost + extraConvexFraxBoost : boost;
+
         // Result
-        uint256 result = 3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
+        return 3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
             / (
                 ((2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply)
                     + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
-            );
-        return result / 1e18;
+            ) / 1e18;
     }
 
     // 47612 gas
-    function optimization3(address liquidityGauge) public view returns (uint256) {
+    function optimization3(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
@@ -84,8 +90,14 @@ contract Optimizor {
         // Additional boost
         uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
+        // Additional boost for Convex FRAX
+        boost = isMeta ? boost + extraConvexFraxBoost : boost;
+
         // Result
-        uint256 result = balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost));
-        return result;
+        return balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost));
+    }
+
+    function optimization(address liquidityGauge, bool isMeta) public view returns (uint256 result) {
+        result = optimization1(liquidityGauge, isMeta);
     }
 }

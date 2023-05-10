@@ -23,14 +23,14 @@ contract OptimizorTest is Test {
     }
 
     function test_Optimization1() public view {
-        optimizor.optimization1(LIQUIDITY_GAUGE);
+        optimizor.optimization1(LIQUIDITY_GAUGE, true);
     }
 
     function test_Optimization2() public view {
-        optimizor.optimization2(LIQUIDITY_GAUGE);
+        optimizor.optimization2(LIQUIDITY_GAUGE, true);
     }
 
     function test_Optimization3() public view {
-        optimizor.optimization3(LIQUIDITY_GAUGE);
+        optimizor.optimization3(LIQUIDITY_GAUGE, true);
     }
 }
