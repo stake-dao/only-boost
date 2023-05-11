@@ -4,15 +4,16 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 import {Optimizor} from "src/Optimizor.sol";
 import {ConvexMapper} from "src/ConvexMapper.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
+import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 
 contract CurveStrategy is Auth {
-    using FixedPointMathLib for uint256;
+    using SafeTransferLib for ERC20;
 
     ILocker public constant LOCKER_STAKEDAO = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6); // StakeDAO CRV Locker
 
@@ -21,6 +22,7 @@ contract CurveStrategy is Auth {
     mapping(address => address) public gauges; // token address --> gauge address
 
     error ADDRESS_NULL();
+    error DEPOSIT_FAIL();
 
     constructor(Authority _authority) Auth(msg.sender, _authority) {
         optimizor = new Optimizor();
@@ -34,7 +36,7 @@ contract CurveStrategy is Auth {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         // Check if the pool is active on convexFrax
-        bool isOnConvexFrax = convexMapper.isOnConvexFrax(token);
+        (bool isOnConvexFrax, uint256 pid) = convexMapper.getPid(token);
 
         // Call the optimizor to get the optimal amount to deposit in Stake DAO
         uint256 result = optimizor.optimization(gauge, isOnConvexFrax);
@@ -61,7 +63,12 @@ contract CurveStrategy is Auth {
             if (isOnConvexFrax) {
                 // Deposit on ConvexFrax
             } else {
+                // Cache Convex Curve booster address
+                IBoosterConvexCurve convex = convexMapper.boosterConvexCurve();
+                // Safe approve lp token to convex curve booster
+                ERC20(token).safeApprove(address(convex), amount);
                 // Deposit on ConvexCurve
+                if (!convex.deposit(pid, amount, true)) revert DEPOSIT_FAIL();
             }
         }
     }

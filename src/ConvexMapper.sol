@@ -68,12 +68,16 @@ contract ConvexMapper {
         }
     }
 
-    function isOnConvexFrax(address token) public returns (bool) {
+    function getPid(address token) public returns (bool, uint256) {
         // Check that no pids is missing
         setAllPidsOnConvexFraxOptimized();
+        // Cache pool id for convex frax
+        uint256 pid = pidsConvexFrax[token];
         // Check if the pool is active
-        (,,,, uint8 isActive) = poolRegistryConvexFrax.poolInfo(pidsConvexFrax[token]);
+        (,,,, uint8 isActive) = poolRegistryConvexFrax.poolInfo(pid);
+        // Update the pid regarding availibity is frax or curve
+        pid = isActive == 1 ? pid : pidsConvexCurve[token];
 
-        return isActive == 1;
+        return (isActive == 1, pid);
     }
 }
