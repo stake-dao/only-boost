@@ -3,6 +3,9 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 
+[etherscan]
+etherscan_api_key = { key = "${ETHERSCAN_API_KEY}", chain = "mainnet"}
+
 [rpc_endpoints]
 mainnet = "https://eth.llamarpc.com"
 

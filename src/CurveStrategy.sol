@@ -40,6 +40,7 @@ contract CurveStrategy is Auth {
 
     function deposit(address token, uint256 amount) external {
         // Only vault can call this function
+        ERC20(token).safeTransferFrom(msg.sender, address(LOCKER_STAKEDAO), amount);
 
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
@@ -96,6 +97,10 @@ contract CurveStrategy is Auth {
                 if (!convex.deposit(pid, amount, true)) revert DEPOSIT_FAIL();
             }
         }
+    }
+
+    function setGauge(address token, address gauge) external {
+        gauges[token] = gauge;
     }
 
     function min(uint256 a, uint256 b) public pure returns (uint256) {

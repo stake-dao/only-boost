@@ -41,8 +41,7 @@ contract Optimizor {
         boost = isMeta ? boost + extraConvexFraxBoost : boost;
 
         // Result
-        return
-            balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost)) / 1e18;
+        return balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost));
     }
 
     // 65263 gas
@@ -71,7 +70,7 @@ contract Optimizor {
             / (
                 ((2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply)
                     + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
-            ) / 1e18;
+            );
     }
 
     // 47612 gas
@@ -94,7 +93,7 @@ contract Optimizor {
         boost = isMeta ? boost + extraConvexFraxBoost : boost;
 
         // Result
-        return balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost));
+        return balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost)) * 1e18;
     }
 
     function optimization(address liquidityGauge, bool isMeta) public view returns (uint256 result) {

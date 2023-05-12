@@ -1,0 +1,1 @@
+strat:; @forge t --mc CurveStrategyTest -vvv
