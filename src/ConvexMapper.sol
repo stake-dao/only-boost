@@ -6,14 +6,18 @@ import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
 
 contract ConvexMapper {
+    struct PidsInfo {
+        uint256 pid;
+        uint256 curveOrFrax; // 1 = curve, 2 = frax
+    }
+
     IBoosterConvexCurve public boosterConvexCurve; // Convex booster
     IPoolRegistryConvexFrax public poolRegistryConvexFrax; // ConvexFrax pool Registry
 
     uint256 public lastPidsCountConvexFrax; // Number of pools on ConvexFrax
     uint256 public lastPidsCountConvexCurve; // Number of pools on ConvexCurve
 
-    mapping(address => uint256) public pidsConvexFrax; // lpToken address --> pool ids from convexFrax
-    mapping(address => uint256) public pidsConvexCurve; // lpToken address --> pool ids from convexCurve
+    mapping(address => PidsInfo) public pids; // lpToken address --> pool ids from convexCurve or convexFrax
 
     constructor() {
         boosterConvexCurve = IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
@@ -27,7 +31,7 @@ contract ConvexMapper {
         (address lpToken,,,,,) = boosterConvexCurve.poolInfo(index);
 
         // Set the lpToken address
-        pidsConvexCurve[lpToken] = index;
+        pids[lpToken] = PidsInfo(index, 1);
     }
 
     function setAllPidsOnConvexCurveOptimized() public {
@@ -51,7 +55,7 @@ contract ConvexMapper {
         (,, address lpToken,,) = poolRegistryConvexFrax.poolInfo(index);
 
         // Set the lpToken address
-        pidsConvexFrax[lpToken] = index;
+        pids[lpToken] = PidsInfo(index, 2);
     }
 
     function setAllPidsOnConvexFraxOptimized() public {
@@ -70,16 +74,28 @@ contract ConvexMapper {
         lastPidsCountConvexFrax = len;
     }
 
-    function getPid(address token) public returns (bool, uint256) {
+    function getPid(address token) public returns (uint256, uint256) {
         // Check that no pids is missing
         setAllPidsOnConvexFraxOptimized();
-        // Cache pool id for convex frax
-        uint256 pid = pidsConvexFrax[token];
-        // Check if the pool is active
-        (,,,, uint8 isActive) = poolRegistryConvexFrax.poolInfo(pid);
-        // Update the pid regarding availibity is frax or curve
-        pid = isActive == 1 ? pid : pidsConvexCurve[token];
+        setAllPidsOnConvexCurveOptimized();
 
-        return (isActive == 1, pid);
+        // Cache pool id for convex frax
+        PidsInfo memory pidInfo = pids[token];
+
+        uint256 status;
+        // Check if the pool is active
+        if (pidInfo.curveOrFrax == 1) {
+            (,,,,, bool shutdown) = boosterConvexCurve.poolInfo(pidInfo.pid);
+            status = shutdown == false ? 1 : 0;
+        } else {
+            (,,,, uint8 isActive) = poolRegistryConvexFrax.poolInfo(pidInfo.pid);
+            status = isActive == 1 ? 2 : 0;
+        }
+
+        return (status, pidInfo.pid);
+    }
+
+    function getPid2(address token) public returns (bool, uint256) {
+        // Check if is metapool
     }
 }
