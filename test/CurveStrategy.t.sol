@@ -65,13 +65,46 @@ contract CurveStrategyTest is BaseTest {
         assertEq(convexMapper.lastPidsCountConvexCurve(), boosterConvexCurve.poolLength(), "2");
     }
 
-    function test_Deposit_3CRV() public {
+    function test_Deposit_AllOnStakeDAO() public {
+        // LP amount to deposit
+        uint256 amount = 10e18;
+        // Check max to deposit following optimization
+        uint256 maxToDeposit = optimizor.optimization1(address(GAUGE_CRV3), false);
+        // Check amount is less than max to deposit, to unsure full deposit on Stake DAO
+        assert(maxToDeposit > amount);
+
         // Deal 3CRV to this contract
-        deal(address(CRV3), address(this), 10e18);
+        deal(address(CRV3), address(this), amount);
         // Approve 3CRV to strategy
-        CRV3.safeApprove(address(curveStrategy), 10e18);
+        CRV3.safeApprove(address(curveStrategy), amount);
+        // Cache balance before
+        uint256 balanceBefore = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
+
         // Deposit 3CRV
-        curveStrategy.deposit(address(CRV3), 10e18);
+        curveStrategy.deposit(address(CRV3), amount);
+
+        // Assertion 1: Check Gauge balance of Stake DAO Liquid Locker
+        assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)) - balanceBefore, amount, "1");
+    }
+
+    function test_Deposit_UsingConvexCurveFallback() public {
+        // Check max to deposit following optimization
+        uint256 maxToDeposit = optimizor.optimization1(address(GAUGE_CRV3), false);
+
+        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_CRV3).balanceOf(LOCKER_STAKEDAO);
+        uint256 partConvex = 5_000_000e18;
+        // LP amount to deposit is 2 times the max amount, to unsure testing fallback.
+        uint256 amount = partStakeDAO + partConvex;
+
+        // Deal 3CRV to this contract
+        deal(address(CRV3), address(this), amount);
+        // Approve 3CRV to strategy
+        CRV3.safeApprove(address(curveStrategy), amount);
+        // Cache balance before
+        //uint256 balanceBefore = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
+
+        // Deposit 3CRV
+        curveStrategy.deposit(address(CRV3), amount);
     }
 
     //////////////////////////////////////////////////////

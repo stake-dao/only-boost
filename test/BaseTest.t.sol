@@ -26,6 +26,7 @@ contract BaseTest is Test {
 
     address public GAUGE_CRV3 = 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
     address public GAUGE_ALUSD_FRAXBP = 0x740BA8aa0052E07b925908B380248cb03f3DE5cB;
+    address public LOCKER_STAKEDAO = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
 
     function labelAddress() internal {
         vm.label(address(CRV3), "CRV3");

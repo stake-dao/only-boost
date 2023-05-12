@@ -40,24 +40,26 @@ contract CurveStrategy is Auth {
 
     function deposit(address token, uint256 amount) external {
         // Only vault can call this function
-        ERC20(token).safeTransferFrom(msg.sender, address(LOCKER_STAKEDAO), amount);
+        ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         // Check if the pool is active on convexFrax
-        (bool isOnConvexFrax, uint256 pid) = convexMapper.getPid(token);
+        (uint256 isOnCurveOrFrax, uint256 pid) = convexMapper.getPid(token);
 
         // Call the optimizor to get the optimal amount to deposit in Stake DAO
-        uint256 result = optimizor.optimization(gauge, isOnConvexFrax);
+        uint256 result = optimizor.optimization(gauge, isOnCurveOrFrax == 2);
 
         // Deposit first on Stake DAO
         uint256 balanceStakeDAO = ERC20(gauge).balanceOf(address(LOCKER_STAKEDAO));
         if (balanceStakeDAO < result) {
-            // Calculate amount to deposit
-            uint256 toDeposit = min(result - balanceStakeDAO, amount);
+            // Is there is no vault on Convex deposit all on Stake DAO
+            uint256 toDeposit = isOnCurveOrFrax == 0 ? amount : min(result - balanceStakeDAO, amount);
             // Update amount, cannot underflow due to previous min()
             amount -= toDeposit;
+
+            ERC20(token).safeTransfer(address(LOCKER_STAKEDAO), toDeposit);
 
             // Approve LOCKER_STAKEDAO to spend token
             LOCKER_STAKEDAO.execute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, 0));
@@ -70,7 +72,7 @@ contract CurveStrategy is Auth {
 
         // Deposit all the remaining on Convex
         if (amount > 0) {
-            if (isOnConvexFrax) {
+            if (isOnCurveOrFrax == 2) {
                 // Deposit on ConvexFrax
                 if (vaults[pid] == address(0)) {
                     // Create personal vault if not exist
