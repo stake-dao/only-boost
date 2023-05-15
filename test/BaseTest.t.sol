@@ -16,6 +16,7 @@ import {CurveStrategy} from "src/CurveStrategy.sol";
 
 // Interfaces
 import {ILocker} from "src/interfaces/ILocker.sol";
+import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
@@ -27,6 +28,7 @@ contract BaseTest is Test {
     address public GAUGE_CRV3 = 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
     address public GAUGE_ALUSD_FRAXBP = 0x740BA8aa0052E07b925908B380248cb03f3DE5cB;
     address public LOCKER_STAKEDAO = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
+    address public LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
 
     function labelAddress() internal {
         vm.label(address(CRV3), "CRV3");

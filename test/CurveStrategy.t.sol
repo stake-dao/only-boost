@@ -57,6 +57,7 @@ contract CurveStrategyTest is BaseTest {
     /// --- TESTS --- ///
     //////////////////////////////////////////////////////
     function test_Deployment() public {
+        // === ASSERTIONS === //
         assertTrue(address(curveStrategy) != address(0));
         assertTrue(address(curveStrategy.optimizor()) != address(0));
         assertTrue(address(curveStrategy.convexMapper()) != address(0));
@@ -83,6 +84,7 @@ contract CurveStrategyTest is BaseTest {
         // Deposit 3CRV
         curveStrategy.deposit(address(CRV3), amount);
 
+        // === ASSERTIONS === //
         // Assertion 1: Check Gauge balance of Stake DAO Liquid Locker
         assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)) - balanceBefore, amount, "1");
     }
@@ -93,6 +95,8 @@ contract CurveStrategyTest is BaseTest {
 
         uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_CRV3).balanceOf(LOCKER_STAKEDAO);
         uint256 partConvex = 5_000_000e18;
+        assert(partConvex > 0 && partStakeDAO > 0);
+
         // LP amount to deposit is 2 times the max amount, to unsure testing fallback.
         uint256 amount = partStakeDAO + partConvex;
 
@@ -101,10 +105,62 @@ contract CurveStrategyTest is BaseTest {
         // Approve 3CRV to strategy
         CRV3.safeApprove(address(curveStrategy), amount);
         // Cache balance before
-        //uint256 balanceBefore = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceBeforeConvex = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_CONVEX));
 
         // Deposit 3CRV
         curveStrategy.deposit(address(CRV3), amount);
+
+        // === ASSERTIONS === //
+        // Assertion 1: Check Gauge balance of Stake DAO Liquid Locker
+        assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)) - balanceBeforeStakeDAO, partStakeDAO, "1");
+        // Assertion 2: Check Gauge balance of Convex Liquid Locker
+        assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_CONVEX)) - balanceBeforeConvex, partConvex, "2");
+    }
+
+    function test_Deposit_UsingConvexFraxFallBack() public {
+        // Check max to deposit following optimization
+        uint256 maxToDeposit = optimizor.optimization1(address(GAUGE_ALUSD_FRAXBP), true);
+
+        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(LOCKER_STAKEDAO);
+        uint256 partConvex = 5_000_000e18;
+        assert(partConvex > 0 && partStakeDAO > 0);
+
+        // LP amount to deposit is 2 times the max amount, to unsure testing fallback.
+        uint256 amount = partStakeDAO + partConvex;
+
+        // Deal ALUSD_FRAXBP to this contract
+        deal(address(ALUSD_FRAXBP), address(this), amount);
+        // Sometimes, deal cheatcode doesn't work, so we check balance
+        assert(ERC20(ALUSD_FRAXBP).balanceOf(address(this)) == amount);
+
+        // Approve ALUSD_FRAXBP to strategy
+        ALUSD_FRAXBP.safeApprove(address(curveStrategy), amount);
+        // Cache balance before
+        uint256 balanceBeforeStakeDAO = ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(address(LOCKER_STAKEDAO));
+
+        // Deposit ALUSD_FRAXBP
+        curveStrategy.deposit(address(ALUSD_FRAXBP), amount);
+
+        // Get all needed infos for following assertions
+        ConvexMapper.PidsInfo memory pid = convexMapper.getPidsFrax(address(ALUSD_FRAXBP));
+        address personalVault = poolRegistryConvexFrax.vaultMap(pid.pid, address(curveStrategy));
+        (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pid.pid);
+        IFraxUnifiedFarm.LockedStake memory infos = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[0];
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check Gauge balance of Stake DAO Liquid Locker
+        assertEq(
+            ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(address(LOCKER_STAKEDAO)) - balanceBeforeStakeDAO, partStakeDAO, "1"
+        );
+        // Assertion 2: Check personal vault created
+        assertTrue(poolRegistryConvexFrax.vaultMap(pid.pid, address(curveStrategy)) != address(0), "2");
+        // Assertion 3: Check value for personol vault, such as liquidity, kek_id, timestamps, lock_multiplier
+        assertEq(infos.liquidity, partConvex, "3");
+        assertEq(infos.kek_id, curveStrategy.kekIds(curveStrategy.vaults(pid.pid)), "4"); // kek_id is the same as vault
+        assertEq(infos.start_timestamp, block.timestamp, "5");
+        assertEq(infos.ending_timestamp, block.timestamp + curveStrategy.lockingIntervalSec(), "6");
+        assertGt(infos.lock_multiplier, 0, "7");
     }
 
     //////////////////////////////////////////////////////
