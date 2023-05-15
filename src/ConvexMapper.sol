@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
+import {IConvexStakingWrapperFrax} from "src/interfaces/IConvexStakingWrapperFrax.sol";
 
 contract ConvexMapper {
     struct PidsInfo {
@@ -17,7 +18,9 @@ contract ConvexMapper {
     uint256 public lastPidsCountConvexFrax; // Number of pools on ConvexFrax
     uint256 public lastPidsCountConvexCurve; // Number of pools on ConvexCurve
 
-    mapping(address => PidsInfo) public pids; // lpToken address --> pool ids from convexCurve or convexFrax
+    mapping(address => PidsInfo) public pidsCurve; // lpToken address --> pool ids from convexCurve
+    mapping(address => PidsInfo) public pidsFrax; // lpToken address --> pool ids from convexFrax
+    mapping(address => address) public stkTokens; // lpToken address --> staking token contract address
 
     constructor() {
         boosterConvexCurve = IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
@@ -26,12 +29,21 @@ contract ConvexMapper {
         setAllPidsOnConvexCurveOptimized();
     }
 
+    function getPidsCurve(address lpToken) public view returns (PidsInfo memory) {
+        return pidsCurve[lpToken];
+    }
+
+    function getPidsFrax(address lpToken) public view returns (PidsInfo memory) {
+        return pidsFrax[stkTokens[lpToken]];
+    }
+
     // === Convex Curve === //
     function setPidOnConvexCurve(uint256 index) public {
+        // Get the lpToken address
         (address lpToken,,,,,) = boosterConvexCurve.poolInfo(index);
 
-        // Set the lpToken address
-        pids[lpToken] = PidsInfo(index, 1);
+        // Map the lpToken to the pool infos
+        pidsCurve[lpToken] = PidsInfo(index, 1);
     }
 
     function setAllPidsOnConvexCurveOptimized() public {
@@ -52,10 +64,18 @@ contract ConvexMapper {
 
     // === Convex Frax === //
     function setPidOnConvexFrax(uint256 index) public {
-        (,, address lpToken,,) = poolRegistryConvexFrax.poolInfo(index);
+        // Get the staking token address
+        (,, address stkToken,,) = poolRegistryConvexFrax.poolInfo(index);
 
-        // Set the lpToken address
-        pids[lpToken] = PidsInfo(index, 2);
+        // Get the underlying curve lp token address
+        (bool success, bytes memory data) = stkToken.call(abi.encodeWithSignature("curveToken()"));
+
+        if (success) {
+            // Map the stkToken address from ConvexFrax to the curve lp token
+            stkTokens[abi.decode(data, (address))] = stkToken;
+            // Map the pool infos to stkToken address from ConvexFrax
+            pidsFrax[stkToken] = PidsInfo(index, 2);
+        }
     }
 
     function setAllPidsOnConvexFraxOptimized() public {
@@ -80,7 +100,8 @@ contract ConvexMapper {
         setAllPidsOnConvexCurveOptimized();
 
         // Cache pool id for convex frax
-        PidsInfo memory pidInfo = pids[token];
+        PidsInfo memory pidInfo =
+            pidsFrax[stkTokens[token]].curveOrFrax == 2 ? pidsFrax[stkTokens[token]] : pidsCurve[token];
 
         uint256 status;
         // Check if the pool is active
@@ -93,9 +114,5 @@ contract ConvexMapper {
         }
 
         return (status, pidInfo.pid);
-    }
-
-    function getPid2(address token) public returns (bool, uint256) {
-        // Check if is metapool
     }
 }
