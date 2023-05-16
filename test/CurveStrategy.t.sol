@@ -27,18 +27,18 @@ contract CurveStrategyTest is BaseTest {
         // Create Fork
         vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), 17242848));
 
-        // Label addresses
-        labelAddress();
-
         // Deploy Contracts
         curveStrategy = new CurveStrategy(Authority(address(0)));
         // End of deployment section
+
+        // Set contracts
         optimizor = Optimizor(curveStrategy.optimizor());
         convexMapper = ConvexMapper(curveStrategy.convexMapper());
         boosterConvexFrax = IBoosterConvexFrax(curveStrategy.boosterConvexFrax());
         boosterConvexCurve = IBoosterConvexCurve(convexMapper.boosterConvexCurve());
         poolRegistryConvexFrax = IPoolRegistryConvexFrax(convexMapper.poolRegistryConvexFrax());
 
+        // Set interfaces
         locker = ILocker(curveStrategy.LOCKER_STAKEDAO());
 
         // Give strategy roles from depositor to new strategy
@@ -68,49 +68,24 @@ contract CurveStrategyTest is BaseTest {
 
     // === DEPOSIT === //
     function test_Deposit_AllOnStakeDAO() public {
-        // LP amount to deposit
-        uint256 amount = 10e18;
-        // Check max to deposit following optimization
-        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_CRV3), false);
-        // Check amount is less than max to deposit, to unsure full deposit on Stake DAO
-        assert(maxToDeposit > amount);
-
-        // Deal 3CRV to this contract
-        deal(address(CRV3), address(this), amount);
-        // Approve 3CRV to strategy
-        CRV3.safeApprove(address(curveStrategy), amount);
         // Cache balance before
         uint256 balanceBefore = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
 
-        // Deposit 3CRV
-        curveStrategy.deposit(address(CRV3), amount);
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO,) = deposit(CRV3, 1, 0);
 
         // === ASSERTIONS === //
         // Assertion 1: Check Gauge balance of Stake DAO Liquid Locker
-        assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)) - balanceBefore, amount, "1");
+        assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)) - balanceBefore, partStakeDAO, "1");
     }
 
     function test_Deposit_UsingConvexCurveFallback() public {
-        // Check max to deposit following optimization
-        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_CRV3), false);
-
-        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_CRV3).balanceOf(LOCKER_STAKEDAO);
-        uint256 partConvex = 5_000_000e18;
-        assert(partConvex > 0 && partStakeDAO > 0);
-
-        // LP amount to deposit is 2 times the max amount, to unsure testing fallback.
-        uint256 amount = partStakeDAO + partConvex;
-
-        // Deal 3CRV to this contract
-        deal(address(CRV3), address(this), amount);
-        // Approve 3CRV to strategy
-        CRV3.safeApprove(address(curveStrategy), amount);
         // Cache balance before
         uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
         uint256 balanceBeforeConvex = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_CONVEX));
 
-        // Deposit 3CRV
-        curveStrategy.deposit(address(CRV3), amount);
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO, uint256 partConvex) = deposit(CRV3, MAX, 1);
 
         // Get all needed infos for following assertions
         ConvexMapper.PidsInfo memory pid = convexMapper.getPidsCurve(address(CRV3));
@@ -126,28 +101,11 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Deposit_UsingConvexFraxFallBack() public {
-        // Check max to deposit following optimization
-        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_ALUSD_FRAXBP), true);
-
-        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(LOCKER_STAKEDAO);
-        uint256 partConvex = 5_000_000e18;
-        assert(partConvex > 0 && partStakeDAO > 0);
-
-        // LP amount to deposit is stakeDAO + convex
-        uint256 amount = partStakeDAO + partConvex;
-
-        // Deal ALUSD_FRAXBP to this contract
-        deal(address(ALUSD_FRAXBP), address(this), amount);
-        // Sometimes, deal cheatcode doesn't work, so we check balance
-        assert(ERC20(ALUSD_FRAXBP).balanceOf(address(this)) == amount);
-
-        // Approve ALUSD_FRAXBP to strategy
-        ALUSD_FRAXBP.safeApprove(address(curveStrategy), amount);
         // Cache balance before
         uint256 balanceBeforeStakeDAO = ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(address(LOCKER_STAKEDAO));
 
-        // Deposit ALUSD_FRAXBP
-        curveStrategy.deposit(address(ALUSD_FRAXBP), amount);
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO, uint256 partConvex) = deposit(ALUSD_FRAXBP, MAX, 1);
 
         // Get all needed infos for following assertions
         ConvexMapper.PidsInfo memory pid = convexMapper.getPidsFrax(address(ALUSD_FRAXBP));
@@ -171,8 +129,8 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Deposit_UsingConvexFraxSecondDeposit() public {
-        // Deposit first time
-        test_Deposit_UsingConvexFraxFallBack();
+        // === DEPOSIT PROCESS N°1 === /
+        (uint256 partStakeDAO1, uint256 partConvex1) = deposit(ALUSD_FRAXBP, MAX, 1);
 
         // Cache timestamp before
         uint256 timestampBefore = block.timestamp;
@@ -181,25 +139,8 @@ contract CurveStrategyTest is BaseTest {
         // Timejump
         skip(timejumpInterval);
 
-        // Check max to deposit following optimization
-        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_ALUSD_FRAXBP), true);
-
-        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(LOCKER_STAKEDAO);
-        uint256 partConvex = 5_000_000e18;
-
-        // LP amount to deposit is stakeDAO + convex
-        uint256 amount = partStakeDAO + partConvex;
-
-        // Deal ALUSD_FRAXBP to this contract
-        deal(address(ALUSD_FRAXBP), address(this), amount);
-        // Sometimes, deal cheatcode doesn't work, so we check balance
-        assert(ERC20(ALUSD_FRAXBP).balanceOf(address(this)) == amount);
-
-        // Approve ALUSD_FRAXBP to strategy
-        ALUSD_FRAXBP.safeApprove(address(curveStrategy), amount);
-
-        // Deposit ALUSD_FRAXBP
-        curveStrategy.deposit(address(ALUSD_FRAXBP), amount);
+        // === DEPOSIT PROCESS N°2 === //
+        (, uint256 partConvex2) = deposit(ALUSD_FRAXBP, MAX, 1);
 
         // Get all needed infos for following assertions
         ConvexMapper.PidsInfo memory pid = convexMapper.getPidsFrax(address(ALUSD_FRAXBP));
@@ -209,10 +150,10 @@ contract CurveStrategyTest is BaseTest {
 
         // === ASSERTIONS === //
         //Assertion 1: Check Gauge balance of Stake DAO Liquid Locker
-        assertGt(ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(address(LOCKER_STAKEDAO)), partStakeDAO, "1");
+        assertGt(ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(address(LOCKER_STAKEDAO)), partStakeDAO1, "1");
         // Assertion 2: Check value for personal vault, such as liquidity, kek_id, timestamps, lock_multiplier
         assertEq(IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault), 1, "2");
-        assertEq(infos.liquidity, partConvex * 2, "3");
+        assertEq(infos.liquidity, partConvex1 + partConvex2, "3");
         assertEq(infos.kek_id, curveStrategy.kekIds(curveStrategy.vaults(pid.pid)), "4"); // kek_id is the same as vault
         assertEq(infos.start_timestamp, timestampBefore, "5");
         assertEq(infos.ending_timestamp, timestampBefore + curveStrategy.lockingIntervalSec(), "6");
@@ -222,84 +163,43 @@ contract CurveStrategyTest is BaseTest {
 
     // === WITHDRAW === //
     function test_Withdraw_AllFromStakeDAO() public {
-        // LP amount to deposit
-        uint256 amount = 10e18;
-        // Check max to deposit following optimization
-        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_CRV3), false);
-        // Check amount is less than max to deposit, to unsure full deposit on Stake DAO
-        assert(maxToDeposit > amount);
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO,) = deposit(CRV3, 1, 0);
 
-        // Deal 3CRV to this contract
-        deal(address(CRV3), address(this), amount);
-        // Approve 3CRV to strategy
-        CRV3.safeApprove(address(curveStrategy), amount);
-
-        // Deposit 3CRV
-        curveStrategy.deposit(address(CRV3), amount);
-
-        assertEq(CRV3.balanceOf(address(this)), 0);
         // Check Stake DAO balance before withdraw
         uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
 
-        // Withdraw 3CRV
-        curveStrategy.withdraw(address(CRV3), amount);
+        // === WITHDRAW PROCESS === //
+        curveStrategy.withdraw(address(CRV3), partStakeDAO);
 
         // === ASSERTIONS === //
         //Assertion 1: Check test received token
-        assertEq(CRV3.balanceOf(address(this)), amount, "1");
+        assertEq(CRV3.balanceOf(address(this)), partStakeDAO, "1");
         // Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
-        assertEq(balanceBeforeStakeDAO - ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)), amount, "2");
+        assertEq(balanceBeforeStakeDAO - ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)), partStakeDAO, "2");
     }
 
     function test_Withdraw_UsingConvexCurveFallback() public {
-        // Check max to deposit following optimization
-        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_CRV3), false);
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO, uint256 partConvex) = deposit(CRV3, MAX, 1);
 
-        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_CRV3).balanceOf(LOCKER_STAKEDAO);
-        uint256 partConvex = 5_000_000e18;
-        assert(partConvex > 0 && partStakeDAO > 0);
-
-        // LP amount to deposit is 2 times the max amount, to unsure testing fallback.
-        uint256 amount = partStakeDAO + partConvex;
-
-        // Deal 3CRV to this contract
-        deal(address(CRV3), address(this), amount);
-        // Approve 3CRV to strategy
-        CRV3.safeApprove(address(curveStrategy), amount);
-
-        // Deposit 3CRV
-        curveStrategy.deposit(address(CRV3), amount);
+        // Check Stake DAO balance before withdraw
+        uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
 
         uint256 toWithtdraw = partStakeDAO / 2 + partConvex;
-        // Withdraw 3CRV
+        // === WITHDRAW PROCESS === //
         curveStrategy.withdraw(address(CRV3), toWithtdraw);
 
         // === ASSERTIONS === //
         //Assertion 1: Check test received token
         assertEq(CRV3.balanceOf(address(this)), toWithtdraw, "1");
+        //Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
+        assertEq(balanceBeforeStakeDAO - ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)), partStakeDAO / 2, "2");
     }
 
     function test_Withdraw_UsingConvexFraxFallback() public {
-        // Check max to deposit following optimization
-        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_ALUSD_FRAXBP), true);
-
-        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(LOCKER_STAKEDAO);
-        uint256 partConvex = 5_000_000e18;
-        assert(partConvex > 0 && partStakeDAO > 0);
-
-        // LP amount to deposit is stakeDAO + convex
-        uint256 amount = partStakeDAO + partConvex;
-
-        // Deal ALUSD_FRAXBP to this contract
-        deal(address(ALUSD_FRAXBP), address(this), amount);
-        // Sometimes, deal cheatcode doesn't work, so we check balance
-        assert(ERC20(ALUSD_FRAXBP).balanceOf(address(this)) == amount);
-
-        // Approve ALUSD_FRAXBP to strategy
-        ALUSD_FRAXBP.safeApprove(address(curveStrategy), amount);
-
-        // Deposit ALUSD_FRAXBP
-        curveStrategy.deposit(address(ALUSD_FRAXBP), amount);
+        // === DEPOSIT PROCESS === //
+        (, uint256 partConvex) = deposit(ALUSD_FRAXBP, MAX, 1);
 
         // Get all needed infos for following assertions
         ConvexMapper.PidsInfo memory pid = convexMapper.getPidsFrax(address(ALUSD_FRAXBP));
@@ -337,5 +237,40 @@ contract CurveStrategyTest is BaseTest {
         vm.label(address(curveStrategy), "CurveStrategy");
         vm.label(address(curveStrategy.optimizor()), "Optimizor");
         vm.label(address(curveStrategy.convexMapper()), "ConvexMapper");
+    }
+
+    function deposit(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex) public returns (uint256, uint256) {
+        // Amount for Stake DAO
+        if (amountStakeDAO == 1) {
+            amountStakeDAO = REF_AMOUNT;
+        } else if (amountStakeDAO == MAX) {
+            ConvexMapper.PidsInfo memory infos = convexMapper.getPidsFrax(address(token));
+
+            // Calculate optimal amount
+            uint256 optimalAmount = optimizor.optimization(gauges[address(token)], infos.curveOrFrax == 2);
+            assert(optimalAmount > 0);
+
+            // Final amount to deposit is optimal amount - locker gauge holding
+            amountStakeDAO = optimalAmount - ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+        }
+
+        // Amount for Convex
+        if (amountConvex == 1) amountConvex = REF_AMOUNT;
+
+        uint256 totalAmount = amountStakeDAO + amountConvex;
+
+        // Deal token to this contract
+        deal(address(token), address(this), totalAmount);
+        // Sometimes, deal cheatcode doesn't work, so we check balance
+        assert(token.balanceOf(address(this)) == totalAmount);
+
+        // Approve token to strategy
+        token.safeApprove(address(curveStrategy), totalAmount);
+
+        // Deposit token
+        curveStrategy.deposit(address(token), totalAmount);
+
+        // Return infos
+        return (amountStakeDAO, amountConvex);
     }
 }
