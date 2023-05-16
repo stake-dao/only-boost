@@ -10,9 +10,12 @@ import {Optimizor} from "src/Optimizor.sol";
 import {ConvexMapper} from "src/ConvexMapper.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
+import {IBaseRewardsPool} from "src/interfaces/IBaseRewardsPool.sol";
+import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 import {IStakingProxyConvex} from "src/interfaces/IStakingProxyConvex.sol";
+import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
 
 contract CurveStrategy is Auth {
     using SafeTransferLib for ERC20;
@@ -99,6 +102,82 @@ contract CurveStrategy is Auth {
                 if (!convex.deposit(pid, amount, true)) revert DEPOSIT_FAIL();
             }
         }
+    }
+
+    function withdraw(address token, uint256 amount) external {
+        // Get the gauge address
+        address gauge = gauges[token];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        // Check if the pool is active on convexFrax
+        (uint256 isOnCurveOrFrax, uint256 pid) = convexMapper.getPid(token);
+
+        uint256 balanceLPBefore = ERC20(token).balanceOf(address(this));
+        // Withdraw from Convex first
+        if (isOnCurveOrFrax == 1) {
+            // Cache Convex Curve booster address
+            IBoosterConvexCurve convex = convexMapper.boosterConvexCurve();
+
+            // Get cvxLpToken address
+            (,,, address crvRewards,,) = convex.poolInfo(pid);
+            // Check current balance on convexCurve
+            uint256 balanceCvxLPToken = ERC20(crvRewards).balanceOf(address(this));
+
+            // Amount to withdraw from convexCurve
+            uint256 toWithdraw = min(balanceCvxLPToken, amount);
+            // Update amount, cannot underflow due to previous min()
+            amount -= toWithdraw;
+
+            // Withdraw from ConvexCurve gauge
+            IBaseRewardsPool(crvRewards).withdrawAndUnwrap(toWithdraw, false);
+        } else if (isOnCurveOrFrax == 2) {
+            // Cache convex frax pool registry address
+            IPoolRegistryConvexFrax poolRegistryConvexFrax = convexMapper.poolRegistryConvexFrax();
+            // Withdraw from ConvexFrax
+            (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pid);
+            // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
+            // and the last one is emptyed. So we need to get the last one.
+            uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(vaults[pid]);
+            // Cache lockedStakes infos
+            IFraxUnifiedFarm.LockedStake memory infos =
+                IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
+
+            // If locktime has endend, withdraw
+            if (block.timestamp >= infos.ending_timestamp) {
+                uint256 toWithdraw = min(infos.liquidity, amount);
+                amount -= toWithdraw;
+
+                // Release all the locked curve lp
+                IStakingProxyConvex(vaults[pid]).withdrawLockedAndUnwrap(kekIds[vaults[pid]]);
+                // Set kekId to 0
+                delete kekIds[vaults[pid]];
+
+                // Safe approve lp token to personal vault
+                ERC20(token).safeApprove(vaults[pid], infos.liquidity - toWithdraw);
+                // Stake back the remaining curve lp
+                kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(
+                    infos.liquidity - toWithdraw, lockingIntervalSec
+                );
+            }
+        }
+
+        // Withdraw the remaining from Stake DAO
+        if (amount > 0) {
+            uint256 _before = ERC20(token).balanceOf(address(LOCKER_STAKEDAO));
+
+            (bool success,) = LOCKER_STAKEDAO.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
+            require(success, "Transfer failed!");
+            uint256 _after = ERC20(token).balanceOf(address(LOCKER_STAKEDAO));
+
+            uint256 _net = _after - _before;
+            (success,) = LOCKER_STAKEDAO.execute(
+                token, 0, abi.encodeWithSignature("transfer(address,uint256)", address(this), _net)
+            );
+            require(success, "Transfer failed!");
+        }
+
+        // Transfer all the remaining token to vault
+        ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)) - balanceLPBefore);
     }
 
     function setGauge(address token, address gauge) external {
