@@ -66,6 +66,7 @@ contract CurveStrategyTest is BaseTest {
         assertEq(convexMapper.lastPidsCountConvexCurve(), boosterConvexCurve.poolLength(), "2");
     }
 
+    // === DEPOSIT === //
     function test_Deposit_AllOnStakeDAO() public {
         // LP amount to deposit
         uint256 amount = 10e18;
@@ -111,11 +112,17 @@ contract CurveStrategyTest is BaseTest {
         // Deposit 3CRV
         curveStrategy.deposit(address(CRV3), amount);
 
+        // Get all needed infos for following assertions
+        ConvexMapper.PidsInfo memory pid = convexMapper.getPidsCurve(address(CRV3));
+        (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pid.pid);
+
         // === ASSERTIONS === //
         // Assertion 1: Check Gauge balance of Stake DAO Liquid Locker
         assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)) - balanceBeforeStakeDAO, partStakeDAO, "1");
         // Assertion 2: Check Gauge balance of Convex Liquid Locker
         assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_CONVEX)) - balanceBeforeConvex, partConvex, "2");
+        // Assertion 3: Check Convex balance of Curve Strategy
+        assertEq(ERC20(crvRewards).balanceOf(address(curveStrategy)), partConvex, "3");
     }
 
     function test_Deposit_UsingConvexFraxFallBack() public {
@@ -211,6 +218,111 @@ contract CurveStrategyTest is BaseTest {
         assertEq(infos.ending_timestamp, timestampBefore + curveStrategy.lockingIntervalSec(), "6");
         assertGt(infos.lock_multiplier, 0, "7");
         // Note: Locking additional liquidity doesn't change ending-timestamp
+    }
+
+    // === WITHDRAW === //
+    function test_Withdraw_AllFromStakeDAO() public {
+        // LP amount to deposit
+        uint256 amount = 10e18;
+        // Check max to deposit following optimization
+        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_CRV3), false);
+        // Check amount is less than max to deposit, to unsure full deposit on Stake DAO
+        assert(maxToDeposit > amount);
+
+        // Deal 3CRV to this contract
+        deal(address(CRV3), address(this), amount);
+        // Approve 3CRV to strategy
+        CRV3.safeApprove(address(curveStrategy), amount);
+
+        // Deposit 3CRV
+        curveStrategy.deposit(address(CRV3), amount);
+
+        assertEq(CRV3.balanceOf(address(this)), 0);
+        // Check Stake DAO balance before withdraw
+        uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
+
+        // Withdraw 3CRV
+        curveStrategy.withdraw(address(CRV3), amount);
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test received token
+        assertEq(CRV3.balanceOf(address(this)), amount, "1");
+        // Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
+        assertEq(balanceBeforeStakeDAO - ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)), amount, "2");
+    }
+
+    function test_Withdraw_UsingConvexCurveFallback() public {
+        // Check max to deposit following optimization
+        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_CRV3), false);
+
+        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_CRV3).balanceOf(LOCKER_STAKEDAO);
+        uint256 partConvex = 5_000_000e18;
+        assert(partConvex > 0 && partStakeDAO > 0);
+
+        // LP amount to deposit is 2 times the max amount, to unsure testing fallback.
+        uint256 amount = partStakeDAO + partConvex;
+
+        // Deal 3CRV to this contract
+        deal(address(CRV3), address(this), amount);
+        // Approve 3CRV to strategy
+        CRV3.safeApprove(address(curveStrategy), amount);
+
+        // Deposit 3CRV
+        curveStrategy.deposit(address(CRV3), amount);
+
+        uint256 toWithtdraw = partStakeDAO / 2 + partConvex;
+        // Withdraw 3CRV
+        curveStrategy.withdraw(address(CRV3), toWithtdraw);
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test received token
+        assertEq(CRV3.balanceOf(address(this)), toWithtdraw, "1");
+    }
+
+    function test_Withdraw_UsingConvexFraxFallback() public {
+        // Check max to deposit following optimization
+        uint256 maxToDeposit = optimizor.optimization(address(GAUGE_ALUSD_FRAXBP), true);
+
+        uint256 partStakeDAO = maxToDeposit - ERC20(GAUGE_ALUSD_FRAXBP).balanceOf(LOCKER_STAKEDAO);
+        uint256 partConvex = 5_000_000e18;
+        assert(partConvex > 0 && partStakeDAO > 0);
+
+        // LP amount to deposit is stakeDAO + convex
+        uint256 amount = partStakeDAO + partConvex;
+
+        // Deal ALUSD_FRAXBP to this contract
+        deal(address(ALUSD_FRAXBP), address(this), amount);
+        // Sometimes, deal cheatcode doesn't work, so we check balance
+        assert(ERC20(ALUSD_FRAXBP).balanceOf(address(this)) == amount);
+
+        // Approve ALUSD_FRAXBP to strategy
+        ALUSD_FRAXBP.safeApprove(address(curveStrategy), amount);
+
+        // Deposit ALUSD_FRAXBP
+        curveStrategy.deposit(address(ALUSD_FRAXBP), amount);
+
+        // Get all needed infos for following assertions
+        ConvexMapper.PidsInfo memory pid = convexMapper.getPidsFrax(address(ALUSD_FRAXBP));
+        address personalVault = poolRegistryConvexFrax.vaultMap(pid.pid, address(curveStrategy));
+        (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pid.pid);
+        IFraxUnifiedFarm.LockedStake memory infosBefore = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[0];
+
+        // Withdraw only convex part
+        uint256 toWithtdraw = partConvex / 2;
+        uint256 timejump = curveStrategy.lockingIntervalSec();
+        skip(timejump);
+        // Withdraw ALUSD_FRAXBP
+        curveStrategy.withdraw(address(ALUSD_FRAXBP), toWithtdraw);
+
+        IFraxUnifiedFarm.LockedStake memory infosAfter = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[1];
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test received token
+        assertEq(ALUSD_FRAXBP.balanceOf(address(this)), toWithtdraw, "1");
+        //Assertion 2: Check length of lockedStakesOf, should be 2 due to withdraw and redeposit
+        assertEq(IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault), 2, "2");
+        //Assertion 3: Check kek_id is different due to new lockStake
+        assertTrue(infosAfter.kek_id != infosBefore.kek_id, "3");
     }
 
     //////////////////////////////////////////////////////
