@@ -10,8 +10,11 @@ import {Optimizor} from "src/Optimizor.sol";
 import {ConvexMapper} from "src/ConvexMapper.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
+import {IAccumulator} from "src/interfaces/IAccumulator.sol";
+import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {IBaseRewardsPool} from "src/interfaces/IBaseRewardsPool.sol";
 import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
+import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 import {IStakingProxyConvex} from "src/interfaces/IStakingProxyConvex.sol";
@@ -20,17 +23,33 @@ import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.so
 contract CurveStrategy is Auth {
     using SafeTransferLib for ERC20;
 
+    ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV token
+    address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0; // CRV minter
     ILocker public constant LOCKER_STAKEDAO = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6); // StakeDAO CRV Locker
+    uint256 public constant BASE_FEE = 10_000;
 
-    Optimizor public optimizor;
-    ConvexMapper public convexMapper;
+    Optimizor public optimizor; // Optimizor contract
+    ConvexMapper public convexMapper; // Convex mapper
     IBoosterConvexFrax public boosterConvexFrax; // Convex Frax booster
+    IAccumulator public accumulator = IAccumulator(0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A); // Accumulator contract
 
     uint256 public lockingIntervalSec = 7 days; // 7 days
 
-    mapping(address => address) public gauges; // token address --> gauge address
-    mapping(uint256 => address) public vaults; // pid --> vault address
-    mapping(address => bytes32) public kekIds; // vault address --> kekId
+    address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E; // veSDT fee proxy
+    address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C; // SDT distributor
+    address public rewardsReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063; // Rewards receiver
+
+    mapping(address => address) public gauges; // lp token from curve -> curve gauge
+    mapping(uint256 => address) public vaults; // pid from convex frax -> personal vault for convex frax
+    mapping(address => bytes32) public kekIds; // personal vault on convex frax -> kekId
+
+    // To be initialized by governance at the deployment
+    mapping(address => uint256) public perfFee;
+    mapping(address => address) public multiGauges;
+    mapping(address => uint256) public accumulatorFee; // gauge -> fee
+    mapping(address => uint256) public claimerRewardFee; // gauge -> fee
+    mapping(address => uint256) public veSDTFee; // gauge -> fee
+    mapping(address => uint256) public lGaugeType;
 
     error ADDRESS_NULL();
     error DEPOSIT_FAIL();
@@ -178,6 +197,85 @@ contract CurveStrategy is Auth {
 
         // Transfer all the remaining token to vault
         ERC20(token).safeTransfer(msg.sender, ERC20(token).balanceOf(address(this)) - balanceLPBefore);
+    }
+
+    function claimRewards(address token) external {
+        address gauge = gauges[token];
+        require(gauge != address(0), "!gauge");
+
+        uint256 crvBeforeClaim = CRV.balanceOf(address(LOCKER_STAKEDAO));
+
+        // Claim CRV
+        // within the mint() it calls the user checkpoint
+        (bool success,) = LOCKER_STAKEDAO.execute(CRV_MINTER, 0, abi.encodeWithSignature("mint(address)", gauge));
+        require(success, "CRV mint failed!");
+
+        uint256 crvMinted = CRV.balanceOf(address(LOCKER_STAKEDAO)) - crvBeforeClaim;
+
+        // Send CRV here
+        (success,) = LOCKER_STAKEDAO.execute(
+            address(CRV), 0, abi.encodeWithSignature("transfer(address,uint256)", address(this), crvMinted)
+        );
+        require(success, "CRV transfer failed!");
+
+        // Distribute CRV
+        uint256 crvNetRewards = sendFee(gauge, address(CRV), crvMinted);
+        CRV.approve(multiGauges[gauge], crvNetRewards);
+        ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(address(CRV), crvNetRewards);
+        //emit Claimed(gauge, CRV, crvMinted);
+
+        // Distribute SDT to the related gauge
+        ISdtDistributorV2(sdtDistributor).distribute(multiGauges[gauge]);
+
+        // Claim rewards only for lg type 0 and if there is at least one reward token added
+        if (lGaugeType[gauge] == 0 && ILiquidityGauge(gauge).reward_tokens(0) != address(0)) {
+            (success,) = LOCKER_STAKEDAO.execute(
+                gauge,
+                0,
+                abi.encodeWithSignature("claim_rewards(address,address)", address(LOCKER_STAKEDAO), address(this))
+            );
+            if (!success) {
+                // Claim on behalf of LOCKER_STAKEDAO
+                ILiquidityGauge(gauge).claim_rewards(address(LOCKER_STAKEDAO));
+            }
+            address rewardToken;
+            uint256 rewardsBalance;
+            for (uint8 i = 0; i < 8; i++) {
+                rewardToken = ILiquidityGauge(gauge).reward_tokens(i);
+                if (rewardToken == address(0)) {
+                    break;
+                }
+                if (success) {
+                    rewardsBalance = ERC20(rewardToken).balanceOf(address(this));
+                } else {
+                    rewardsBalance = ERC20(rewardToken).balanceOf(address(LOCKER_STAKEDAO));
+                    (success,) = LOCKER_STAKEDAO.execute(
+                        rewardToken,
+                        0,
+                        abi.encodeWithSignature("transfer(address,uint256)", address(this), rewardsBalance)
+                    );
+                    require(success, "Transfer failed");
+                }
+                ERC20(rewardToken).approve(multiGauges[gauge], rewardsBalance);
+                ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(rewardToken, rewardsBalance);
+                //emit Claimed(gauge, rewardToken, rewardsBalance);
+            }
+        }
+    }
+
+    function sendFee(address _gauge, address _rewardToken, uint256 _rewardsBalance) internal returns (uint256) {
+        // calculate the amount for each fee recipient
+        uint256 multisigFee = (_rewardsBalance * perfFee[_gauge]) / BASE_FEE;
+        uint256 accumulatorPart = (_rewardsBalance * accumulatorFee[_gauge]) / BASE_FEE;
+        uint256 veSDTPart = (_rewardsBalance * veSDTFee[_gauge]) / BASE_FEE;
+        uint256 claimerPart = (_rewardsBalance * claimerRewardFee[_gauge]) / BASE_FEE;
+        // send
+        ERC20(_rewardToken).approve(address(accumulator), accumulatorPart);
+        accumulator.depositToken(_rewardToken, accumulatorPart);
+        ERC20(_rewardToken).transfer(rewardsReceiver, multisigFee);
+        ERC20(_rewardToken).transfer(veSDTFeeProxy, veSDTPart);
+        ERC20(_rewardToken).transfer(msg.sender, claimerPart);
+        return _rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
     function setGauge(address token, address gauge) external {
