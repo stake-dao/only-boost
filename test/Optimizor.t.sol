@@ -2,14 +2,14 @@
 
 pragma solidity 0.8.19;
 
-import "forge-std/Test.sol";
+import "test/BaseTest.t.sol";
 
-import {Optimizor} from "src/Optimizor.sol";
+import {Optimizor, FallbackConvexFrax, FallbackConvexCurve} from "src/Optimizor.sol";
 
-contract OptimizorTest is Test {
+contract OptimizorTest is BaseTest {
     Optimizor public optimizor;
-
-    address public constant LIQUIDITY_GAUGE = 0x1E212e054d74ed136256fc5a5DDdB4867c6E003F; // 3EURPool Gauge
+    FallbackConvexFrax public fallbackConvexFrax;
+    FallbackConvexCurve public fallbackConvexCurve;
 
     function setUp() public {
         // 17136445 : 27 April 2023 08:51:23 UTC
@@ -20,17 +20,71 @@ contract OptimizorTest is Test {
 
         // Deploy Optimizor
         optimizor = new Optimizor();
+        // End for deployment
+
+        fallbackConvexFrax = optimizor.fallbackConvexFrax();
+        fallbackConvexCurve = optimizor.fallbackConvexCurve();
     }
 
+    ////////////////// Stake DAO Optimization //////////////////
     function test_Optimization1() public view {
-        optimizor.optimization1(LIQUIDITY_GAUGE, true);
+        optimizor.optimization1(gauges[address(EUR3)], true);
     }
 
     function test_Optimization2() public view {
-        optimizor.optimization2(LIQUIDITY_GAUGE, true);
+        optimizor.optimization2(gauges[address(EUR3)], true);
     }
 
     function test_Optimization3() public view {
-        optimizor.optimization3(LIQUIDITY_GAUGE, true);
+        optimizor.optimization3(gauges[address(EUR3)], true);
+    }
+
+    ////////////////// Convex Optimization //////////////////
+    function test_OptimizationOnDeposit_StakeDAOAndConvexCurve() public {
+        // Cache the address of the token
+        ERC20 token = CRV3;
+
+        // Get the balance of the locker in the gauge
+        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+
+        uint256 amountStakeDAO = optimizor.optimization1(gauges[address(token)], false) - lockerGaugeBalance;
+        uint256 amountFallbackCurve = 5_000_000e18;
+        uint256 amountFallbackFrax = 0;
+        uint256 amountTotal = amountStakeDAO + amountFallbackCurve + amountFallbackFrax;
+
+        // Get the optimized amounts
+        (address[] memory recipients, uint256[] memory results) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], amountTotal);
+
+        // Assertions
+        assertEq(results.length, 3, "1");
+        assertEq(recipients.length, 3, "2");
+        assertEq(results[0], amountStakeDAO, "3");
+        assertEq(results[1], amountFallbackCurve, "4");
+        assertEq(results[2], amountFallbackFrax, "5");
+    }
+
+    function test_OptimizationOnDeposit_StakeDAOAndConvexFrax() public {
+        // Cache the address of the token
+        ERC20 token = ALUSD_FRAXBP;
+
+        // Get the balance of the locker in the gauge
+        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+
+        uint256 amountStakeDAO = optimizor.optimization1(gauges[address(token)], true) - lockerGaugeBalance;
+        uint256 amountFallbackCurve = 0;
+        uint256 amountFallbackFrax = 5_000_000e18;
+        uint256 amountTotal = amountStakeDAO + amountFallbackCurve + amountFallbackFrax;
+
+        // Get the optimized amounts
+        (address[] memory recipients, uint256[] memory results) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], amountTotal);
+
+        // Assertions
+        assertEq(results.length, 3, "1");
+        assertEq(recipients.length, 3, "2");
+        assertEq(results[0], amountStakeDAO, "3");
+        assertEq(results[1], amountFallbackCurve, "4");
+        assertEq(results[2], amountFallbackFrax, "5");
     }
 }

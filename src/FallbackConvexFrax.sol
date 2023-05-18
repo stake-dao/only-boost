@@ -48,6 +48,6 @@ contract FallbackConvexFrax is BaseFallback {
         setAllPidsOptimized();
 
         (,,,, uint8 _isActive) = poolRegistryConvexFrax.poolInfo(pids[stkTokens[lpToken]].pid);
-        return pids[lpToken].isInitialized && _isActive == 1;
+        return pids[stkTokens[lpToken]].isInitialized && _isActive == 1;
     }
 }
