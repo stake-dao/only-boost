@@ -11,7 +11,6 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 // Contracts
 import {Optimizor} from "src/Optimizor.sol";
-import {ConvexMapper} from "src/ConvexMapper.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
 
 // Interfaces

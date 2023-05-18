@@ -3,6 +3,10 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
+
+import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
+import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
+
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
 contract Optimizor {
@@ -18,10 +22,25 @@ contract Optimizor {
     uint256 public constant FEES_CONVEX = 17e16; // 17% Convex
     uint256 public constant FEES_STAKEDAO = 16e16; // 16% StakeDAO
 
+    //////////////////////////////// Variables ////////////////////////////////
     uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
+    address[] public fallbacks;
+
+    //////////////////////////////// Contracts ////////////////////////////////
+    FallbackConvexFrax public fallbackConvexFrax;
+    FallbackConvexCurve public fallbackConvexCurve;
+
+    constructor() {
+        fallbackConvexFrax = new FallbackConvexFrax();
+        fallbackConvexCurve = new FallbackConvexCurve();
+
+        fallbacks.push(LOCKER_STAKEDAO);
+        fallbacks.push(address(fallbackConvexCurve));
+        fallbacks.push(address(fallbackConvexFrax));
+    }
 
     //////////////////////////////// Optimization ////////////////////////////////
-    // 47899 gas
+    // This function return the optimal amount of lps that must be held by the locker
     function optimization1(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
@@ -44,7 +63,7 @@ contract Optimizor {
         return balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost));
     }
 
-    // 65263 gas
+    // This function return the optimal amount of lps that must be held by the locker
     function optimization2(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
@@ -73,7 +92,7 @@ contract Optimizor {
             );
     }
 
-    // 47612 gas
+    // This function return the optimal amount of lps that must be held by the locker
     function optimization3(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
@@ -96,7 +115,137 @@ contract Optimizor {
         return balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost)) * 1e18;
     }
 
-    function optimization(address liquidityGauge, bool isMeta) public view returns (uint256 result) {
-        result = optimization1(liquidityGauge, isMeta);
+    // This function return the amount that need to be deposited StakeDAO locker and on each fallback
+    function optimizeDeposit(address lpToken, address liquidityGauge, uint256 amount)
+        public
+        returns (address[] memory, uint256[] memory)
+    {
+        // Check if the lp token has pool on ConvexCurve or ConvexFrax
+        //(bool statusCurve, bool statusFrax) = convexMapper.isActiveOnCurveOrFrax(lpToken);
+        bool statusCurve = fallbackConvexCurve.isActive(lpToken);
+        bool statusFrax = fallbackConvexFrax.isActive(lpToken);
+
+        uint256[] memory amounts = new uint256[](3);
+
+        // If Metapool and available on Convex Frax
+        if (statusFrax) {
+            // Get the optimal amount of lps that must be held by the locker
+            uint256 opt = optimization1(liquidityGauge, true);
+            // Get the balance of the locker on the liquidity gauge
+            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER_STAKEDAO));
+
+            // Stake DAO Curve
+            amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
+            // Convex Curve
+            // amounts[1] = 0;
+            // Convex Frax
+            amounts[2] = amount - min(opt - gaugeBalance, amount);
+        }
+        // If available on Convex Curve
+        else if (statusCurve) {
+            // Get the optimal amount of lps that must be held by the locker
+            uint256 opt = optimization1(liquidityGauge, false);
+            // Get the balance of the locker on the liquidity gauge
+            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER_STAKEDAO));
+
+            // Stake DAO Curve
+            amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
+            // Convex Curve
+            amounts[1] = amount - min(opt - gaugeBalance, amount);
+            // Convex Frax
+            // amounts[2] = 0;
+        }
+        // If not available on Convex Curve or Convex Frax
+        else {
+            // Stake DAO Curve
+            amounts[0] = amount;
+            // Convex Curve
+            // amounts[1] = 0;
+            // Convex Frax
+            // amounts[2] = 0;
+        }
+
+        return (fallbacks, amounts);
+    }
+
+    function optimizeWithdraw(address lpToken, address liquidityGauge, uint256 amount)
+        public
+        returns (address[] memory, uint256[] memory)
+    {
+        // Cache the balance of all fallbacks
+        uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfConvexCurve = FallbackConvexCurve(fallbacks[1]).balanceOf(lpToken);
+        uint256 balanceOfConvexFrax = FallbackConvexFrax(fallbacks[2]).balanceOf(lpToken);
+
+        // Initialize the result
+        uint256[] memory amounts = new uint256[](3);
+
+        // === Situation n°1 === //
+        // If available on Convex Curve
+        if (balanceOfConvexFrax > 0) {
+            // Withdraw as much as possible from Convex Frax
+            amounts[2] = min(amount, balanceOfConvexFrax);
+            // Update the amount to withdraw
+            amount -= amounts[2];
+
+            // If there is still amount to withdraw
+            if (amount > 0) {
+                // Withdraw as much as possible from Stake DAO Curve
+                amounts[0] = min(amount, balanceOfStakeDAO);
+                // Update the amount to withdraw
+                amount -= amounts[0];
+
+                // If there is still amount to withdraw, but this situation should happen only rarely
+                // Because there should not have deposit both on convex curve and convex frax
+                if (amount > 0 && balanceOfConvexCurve > 0) {
+                    // Withdraw as much as possible from Convex Curve
+                    amounts[1] = min(amount, balanceOfConvexCurve);
+                    // Update the amount to withdraw
+                    amount -= amounts[1];
+                }
+            }
+        }
+        // === Situation n°2 === //
+        // If available on Convex Curve
+        else if (balanceOfConvexCurve > 0) {
+            // Withdraw as much as possible from Convex Curve
+            amounts[1] = min(amount, balanceOfConvexCurve);
+            // Update the amount to withdraw
+            amount -= amounts[1];
+
+            // If there is still amount to withdraw
+            if (amount > 0) {
+                // Withdraw as much as possible from Stake DAO Curve
+                amounts[0] = min(amount, balanceOfStakeDAO);
+                // Update the amount to withdraw
+                amount -= amounts[0];
+
+                // If there is still amount to withdraw, but this situation should happen only rarely
+                // Because there should not have deposit both on convex curve and convex frax
+                if (amount > 0 && balanceOfConvexFrax > 0) {
+                    // Withdraw as much as possible from Convex Frax
+                    amounts[2] = min(amount, balanceOfConvexFrax);
+                    // Update the amount to withdraw
+                    amount -= amounts[2];
+                }
+            }
+        }
+        // === Situation n°3 === //
+        // If not available on Convex Curve or Convex Frax
+        else {
+            // Withdraw as much as possible from Stake DAO Curve
+            amounts[0] = min(amount, balanceOfStakeDAO);
+            // Update the amount to withdraw
+            amount -= amounts[0];
+        }
+
+        // If there is still some amount to withdraw, it means that optimizor miss calculated
+        assert(amount == 0);
+
+        return (fallbacks, amounts);
+    }
+
+    function min(uint256 a, uint256 b) public pure returns (uint256) {
+        return (a < b) ? a : b;
     }
 }
