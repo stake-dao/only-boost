@@ -5,6 +5,7 @@ pragma solidity 0.8.19;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
+import {BaseFallback} from "src/BaseFallback.sol";
 import {ConvexMapper} from "src/ConvexMapperV2.sol";
 
 contract Optimizor {
@@ -114,7 +115,7 @@ contract Optimizor {
     }
 
     // This function return the amount that need to be deposited StakeDAO locker and on each fallback
-    function optimization(address lpToken, address liquidityGauge, uint256 amount)
+    function optimizeDeposit(address lpToken, address liquidityGauge, uint256 amount)
         public
         returns (address[] memory, uint256[] memory)
     {
@@ -160,6 +161,85 @@ contract Optimizor {
             // Convex Frax
             // amounts[2] = 0;
         }
+
+        return (fallbacks, amounts);
+    }
+
+    function optimizeWithdraw(address lpToken, address liquidityGauge, uint256 amount)
+        public
+        returns (address[] memory, uint256[] memory)
+    {
+        // Cache the balance of all fallbacks
+        uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfConvexCurve = BaseFallback(fallbacks[1]).balanceOf(lpToken);
+        uint256 balanceOfConvexFrax = BaseFallback(fallbacks[2]).balanceOf(lpToken);
+
+        // Initialize the result
+        uint256[] memory amounts = new uint256[](3);
+
+        // === Situation n°1 === //
+        // If available on Convex Curve
+        if (balanceOfConvexFrax > 0) {
+            // Withdraw as much as possible from Convex Frax
+            amounts[2] = min(amount, balanceOfConvexFrax);
+            // Update the amount to withdraw
+            amount -= amounts[2];
+
+            // If there is still amount to withdraw
+            if (amount > 0) {
+                // Withdraw as much as possible from Stake DAO Curve
+                amounts[0] = min(amount, balanceOfStakeDAO);
+                // Update the amount to withdraw
+                amount -= amounts[0];
+
+                // If there is still amount to withdraw, but this situation should happen only rarely
+                // Because there should not have deposit both on convex curve and convex frax
+                if (amount > 0 && balanceOfConvexCurve > 0) {
+                    // Withdraw as much as possible from Convex Curve
+                    amounts[1] = min(amount, balanceOfConvexCurve);
+                    // Update the amount to withdraw
+                    amount -= amounts[1];
+                }
+            }
+        }
+        
+        // === Situation n°2 === //
+        // If available on Convex Curve
+        else if (balanceOfConvexCurve > 0) {
+            // Withdraw as much as possible from Convex Curve
+            amounts[1] = min(amount, balanceOfConvexCurve);
+            // Update the amount to withdraw
+            amount -= amounts[1];
+
+            // If there is still amount to withdraw
+            if (amount > 0) {
+                // Withdraw as much as possible from Stake DAO Curve
+                amounts[0] = min(amount, balanceOfStakeDAO);
+                // Update the amount to withdraw
+                amount -= amounts[0];
+
+                // If there is still amount to withdraw, but this situation should happen only rarely
+                // Because there should not have deposit both on convex curve and convex frax
+                if (amount > 0 && balanceOfConvexFrax > 0) {
+                    // Withdraw as much as possible from Convex Frax
+                    amounts[2] = min(amount, balanceOfConvexFrax);
+                    // Update the amount to withdraw
+                    amount -= amounts[2];
+                }
+            }
+        }
+
+        // === Situation n°3 === //
+        // If not available on Convex Curve or Convex Frax
+        else {
+            // Withdraw as much as possible from Stake DAO Curve
+            amounts[0] = min(amount, balanceOfStakeDAO);
+            // Update the amount to withdraw
+            amount -= amounts[0];
+        }
+
+        // If there is still some amount to withdraw, it means that optimizor miss calculated
+        assert(amount == 0);
 
         return (fallbacks, amounts);
     }
