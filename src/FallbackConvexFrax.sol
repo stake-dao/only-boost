@@ -2,12 +2,27 @@
 
 pragma solidity 0.8.19;
 
-import {BaseFallback, IPoolRegistryConvexFrax} from "./BaseFallback.sol";
+import "./BaseFallback.sol";
+
+import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
+import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
+import {IStakingProxyConvex} from "src/interfaces/IStakingProxyConvex.sol";
+import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
 
 contract FallbackConvexFrax is BaseFallback {
+    using SafeTransferLib for ERC20;
+
+    IBoosterConvexFrax public boosterConvexFrax; // Convex Frax booster
+    IPoolRegistryConvexFrax public poolRegistryConvexFrax; // ConvexFrax pool Registry
+
+    uint256 public lockingIntervalSec = 7 days; // 7 days
+
     mapping(address => address) public stkTokens; // lpToken address --> staking token contract address
+    mapping(uint256 => address) public vaults; // pid from convex frax -> personal vault for convex frax
+    mapping(address => bytes32) public kekIds; // personal vault on convex frax -> kekId
 
     constructor() {
+        boosterConvexFrax = IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa);
         poolRegistryConvexFrax = IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69);
 
         setAllPidsOptimized();
@@ -44,10 +59,65 @@ contract FallbackConvexFrax is BaseFallback {
         lastPidsCount = len;
     }
 
-    function isActive(address lpToken) public override returns (bool) {
+    function isActive(address lpToken) external override returns (bool) {
         setAllPidsOptimized();
 
         (,,,, uint8 _isActive) = poolRegistryConvexFrax.poolInfo(pids[stkTokens[lpToken]].pid);
         return pids[stkTokens[lpToken]].isInitialized && _isActive == 1;
+    }
+
+    function balanceOf(address lpToken) external view override returns (uint256) {
+        // Cache the pid
+        uint256 pid = pids[stkTokens[lpToken]].pid;
+
+        // Withdraw from ConvexFrax
+        (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pid);
+        // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
+        // and the last one is emptyed. So we need to get the last one.
+        uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(vaults[pid]);
+        // Cache lockedStakes infos
+        IFraxUnifiedFarm.LockedStake memory infos = IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
+
+        return block.timestamp >= infos.ending_timestamp ? infos.liquidity : 0;
+    }
+
+    function deposit(address lpToken, uint256 amount) external override {
+        // Cache the pid
+        uint256 pid = pids[stkTokens[lpToken]].pid;
+
+        // Create personal vault if not exist
+        if (vaults[pid] == address(0)) vaults[pid] = boosterConvexFrax.createVault(pid);
+
+        // Approve the amount
+        ERC20(lpToken).safeApprove(vaults[pid], amount);
+
+        if (kekIds[vaults[pid]] == bytes32(0)) {
+            // If no kekId, stake locked curve lp
+            kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(amount, lockingIntervalSec);
+        } else {
+            // Else lock additional curve lp
+            IStakingProxyConvex(vaults[pid]).lockAdditionalCurveLp(kekIds[vaults[pid]], amount);
+        }
+    }
+
+    function withdraw(address lpToken, uint256 amount) external override {
+        // Cache the pid
+        uint256 pid = pids[stkTokens[lpToken]].pid;
+
+        // Release all the locked curve lp
+        IStakingProxyConvex(vaults[pid]).withdrawLockedAndUnwrap(kekIds[vaults[pid]]);
+        // Set kekId to 0
+        delete kekIds[vaults[pid]];
+
+        // Transfer the curve lp back to user
+        ERC20(lpToken).safeTransfer(msg.sender, amount);
+
+        // If there is remaining curve lp, stake it back
+        uint256 remaining = ERC20(lpToken).balanceOf(address(this));
+
+        // Safe approve lp token to personal vault
+        ERC20(lpToken).safeApprove(vaults[pid], remaining);
+        // Stake back the remaining curve lp
+        kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(remaining, lockingIntervalSec);
     }
 }

@@ -4,8 +4,6 @@ pragma solidity 0.8.19;
 
 import "test/BaseTest.t.sol";
 
-import {Optimizor, FallbackConvexFrax, FallbackConvexCurve} from "src/Optimizor.sol";
-
 contract OptimizorTest is BaseTest {
     Optimizor public optimizor;
     FallbackConvexFrax public fallbackConvexFrax;

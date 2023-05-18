@@ -12,6 +12,8 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 // Contracts
 import {Optimizor} from "src/Optimizor.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
+import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
+import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 // Interfaces
 import {ILocker} from "src/interfaces/ILocker.sol";

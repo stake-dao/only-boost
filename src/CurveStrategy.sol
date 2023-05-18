@@ -62,7 +62,7 @@ contract CurveStrategy {
             // Deposit into other fallback
             else {
                 ERC20(token).safeTransfer(fallbacks[i], optimizedAmounts[i]);
-                BaseFallback(fallbacks[i]).deposit(optimizedAmounts[i]);
+                BaseFallback(fallbacks[i]).deposit(token, optimizedAmounts[i]);
             }
         }
     }
@@ -107,7 +107,7 @@ contract CurveStrategy {
             }
             // Deposit into other fallback
             else {
-                BaseFallback(fallbacks[i]).deposit(optimizedAmounts[i]);
+                BaseFallback(fallbacks[i]).withdraw(token, optimizedAmounts[i]);
             }
         }
     }

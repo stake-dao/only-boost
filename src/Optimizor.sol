@@ -170,6 +170,7 @@ contract Optimizor {
 
     function optimizeWithdraw(address lpToken, address liquidityGauge, uint256 amount)
         public
+        view
         returns (address[] memory, uint256[] memory)
     {
         // Cache the balance of all fallbacks
