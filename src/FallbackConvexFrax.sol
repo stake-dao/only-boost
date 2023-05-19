@@ -75,6 +75,10 @@ contract FallbackConvexFrax is BaseFallback {
         // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
         // and the last one is emptyed. So we need to get the last one.
         uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(vaults[pid]);
+
+        // If no lockedStakes, return 0
+        if (lockCount == 0) return 0;
+
         // Cache lockedStakes infos
         IFraxUnifiedFarm.LockedStake memory infos = IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
 

@@ -168,6 +168,76 @@ contract CurveStrategyTest is BaseTest {
     }
 
     // --- Withdraw --- //
+    function test_Withdraw_AllFromStakeDAO() public {
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO,) = _deposit(CRV3, 1, 0);
+
+        // Check Stake DAO balance before withdraw
+        uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
+
+        // === WITHDRAW PROCESS === //
+        curveStrategy.withdraw(address(CRV3), partStakeDAO);
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test received token
+        assertEq(CRV3.balanceOf(address(this)), partStakeDAO, "1");
+        // Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
+        assertEq(balanceBeforeStakeDAO - ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)), partStakeDAO, "2");
+    }
+
+    function test_Withdraw_UsingConvexCurveFallback() public {
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO, uint256 partConvex) = _deposit(CRV3, MAX, 1);
+
+        // Check Stake DAO balance before withdraw
+        uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
+
+        uint256 toWithtdraw = partStakeDAO / 2 + partConvex;
+        // === WITHDRAW PROCESS === //
+        curveStrategy.withdraw(address(CRV3), toWithtdraw);
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test received token
+        assertEq(CRV3.balanceOf(address(this)), toWithtdraw, "1");
+        //Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
+        assertEq(balanceBeforeStakeDAO - ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)), partStakeDAO / 2, "2");
+    }
+
+    function test_Withdraw_UsingConvexFraxFallback() public {
+        // === DEPOSIT PROCESS === //
+        (, uint256 partConvex) = _deposit(ALUSD_FRAXBP, MAX, 1);
+
+        // Get all needed infos for following assertions
+        BaseFallback.PidsInfo memory pidsInfo = fallbackConvexFrax.getPid(address(ALUSD_FRAXBP));
+        address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
+        (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
+
+        uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
+        IFraxUnifiedFarm.LockedStake memory infosBefore =
+            IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCount - 1];
+
+        // Withdraw only convex part
+        uint256 toWithtdraw = partConvex / 2;
+        uint256 timejump = fallbackConvexFrax.lockingIntervalSec();
+        skip(timejump);
+
+        // Withdraw ALUSD_FRAXBP
+        curveStrategy.withdraw(address(ALUSD_FRAXBP), toWithtdraw);
+
+        // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
+        // and the last one is emptyed. So we need to get the last one.
+        lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
+        IFraxUnifiedFarm.LockedStake memory infosAfter =
+            IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCount - 1];
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test received token
+        assertEq(ALUSD_FRAXBP.balanceOf(address(this)), toWithtdraw, "1");
+        //Assertion 2: Check length of lockedStakesOf, should be 2 due to withdraw and redeposit
+        assertEq(IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault), 2, "2");
+        //Assertion 3: Check kek_id is different due to new lockStake
+        assertTrue(infosAfter.kek_id != infosBefore.kek_id, "3");
+    }
 
     //////////////////////////////////////////////////////
     /// --- HELPER FUNCTIONS --- ///
