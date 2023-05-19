@@ -20,7 +20,6 @@ contract CurveStrategy {
     Optimizor public optimizor; // Optimizor contract
 
     //////////////////////////////// Variables ////////////////////////////////
-    address[] public fallbacks;
 
     //////////////////////////////// Mappings /////////////////////////////////
     mapping(address => address) public gauges; // lp token from curve -> curve gauge
@@ -51,7 +50,7 @@ contract CurveStrategy {
             optimizor.optimizeDeposit(token, gauge, amount);
 
         // Loops on fallback to deposit lp tokens
-        for (uint8 i; i < fallbacks.length; ++i) {
+        for (uint8 i; i < recipients.length; ++i) {
             // Skip if the optimized amount is 0
             if (optimizedAmounts[i] == 0) continue;
 
@@ -61,8 +60,8 @@ contract CurveStrategy {
             }
             // Deposit into other fallback
             else {
-                ERC20(token).safeTransfer(fallbacks[i], optimizedAmounts[i]);
-                BaseFallback(fallbacks[i]).deposit(token, optimizedAmounts[i]);
+                ERC20(token).safeTransfer(recipients[i], optimizedAmounts[i]);
+                BaseFallback(recipients[i]).deposit(token, optimizedAmounts[i]);
             }
         }
     }
@@ -107,7 +106,7 @@ contract CurveStrategy {
             }
             // Deposit into other fallback
             else {
-                BaseFallback(fallbacks[i]).withdraw(token, optimizedAmounts[i]);
+                BaseFallback(recipients[i]).withdraw(token, optimizedAmounts[i]);
             }
         }
     }
@@ -123,5 +122,9 @@ contract CurveStrategy {
         (success,) =
             LOCKER_STAKEDAO.execute(token, 0, abi.encodeWithSignature("transfer(address,uint256)", address(this), _net));
         require(success, "Transfer failed!");
+    }
+
+    function setGauge(address token, address gauge) external {
+        gauges[token] = gauge;
     }
 }

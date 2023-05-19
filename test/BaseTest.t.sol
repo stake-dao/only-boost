@@ -11,6 +11,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 // Contracts
 import {Optimizor} from "src/Optimizor.sol";
+import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
 import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
@@ -37,12 +38,19 @@ contract BaseTest is Test {
     uint256 public constant REF_AMOUNT = 1_000e18;
 
     mapping(address => address) public gauges;
+    mapping(address => bool) public isMetapool;
 
     constructor() {
         labelAddress();
+        // Set mapping for gauges
         gauges[address(CRV3)] = GAUGE_CRV3;
         gauges[address(EUR3)] = GAUGE_EUR3;
         gauges[address(ALUSD_FRAXBP)] = GAUGE_ALUSD_FRAXBP;
+
+        // Set mapping for metapools
+        isMetapool[address(CRV3)] = false;
+        isMetapool[address(EUR3)] = false;
+        isMetapool[address(ALUSD_FRAXBP)] = true;
     }
 
     function labelAddress() internal {

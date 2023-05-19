@@ -120,4 +120,8 @@ contract FallbackConvexFrax is BaseFallback {
         // Stake back the remaining curve lp
         kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(remaining, lockingIntervalSec);
     }
+
+    function getPid(address lpToken) external view override returns (PidsInfo memory) {
+        return pids[stkTokens[lpToken]];
+    }
 }

@@ -26,4 +26,6 @@ contract BaseFallback {
     function deposit(address lpToken, uint256 amount) external virtual {}
 
     function withdraw(address lpToken, uint256 amount) external virtual {}
+
+    function getPid(address lpToken) external view virtual returns (PidsInfo memory) {}
 }

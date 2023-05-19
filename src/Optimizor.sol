@@ -246,6 +246,10 @@ contract Optimizor {
         return (fallbacks, amounts);
     }
 
+    function fallbacksLength() public view returns (uint256) {
+        return fallbacks.length;
+    }
+
     function min(uint256 a, uint256 b) public pure returns (uint256) {
         return (a < b) ? a : b;
     }

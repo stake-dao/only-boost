@@ -77,4 +77,8 @@ contract FallbackConvexCurve is BaseFallback {
         // Transfer the amount
         ERC20(lpToken).safeTransfer(msg.sender, amount);
     }
+
+    function getPid(address lpToken) external view override returns (PidsInfo memory) {
+        return pids[lpToken];
+    }
 }
