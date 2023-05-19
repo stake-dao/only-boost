@@ -25,6 +25,7 @@ contract Optimizor {
     //////////////////////////////// Variables ////////////////////////////////
     uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
     address[] public fallbacks;
+    bool public isConvexFraxKilled;
 
     //////////////////////////////// Contracts ////////////////////////////////
     FallbackConvexFrax public fallbackConvexFrax;
@@ -128,7 +129,7 @@ contract Optimizor {
         uint256[] memory amounts = new uint256[](3);
 
         // If Metapool and available on Convex Frax
-        if (statusFrax) {
+        if (statusFrax && !isConvexFraxKilled) {
             // Get the optimal amount of lps that must be held by the locker
             uint256 opt = optimization1(liquidityGauge, true);
             // Get the balance of the locker on the liquidity gauge
@@ -176,7 +177,7 @@ contract Optimizor {
         // Cache the balance of all fallbacks
         uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER_STAKEDAO);
         uint256 balanceOfConvexCurve = FallbackConvexCurve(fallbacks[1]).balanceOf(lpToken);
-        uint256 balanceOfConvexFrax = FallbackConvexFrax(fallbacks[2]).balanceOf(lpToken);
+        uint256 balanceOfConvexFrax = isConvexFraxKilled ? 0 : FallbackConvexFrax(fallbacks[2]).balanceOf(lpToken);
 
         // Initialize the result
         uint256[] memory amounts = new uint256[](3);
@@ -244,6 +245,10 @@ contract Optimizor {
         assert(amount == 0);
 
         return (fallbacks, amounts);
+    }
+
+    function killConvexFrax() public {
+        isConvexFraxKilled = true;
     }
 
     function fallbacksLength() public view returns (uint256) {
