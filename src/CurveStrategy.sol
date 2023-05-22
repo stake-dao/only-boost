@@ -39,6 +39,12 @@ contract CurveStrategy {
         _deposit(token, amount);
     }
 
+    function depositForOptimizor(address token, uint256 amount) external {
+        // Should be better named after
+        // Do the deposit process
+        _deposit(token, amount);
+    }
+
     function _deposit(address token, uint256 amount) internal {
         // Get the gauge address
         address gauge = gauges[token];

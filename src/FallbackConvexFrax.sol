@@ -15,32 +15,39 @@ contract FallbackConvexFrax is BaseFallback {
     IBoosterConvexFrax public boosterConvexFrax; // Convex Frax booster
     IPoolRegistryConvexFrax public poolRegistryConvexFrax; // ConvexFrax pool Registry
 
+    address public curveStrategy;
     uint256 public lockingIntervalSec = 7 days; // 7 days
 
     mapping(address => address) public stkTokens; // lpToken address --> staking token contract address
     mapping(uint256 => address) public vaults; // pid from convex frax -> personal vault for convex frax
     mapping(address => bytes32) public kekIds; // personal vault on convex frax -> kekId
 
-    constructor() {
+    constructor(address _curveStrategy) {
         boosterConvexFrax = IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa);
         poolRegistryConvexFrax = IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69);
-
-        setAllPidsOptimized();
+        curveStrategy = _curveStrategy;
     }
 
     function setPid(uint256 index) public override {
+        (address lpToken, address stkToken) = getLP(index);
+
+        if (lpToken != address(0)) {
+            // Map the stkToken address from ConvexFrax to the curve lp token
+            stkTokens[lpToken] = stkToken;
+            // Map the pool infos to stkToken address from ConvexFrax
+            pids[stkToken] = PidsInfo(index, true);
+        }
+    }
+
+    function getLP(uint256 pid) public returns (address, address) {
         // Get the staking token address
-        (,, address stkToken,,) = poolRegistryConvexFrax.poolInfo(index);
+        (,, address stkToken,,) = poolRegistryConvexFrax.poolInfo(pid);
 
         // Get the underlying curve lp token address
         (bool success, bytes memory data) = stkToken.call(abi.encodeWithSignature("curveToken()"));
 
-        if (success) {
-            // Map the stkToken address from ConvexFrax to the curve lp token
-            stkTokens[abi.decode(data, (address))] = stkToken;
-            // Map the pool infos to stkToken address from ConvexFrax
-            pids[stkToken] = PidsInfo(index, true);
-        }
+        // Return the curve lp token address if call succeed otherwise return address(0)
+        return success ? (abi.decode(data, (address)), stkToken) : (address(0), stkToken);
     }
 
     function setAllPidsOptimized() public override {
@@ -70,6 +77,10 @@ contract FallbackConvexFrax is BaseFallback {
         // Cache the pid
         uint256 pid = pids[stkTokens[lpToken]].pid;
 
+        return balanceOf(pid);
+    }
+
+    function balanceOf(uint256 pid) public view returns (uint256) {
         // Withdraw from ConvexFrax
         (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pid);
         // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
@@ -114,10 +125,12 @@ contract FallbackConvexFrax is BaseFallback {
         delete kekIds[vaults[pid]];
 
         // Transfer the curve lp back to user
-        ERC20(lpToken).safeTransfer(msg.sender, amount);
+        ERC20(lpToken).safeTransfer(address(curveStrategy), amount);
 
         // If there is remaining curve lp, stake it back
         uint256 remaining = ERC20(lpToken).balanceOf(address(this));
+
+        if (remaining == 0) return;
 
         // Safe approve lp token to personal vault
         ERC20(lpToken).safeApprove(vaults[pid], remaining);

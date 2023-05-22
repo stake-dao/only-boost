@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
+import {CurveStrategy} from "src/CurveStrategy.sol";
 import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
@@ -28,12 +29,14 @@ contract Optimizor {
     bool public isConvexFraxKilled;
 
     //////////////////////////////// Contracts ////////////////////////////////
+    CurveStrategy public curveStrategy;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
     constructor() {
-        fallbackConvexFrax = new FallbackConvexFrax();
+        fallbackConvexFrax = new FallbackConvexFrax(msg.sender);
         fallbackConvexCurve = new FallbackConvexCurve();
+        curveStrategy = CurveStrategy(msg.sender);
 
         fallbacks.push(LOCKER_STAKEDAO);
         fallbacks.push(address(fallbackConvexCurve));
@@ -249,6 +252,20 @@ contract Optimizor {
 
     function killConvexFrax() public {
         isConvexFraxKilled = true;
+
+        uint256 len = fallbackConvexFrax.lastPidsCount();
+
+        for (uint256 i = 0; i < len; ++i) {
+            uint256 balance = fallbackConvexFrax.balanceOf(i);
+            (address lpToken,) = fallbackConvexFrax.getLP(i);
+            if (balance > 0 && lpToken != address(0)) {
+                // Withdraw from convex frax
+                fallbackConvexFrax.withdraw(lpToken, balance);
+
+                // Follow optimized deposit logic
+                curveStrategy.depositForOptimizor(lpToken, balance);
+            }
+        }
     }
 
     function fallbacksLength() public view returns (uint256) {
