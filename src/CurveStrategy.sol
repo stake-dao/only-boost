@@ -64,6 +64,7 @@ contract CurveStrategy {
     error CLAIM_FAILED();
     error MINT_FAILED();
     error CALL_FAILED();
+    error WITHDRAW_FAILED();
     error FEE_TOO_HIGH();
 
     constructor() {
@@ -305,6 +306,28 @@ contract CurveStrategy {
     function sendToAccumulator(address token, uint256 amount) external {
         ERC20(token).approve(address(accumulator), amount);
         accumulator.depositToken(token, amount);
+    }
+
+    //////////////////////////////// Migration ////////////////////////////////
+    function migrateLP(address lpToken) external {
+        // Only callable by the vault
+
+        // Get gauge address
+        address gauge = gauges[lpToken];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        // Get the amount of LP token staked in the gauge by the locker
+        uint256 amount = ERC20(gauge).balanceOf(address(LOCKER_STAKEDAO));
+
+        // Locker withdraw all from the gauge
+        (bool success,) = LOCKER_STAKEDAO.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
+        if (!success) revert WITHDRAW_FAILED();
+
+        // Locker transfer the LP token to the vault
+        (success,) = LOCKER_STAKEDAO.execute(
+            lpToken, 0, abi.encodeWithSignature("transfer(address,uint256)", msg.sender, amount)
+        );
+        if (!success) revert CALL_FAILED();
     }
 
     //////////////////////////////// Setters ////////////////////////////////
