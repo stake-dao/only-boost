@@ -25,9 +25,15 @@ contract CurveStrategy {
         uint256 claimerRewardFee;
     }
 
+    enum MANAGEFEE {
+        PERFFEE,
+        VESDTFEE,
+        ACCUMULATORFEE,
+        CLAIMERREWARD
+    }
+
     //////////////////////////////// Constants ////////////////////////////////
     ILocker public constant LOCKER_STAKEDAO = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6); // StakeDAO CRV Locker
-    IAccumulator public constant accumulator = IAccumulator(0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A); // Stake DAO CRV Accumulator
     address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
     address public constant CRV_FEE_D = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc;
     address public constant CRV3 = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
@@ -38,6 +44,7 @@ contract CurveStrategy {
     Optimizor public optimizor; // Optimizor contract
 
     //////////////////////////////// Variables ////////////////////////////////
+    IAccumulator public accumulator = IAccumulator(0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A); // Stake DAO CRV Accumulator
     address public rewardsReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
     address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C;
     address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E;
@@ -49,6 +56,7 @@ contract CurveStrategy {
     mapping(address => Fees) public feesInfos; // gauge -> fees
     mapping(address => address) public multiGauges;
     mapping(address => uint256) public lGaugeType;
+    mapping(address => bool) public vaults;
 
     //////////////////////////////// Errors ////////////////////////////////
     error AMOUNT_NULL();
@@ -56,6 +64,7 @@ contract CurveStrategy {
     error CLAIM_FAILED();
     error MINT_FAILED();
     error CALL_FAILED();
+    error FEE_TOO_HIGH();
 
     constructor() {
         optimizor = new Optimizor();
@@ -293,9 +302,67 @@ contract CurveStrategy {
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
+    function sendToAccumulator(address token, uint256 amount) external {
+        ERC20(token).approve(address(accumulator), amount);
+        accumulator.depositToken(token, amount);
+    }
+
     //////////////////////////////// Setters ////////////////////////////////
+    function toggleVault(address vault) external {
+        if (vault == address(0)) revert ADDRESS_NULL();
+        vaults[vault] = !vaults[vault];
+        //emit VaultToggled(vault, vaults[vault]);
+    }
+
     function setGauge(address token, address gauge) external {
+        if (token == address(0)) revert ADDRESS_NULL();
         gauges[token] = gauge;
+        //emit GaugeSet(_gauge, _token);
+    }
+
+    function setLGtype(address gauge, uint256 gaugeType) external {
+        lGaugeType[gauge] = gaugeType;
+    }
+
+    function setMultiGauge(address gauge, address multiGauge) external {
+        if (gauge == address(0) || multiGauge == address(0)) revert ADDRESS_NULL();
+        multiGauges[gauge] = multiGauge;
+    }
+
+    function setVeSDTProxy(address newVeSDTProxy) external {
+        if (newVeSDTProxy == address(0)) revert ADDRESS_NULL();
+        veSDTFeeProxy = newVeSDTProxy;
+    }
+
+    function setAccumulator(address newAccumulator) external {
+        if (newAccumulator == address(0)) revert ADDRESS_NULL();
+        accumulator = IAccumulator(newAccumulator);
+    }
+
+    function setRewardsReceiver(address newRewardsReceiver) external {
+        if (newRewardsReceiver == address(0)) revert ADDRESS_NULL();
+        rewardsReceiver = newRewardsReceiver;
+    }
+
+    function manageFee(MANAGEFEE _manageFee, address _gauge, uint256 _newFee) external {
+        require(_gauge != address(0), "zero address");
+        if (_manageFee == MANAGEFEE.PERFFEE) {
+            // 0
+            feesInfos[_gauge].perfFee = _newFee;
+        } else if (_manageFee == MANAGEFEE.VESDTFEE) {
+            // 1
+            feesInfos[_gauge].veSDTFee = _newFee;
+        } else if (_manageFee == MANAGEFEE.ACCUMULATORFEE) {
+            //2
+            feesInfos[_gauge].accumulatorFee = _newFee;
+        } else if (_manageFee == MANAGEFEE.CLAIMERREWARD) {
+            // 3
+            feesInfos[_gauge].claimerRewardFee = _newFee;
+        }
+        if (
+            feesInfos[_gauge].perfFee + feesInfos[_gauge].veSDTFee + feesInfos[_gauge].accumulatorFee
+                + feesInfos[_gauge].claimerRewardFee > BASE_FEE
+        ) revert FEE_TOO_HIGH();
     }
 
     //////////////////////////////// Execute ////////////////////////////////
