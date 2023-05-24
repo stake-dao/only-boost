@@ -196,7 +196,7 @@ contract CurveStrategy {
 
         // Distribute CRV to fees recipients and gauges
         uint256 crvNetRewards = sendFee(gauge, CRV, crvMinted);
-        ERC20(CRV).approve(multiGauges[gauge], crvNetRewards);
+        ERC20(CRV).safeApprove(multiGauges[gauge], crvNetRewards);
         ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(CRV, crvNetRewards);
         //emit Claimed(gauge, CRV, crvMinted);
 
@@ -259,7 +259,7 @@ contract CurveStrategy {
                     );
                     if (!success) revert CALL_FAILED();
                 }
-                ERC20(rewardToken).approve(multiGauges[gauge], rewardsBalance);
+                ERC20(rewardToken).safeApprove(multiGauges[gauge], rewardsBalance);
                 ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(rewardToken, rewardsBalance);
                 //emit Claimed(gauge, rewardToken, rewardsBalance);
             }
@@ -295,16 +295,16 @@ contract CurveStrategy {
         uint256 veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, BASE_FEE);
         uint256 claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, BASE_FEE);
         // send
-        ERC20(rewardToken).approve(address(accumulator), accumulatorPart);
+        ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
         accumulator.depositToken(rewardToken, accumulatorPart);
-        ERC20(rewardToken).transfer(rewardsReceiver, multisigFee);
-        ERC20(rewardToken).transfer(veSDTFeeProxy, veSDTPart);
-        ERC20(rewardToken).transfer(msg.sender, claimerPart);
+        ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
+        ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
+        ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
     function sendToAccumulator(address token, uint256 amount) external {
-        ERC20(token).approve(address(accumulator), amount);
+        ERC20(token).safeApprove(address(accumulator), amount);
         accumulator.depositToken(token, amount);
     }
 

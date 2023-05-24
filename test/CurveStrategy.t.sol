@@ -12,6 +12,9 @@ contract CurveStrategyTest is BaseTest {
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
+    LiquidityGaugeMock public liquidityGaugeMockCRV3;
+    LiquidityGaugeMock public liquidityGaugeMockALUSD_FRAXBP;
+
     ILocker public locker;
     IBoosterConvexFrax public boosterConvexFrax;
     IBoosterConvexCurve public boosterConvexCurve;
@@ -26,6 +29,8 @@ contract CurveStrategyTest is BaseTest {
 
         // Deployment contracts
         curveStrategy = new CurveStrategy();
+        liquidityGaugeMockCRV3 = new LiquidityGaugeMock();
+        liquidityGaugeMockALUSD_FRAXBP = new LiquidityGaugeMock();
         // End deployment contracts
 
         // Setup contracts
@@ -39,6 +44,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Setup contract
         _addAllGauge();
+        _setFees();
 
         // Give strategy roles from depositor to new strategy
         vm.prank(locker.governance());
@@ -239,6 +245,54 @@ contract CurveStrategyTest is BaseTest {
         assertTrue(infosAfter.kek_id != infosBefore.kek_id, "3");
     }
 
+    // --- Claim --- //
+    function test_Claim_NoExtraRewards() public {
+        // Cache balance before
+        uint256 balanceBeforeLG = CRV.balanceOf(liquidityGaugeMocks[address(CRV3)]);
+        uint256 balanceBeforeAC = CRV.balanceOf(address(curveStrategy.accumulator()));
+        uint256 balanceBeforeMS = CRV.balanceOf(address(curveStrategy.rewardsReceiver()));
+        uint256 balanceBeforeVE = CRV.balanceOf(address(curveStrategy.veSDTFeeProxy()));
+        uint256 balanceBeforeCL = CRV.balanceOf(ALICE);
+
+        // === DEPOSIT PROCESS === //
+        _deposit(CRV3, 1, 0);
+
+        // Timejump 1 week
+        skip(1 weeks);
+
+        // === CLAIM PROCESS === //
+        vm.prank(ALICE);
+        curveStrategy.claim(address(CRV3));
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test gauge received token
+        assertGt(CRV.balanceOf(liquidityGaugeMocks[address(CRV3)]), balanceBeforeLG, "1");
+        //Assertion 2: Check test accumulator received token
+        assertGt(CRV.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "2");
+        //Assertion 3: Check test rewards receiver received token
+        assertGt(CRV.balanceOf(address(curveStrategy.rewardsReceiver())), balanceBeforeMS, "3");
+        //Assertion 4: Check test veSDT fee proxy received token
+        assertGt(CRV.balanceOf(address(curveStrategy.veSDTFeeProxy())), balanceBeforeVE, "4");
+        //Assertion 5: Check test alice received token
+        assertGt(CRV.balanceOf(ALICE), balanceBeforeCL, "5");
+    }
+
+    function test_Claim3CRV() public {
+        // Cache balance before
+        uint256 balanceBeforeAC = CRV3.balanceOf(address(curveStrategy.accumulator()));
+
+        // Timejump 1 week
+        skip(1 weeks);
+
+        // === CLAIM 3CRV PROCESS === //
+        // No need to notify all, because it will call back the same exact process
+        curveStrategy.claim3Crv(false);
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test accumulator received token
+        assertGt(CRV3.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "1");
+    }
+
     //////////////////////////////////////////////////////
     /// --- HELPER FUNCTIONS --- ///
     //////////////////////////////////////////////////////
@@ -276,8 +330,19 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function _addAllGauge() internal {
+        // Add all curve gauges
         curveStrategy.setGauge(address(CRV3), GAUGE_CRV3);
         curveStrategy.setGauge(address(ALUSD_FRAXBP), GAUGE_ALUSD_FRAXBP);
+
+        // Add all stake dao gauges
+        curveStrategy.setMultiGauge(gauges[address(CRV3)], address(liquidityGaugeMockCRV3));
+        curveStrategy.setMultiGauge(gauges[address(ALUSD_FRAXBP)], address(liquidityGaugeMockALUSD_FRAXBP));
+        liquidityGaugeMocks[address(CRV3)] = address(liquidityGaugeMockCRV3);
+        liquidityGaugeMocks[address(ALUSD_FRAXBP)] = address(liquidityGaugeMockALUSD_FRAXBP);
+
+        // Set gauge types
+        curveStrategy.setLGtype(gauges[address(CRV3)], 1);
+        curveStrategy.setLGtype(gauges[address(ALUSD_FRAXBP)], 0);
     }
 
     function _labelContract() internal {
@@ -289,5 +354,24 @@ contract CurveStrategyTest is BaseTest {
         vm.label(address(boosterConvexFrax), "BoosterConvexFrax");
         vm.label(address(boosterConvexCurve), "BoosterConvexCurve");
         vm.label(address(poolRegistryConvexFrax), "PoolRegistryConvexFrax");
+        vm.label(address(liquidityGaugeMockCRV3), "LiquidityGaugeMockCRV3");
+        vm.label(address(liquidityGaugeMockALUSD_FRAXBP), "LiquidityGaugeMockALUSD_FRAXBP");
+    }
+
+    function _setFees() internal {
+        address[] memory tokens = new address[](20);
+        tokens[0] = address(CRV3);
+        tokens[1] = address(ALUSD_FRAXBP);
+
+        uint256 len = tokens.length;
+        for (uint8 i; i < len; ++i) {
+            address token = tokens[i];
+            if (token == address(0)) break;
+
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, gauges[address(token)], FEE_PERF);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDTFEE, gauges[address(token)], FEE_VESDT);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATORFEE, gauges[address(token)], FEE_ACCU);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
+        }
     }
 }
