@@ -15,6 +15,9 @@ contract BaseFallback {
 
     mapping(address => PidsInfo) public pids; // lpToken address --> pool ids from ConvexCurve or ConvexFrax
 
+    event Deposited(address token, uint256 amount);
+    event Withdrawn(address token, uint256 amount);
+
     function setPid(uint256 index) public virtual {}
 
     function setAllPidsOptimized() public virtual {}

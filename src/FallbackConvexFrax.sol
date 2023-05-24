@@ -113,6 +113,8 @@ contract FallbackConvexFrax is BaseFallback {
             // Else lock additional curve lp
             IStakingProxyConvex(vaults[pid]).lockAdditionalCurveLp(kekIds[vaults[pid]], amount);
         }
+
+        emit Deposited(lpToken, amount);
     }
 
     function withdraw(address lpToken, uint256 amount) external override {
@@ -126,6 +128,8 @@ contract FallbackConvexFrax is BaseFallback {
 
         // Transfer the curve lp back to user
         ERC20(lpToken).safeTransfer(address(curveStrategy), amount);
+
+        emit Withdrawn(lpToken, amount);
 
         // If there is remaining curve lp, stake it back
         uint256 remaining = ERC20(lpToken).balanceOf(address(this));

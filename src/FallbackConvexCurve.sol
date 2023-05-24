@@ -66,6 +66,8 @@ contract FallbackConvexCurve is BaseFallback {
 
         // Check if the deposit was successful
         if (!success) revert DEPOSIT_FAIL();
+
+        emit Deposited(lpToken, amount);
     }
 
     function withdraw(address lpToken, uint256 amount) public override {
@@ -76,6 +78,8 @@ contract FallbackConvexCurve is BaseFallback {
 
         // Transfer the amount
         ERC20(lpToken).safeTransfer(msg.sender, amount);
+
+        emit Withdrawn(lpToken, amount);
     }
 
     function getPid(address lpToken) external view override returns (PidsInfo memory) {

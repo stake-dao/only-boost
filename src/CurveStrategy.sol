@@ -8,29 +8,16 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {Optimizor} from "src/Optimizor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
+import {EventsAndErrors} from "src/EventsAndErrors.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IAccumulator} from "src/interfaces/IAccumulator.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 
-contract CurveStrategy {
+contract CurveStrategy is EventsAndErrors {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
-
-    struct Fees {
-        uint256 perfFee;
-        uint256 accumulatorFee;
-        uint256 veSDTFee;
-        uint256 claimerRewardFee;
-    }
-
-    enum MANAGEFEE {
-        PERFFEE,
-        VESDTFEE,
-        ACCUMULATORFEE,
-        CLAIMERREWARD
-    }
 
     //////////////////////////////// Constants ////////////////////////////////
     ILocker public constant LOCKER_STAKEDAO = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6); // StakeDAO CRV Locker
@@ -57,15 +44,6 @@ contract CurveStrategy {
     mapping(address => address) public multiGauges;
     mapping(address => uint256) public lGaugeType;
     mapping(address => bool) public vaults;
-
-    //////////////////////////////// Errors ////////////////////////////////
-    error AMOUNT_NULL();
-    error ADDRESS_NULL();
-    error CLAIM_FAILED();
-    error MINT_FAILED();
-    error CALL_FAILED();
-    error WITHDRAW_FAILED();
-    error FEE_TOO_HIGH();
 
     constructor() {
         optimizor = new Optimizor();
@@ -123,6 +101,8 @@ contract CurveStrategy {
         // Locker deposit token
         (bool success,) = LOCKER_STAKEDAO.execute(gauge, 0, abi.encodeWithSignature("deposit(uint256)", amount));
         require(success, "Deposit failed!");
+
+        emit Deposited(gauge, token, amount);
     }
 
     //////////////////////////////// Withdraw ////////////////////////////////
@@ -170,6 +150,8 @@ contract CurveStrategy {
         (success,) =
             LOCKER_STAKEDAO.execute(token, 0, abi.encodeWithSignature("transfer(address,uint256)", address(this), _net));
         require(success, "Transfer failed!");
+
+        emit Withdrawn(gauge, token, amount);
     }
 
     //////////////////////////////// Claim ////////////////////////////////
@@ -198,7 +180,7 @@ contract CurveStrategy {
         uint256 crvNetRewards = sendFee(gauge, CRV, crvMinted);
         ERC20(CRV).safeApprove(multiGauges[gauge], crvNetRewards);
         ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(CRV, crvNetRewards);
-        //emit Claimed(gauge, CRV, crvMinted);
+        emit Claimed(gauge, CRV, crvMinted);
 
         // Distribute SDT to the related gauge
         ISdtDistributorV2(sdtDistributor).distribute(multiGauges[gauge]);
@@ -261,7 +243,7 @@ contract CurveStrategy {
                 }
                 ERC20(rewardToken).safeApprove(multiGauges[gauge], rewardsBalance);
                 ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(rewardToken, rewardsBalance);
-                //emit Claimed(gauge, rewardToken, rewardsBalance);
+                emit Claimed(gauge, rewardToken, rewardsBalance);
             }
         }
     }
@@ -284,7 +266,7 @@ contract CurveStrategy {
         if (notify) {
             accumulator.notifyAll();
         }
-        //emit Crv3Claimed(amountToSend, notify);
+        emit Crv3Claimed(amountToSend, notify);
     }
 
     function sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
@@ -334,58 +316,73 @@ contract CurveStrategy {
     function toggleVault(address vault) external {
         if (vault == address(0)) revert ADDRESS_NULL();
         vaults[vault] = !vaults[vault];
-        //emit VaultToggled(vault, vaults[vault]);
+        emit VaultToggled(vault, vaults[vault]);
     }
 
     function setGauge(address token, address gauge) external {
         if (token == address(0)) revert ADDRESS_NULL();
         gauges[token] = gauge;
-        //emit GaugeSet(_gauge, _token);
+        emit GaugeSet(gauge, token);
     }
 
     function setLGtype(address gauge, uint256 gaugeType) external {
+        if (gauge == address(0)) revert ADDRESS_NULL();
         lGaugeType[gauge] = gaugeType;
+        emit GaugeTypeSet(gauge, gaugeType);
     }
 
     function setMultiGauge(address gauge, address multiGauge) external {
         if (gauge == address(0) || multiGauge == address(0)) revert ADDRESS_NULL();
         multiGauges[gauge] = multiGauge;
+        emit MultiGaugeSet(gauge, multiGauge);
     }
 
     function setVeSDTProxy(address newVeSDTProxy) external {
         if (newVeSDTProxy == address(0)) revert ADDRESS_NULL();
         veSDTFeeProxy = newVeSDTProxy;
+        emit VeSDTProxySet(newVeSDTProxy);
     }
 
     function setAccumulator(address newAccumulator) external {
         if (newAccumulator == address(0)) revert ADDRESS_NULL();
         accumulator = IAccumulator(newAccumulator);
+        emit AccumulatorSet(newAccumulator);
     }
 
     function setRewardsReceiver(address newRewardsReceiver) external {
         if (newRewardsReceiver == address(0)) revert ADDRESS_NULL();
         rewardsReceiver = newRewardsReceiver;
+        emit RewardsReceiverSet(newRewardsReceiver);
     }
 
-    function manageFee(MANAGEFEE _manageFee, address _gauge, uint256 _newFee) external {
-        require(_gauge != address(0), "zero address");
-        if (_manageFee == MANAGEFEE.PERFFEE) {
+    function setOptimizor(address newOptimizor) external {
+        if (newOptimizor == address(0)) revert ADDRESS_NULL();
+        optimizor = Optimizor(newOptimizor);
+        emit OptimizorSet(newOptimizor);
+    }
+
+    function manageFee(MANAGEFEE manageFee_, address gauge, uint256 newFee) external {
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        if (manageFee_ == MANAGEFEE.PERFFEE) {
             // 0
-            feesInfos[_gauge].perfFee = _newFee;
-        } else if (_manageFee == MANAGEFEE.VESDTFEE) {
+            feesInfos[gauge].perfFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.VESDTFEE) {
             // 1
-            feesInfos[_gauge].veSDTFee = _newFee;
-        } else if (_manageFee == MANAGEFEE.ACCUMULATORFEE) {
+            feesInfos[gauge].veSDTFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.ACCUMULATORFEE) {
             //2
-            feesInfos[_gauge].accumulatorFee = _newFee;
-        } else if (_manageFee == MANAGEFEE.CLAIMERREWARD) {
+            feesInfos[gauge].accumulatorFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.CLAIMERREWARD) {
             // 3
-            feesInfos[_gauge].claimerRewardFee = _newFee;
+            feesInfos[gauge].claimerRewardFee = newFee;
         }
         if (
-            feesInfos[_gauge].perfFee + feesInfos[_gauge].veSDTFee + feesInfos[_gauge].accumulatorFee
-                + feesInfos[_gauge].claimerRewardFee > BASE_FEE
+            feesInfos[gauge].perfFee + feesInfos[gauge].veSDTFee + feesInfos[gauge].accumulatorFee
+                + feesInfos[gauge].claimerRewardFee > BASE_FEE
         ) revert FEE_TOO_HIGH();
+
+        emit FeeManaged(manageFee_, gauge, newFee);
     }
 
     //////////////////////////////// Execute ////////////////////////////////
