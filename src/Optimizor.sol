@@ -143,7 +143,7 @@ contract Optimizor {
             // Convex Curve
             // amounts[1] = 0;
             // Convex Frax
-            amounts[2] = amount - min(opt - gaugeBalance, amount);
+            amounts[2] = amount - amounts[0]; //min(opt - gaugeBalance, amount);
         }
         // If available on Convex Curve
         else if (statusCurve) {
@@ -155,7 +155,7 @@ contract Optimizor {
             // Stake DAO Curve
             amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
             // Convex Curve
-            amounts[1] = amount - min(opt - gaugeBalance, amount);
+            amounts[1] = amount - amounts[0];
             // Convex Frax
             // amounts[2] = 0;
         }
