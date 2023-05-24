@@ -13,6 +13,8 @@ contract CurveStrategyTest is BaseTest {
     FallbackConvexCurve public fallbackConvexCurve;
 
     LiquidityGaugeMock public liquidityGaugeMockCRV3;
+    LiquidityGaugeMock public liquidityGaugeMockCNC_ETH;
+    LiquidityGaugeMock public liquidityGaugeMockSTETH_ETH;
     LiquidityGaugeMock public liquidityGaugeMockALUSD_FRAXBP;
 
     ILocker public locker;
@@ -30,6 +32,8 @@ contract CurveStrategyTest is BaseTest {
         // Deployment contracts
         curveStrategy = new CurveStrategy();
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock();
+        liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock();
+        liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock();
         liquidityGaugeMockALUSD_FRAXBP = new LiquidityGaugeMock();
         // End deployment contracts
 
@@ -247,34 +251,15 @@ contract CurveStrategyTest is BaseTest {
 
     // --- Claim --- //
     function test_Claim_NoExtraRewards() public {
-        // Cache balance before
-        uint256 balanceBeforeLG = CRV.balanceOf(liquidityGaugeMocks[address(CRV3)]);
-        uint256 balanceBeforeAC = CRV.balanceOf(address(curveStrategy.accumulator()));
-        uint256 balanceBeforeMS = CRV.balanceOf(address(curveStrategy.rewardsReceiver()));
-        uint256 balanceBeforeVE = CRV.balanceOf(address(curveStrategy.veSDTFeeProxy()));
-        uint256 balanceBeforeCL = CRV.balanceOf(ALICE);
+        _claimTest(CRV3, ERC20(address(0)));
+    }
 
-        // === DEPOSIT PROCESS === //
-        _deposit(CRV3, 1, 0);
+    function test_Claim_ExtraRewardsWithReceiver() public {
+        _claimTest(CNC_ETH, CNC);
+    }
 
-        // Timejump 1 week
-        skip(1 weeks);
-
-        // === CLAIM PROCESS === //
-        vm.prank(ALICE);
-        curveStrategy.claim(address(CRV3));
-
-        // === ASSERTIONS === //
-        //Assertion 1: Check test gauge received token
-        assertGt(CRV.balanceOf(liquidityGaugeMocks[address(CRV3)]), balanceBeforeLG, "1");
-        //Assertion 2: Check test accumulator received token
-        assertGt(CRV.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "2");
-        //Assertion 3: Check test rewards receiver received token
-        assertGt(CRV.balanceOf(address(curveStrategy.rewardsReceiver())), balanceBeforeMS, "3");
-        //Assertion 4: Check test veSDT fee proxy received token
-        assertGt(CRV.balanceOf(address(curveStrategy.veSDTFeeProxy())), balanceBeforeVE, "4");
-        //Assertion 5: Check test alice received token
-        assertGt(CRV.balanceOf(ALICE), balanceBeforeCL, "5");
+    function test_ClaimExtraRewardsWithoutReceiver() public {
+        _claimTest(STETH_ETH, LDO);
     }
 
     function test_Claim3CRV() public {
@@ -329,19 +314,69 @@ contract CurveStrategyTest is BaseTest {
         return (amountStakeDAO, amountConvex);
     }
 
+    function _claimTest(ERC20 token, ERC20 extraToken) internal {
+        // Cache balance before
+        uint256 balanceBeforeLG = CRV.balanceOf(liquidityGaugeMocks[address(token)]);
+        uint256 balanceBeforeAC = CRV.balanceOf(address(curveStrategy.accumulator()));
+        uint256 balanceBeforeMS = CRV.balanceOf(address(curveStrategy.rewardsReceiver()));
+        uint256 balanceBeforeVE = CRV.balanceOf(address(curveStrategy.veSDTFeeProxy()));
+        uint256 balanceBeforeCL = CRV.balanceOf(ALICE);
+        uint256 balanceBeforeExtra;
+
+        if (address(extraToken) != address(0)) {
+            balanceBeforeExtra = extraToken.balanceOf(liquidityGaugeMocks[address(token)]);
+        }
+
+        // === DEPOSIT PROCESS === //
+        _deposit(token, 1, 0);
+
+        // Timejump 1 week
+        skip(1 weeks);
+
+        // === CLAIM PROCESS === //
+        vm.prank(ALICE);
+        curveStrategy.claim(address(token));
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test gauge received token
+        assertGt(CRV.balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeLG, "1");
+        //Assertion 2: Check test accumulator received token
+        assertGt(CRV.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "2");
+        //Assertion 3: Check test rewards receiver received token
+        assertGt(CRV.balanceOf(address(curveStrategy.rewardsReceiver())), balanceBeforeMS, "3");
+        //Assertion 4: Check test veSDT fee proxy received token
+        assertGt(CRV.balanceOf(address(curveStrategy.veSDTFeeProxy())), balanceBeforeVE, "4");
+        //Assertion 5: Check test alice received token
+        assertGt(CRV.balanceOf(ALICE), balanceBeforeCL, "5");
+
+        if (address(extraToken) == address(0)) return;
+        // Assertion 6: Check extra token received
+        assertGt(extraToken.balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeExtra, "6");
+    }
+
     function _addAllGauge() internal {
         // Add all curve gauges
         curveStrategy.setGauge(address(CRV3), GAUGE_CRV3);
+        curveStrategy.setGauge(address(CNC_ETH), GAUGE_CNC_ETH);
+        curveStrategy.setGauge(address(STETH_ETH), GAUGE_STETH_ETH);
         curveStrategy.setGauge(address(ALUSD_FRAXBP), GAUGE_ALUSD_FRAXBP);
 
         // Add all stake dao gauges
         curveStrategy.setMultiGauge(gauges[address(CRV3)], address(liquidityGaugeMockCRV3));
+        curveStrategy.setMultiGauge(gauges[address(CNC_ETH)], address(liquidityGaugeMockCNC_ETH));
         curveStrategy.setMultiGauge(gauges[address(ALUSD_FRAXBP)], address(liquidityGaugeMockALUSD_FRAXBP));
+        curveStrategy.setMultiGauge(gauges[address(STETH_ETH)], address(liquidityGaugeMockSTETH_ETH));
+
+        // Set gauge mocks
         liquidityGaugeMocks[address(CRV3)] = address(liquidityGaugeMockCRV3);
+        liquidityGaugeMocks[address(CNC_ETH)] = address(liquidityGaugeMockCNC_ETH);
+        liquidityGaugeMocks[address(STETH_ETH)] = address(liquidityGaugeMockSTETH_ETH);
         liquidityGaugeMocks[address(ALUSD_FRAXBP)] = address(liquidityGaugeMockALUSD_FRAXBP);
 
         // Set gauge types
         curveStrategy.setLGtype(gauges[address(CRV3)], 1);
+        curveStrategy.setLGtype(gauges[address(CNC_ETH)], 0);
+        curveStrategy.setLGtype(gauges[address(STETH_ETH)], 0);
         curveStrategy.setLGtype(gauges[address(ALUSD_FRAXBP)], 0);
     }
 
@@ -354,7 +389,11 @@ contract CurveStrategyTest is BaseTest {
         vm.label(address(boosterConvexFrax), "BoosterConvexFrax");
         vm.label(address(boosterConvexCurve), "BoosterConvexCurve");
         vm.label(address(poolRegistryConvexFrax), "PoolRegistryConvexFrax");
+        
+        // Mocks 
         vm.label(address(liquidityGaugeMockCRV3), "LiquidityGaugeMockCRV3");
+        vm.label(address(liquidityGaugeMockCNC_ETH), "LiquidityGaugeMockCNC_ETH");
+        vm.label(address(liquidityGaugeMockSTETH_ETH), "LiquidityGaugeMockSTETH_ETH");
         vm.label(address(liquidityGaugeMockALUSD_FRAXBP), "LiquidityGaugeMockALUSD_FRAXBP");
     }
 
@@ -362,16 +401,18 @@ contract CurveStrategyTest is BaseTest {
         address[] memory tokens = new address[](20);
         tokens[0] = address(CRV3);
         tokens[1] = address(ALUSD_FRAXBP);
+        tokens[2] = address(CNC_ETH);
+        tokens[3] = address(STETH_ETH);
 
         uint256 len = tokens.length;
         for (uint8 i; i < len; ++i) {
             address token = tokens[i];
             if (token == address(0)) break;
 
-            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, gauges[address(token)], FEE_PERF);
-            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDTFEE, gauges[address(token)], FEE_VESDT);
-            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATORFEE, gauges[address(token)], FEE_ACCU);
-            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
+            curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.PERFFEE, gauges[address(token)], FEE_PERF);
+            curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.VESDTFEE, gauges[address(token)], FEE_VESDT);
+            curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.ACCUMULATORFEE, gauges[address(token)], FEE_ACCU);
+            curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
         }
     }
 }
