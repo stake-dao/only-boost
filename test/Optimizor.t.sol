@@ -5,16 +5,15 @@ pragma solidity 0.8.19;
 import "test/BaseTest.t.sol";
 
 contract OptimizorTest is BaseTest {
-    Optimizor public optimizor;
-    FallbackConvexFrax public fallbackConvexFrax;
-    FallbackConvexCurve public fallbackConvexCurve;
-
+    //////////////////////////////////////////////////////
+    /// --- SETUP
+    //////////////////////////////////////////////////////
     function setUp() public {
         // 17136445 : 27 April 2023 08:51:23 UTC
         // 17136745 : 27 April 2023 09:51:47 UTC
         // 17137000 : 27 April 2023 10:43:59 UTC
         // Create Fork
-        vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), 17137000));
+        vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER));
 
         // Deploy Optimizor
         optimizor = new Optimizor();
@@ -24,7 +23,10 @@ contract OptimizorTest is BaseTest {
         fallbackConvexCurve = optimizor.fallbackConvexCurve();
     }
 
-    ////////////////// Stake DAO Optimization //////////////////
+    //////////////////////////////////////////////////////
+    /// --- TESTS
+    //////////////////////////////////////////////////////
+    // --- Stake DAO Optimization
     function test_Optimization1() public view {
         optimizor.optimization1(gauges[address(EUR3)], true);
     }
@@ -37,7 +39,7 @@ contract OptimizorTest is BaseTest {
         optimizor.optimization3(gauges[address(EUR3)], true);
     }
 
-    ////////////////// Convex Optimization //////////////////
+    /// --- Opitmitzation on deposit
     function test_OptimizationOnDeposit_StakeDAOAndConvexCurve() public {
         // Cache the address of the token
         ERC20 token = CRV3;

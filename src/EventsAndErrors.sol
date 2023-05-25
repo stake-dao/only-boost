@@ -3,7 +3,7 @@
 pragma solidity 0.8.19;
 
 contract EventsAndErrors {
-    //////////////////////////////// Enums ////////////////////////////////
+    // --- Enums
     enum MANAGEFEE {
         PERFFEE,
         VESDTFEE,
@@ -11,7 +11,7 @@ contract EventsAndErrors {
         CLAIMERREWARD
     }
 
-    //////////////////////////////// Structs ////////////////////////////////
+    // --- Structs
     struct Fees {
         uint256 perfFee;
         uint256 accumulatorFee;
@@ -19,8 +19,7 @@ contract EventsAndErrors {
         uint256 claimerRewardFee;
     }
 
-    //////////////////////////////// Events ////////////////////////////////
-
+    // --- Events
     event OptimizorSet(address _optimizor);
     event VeSDTProxySet(address _veSDTProxy);
     event AccumulatorSet(address _accumulator);
@@ -35,7 +34,7 @@ contract EventsAndErrors {
     event Deposited(address _gauge, address _token, uint256 _amount);
     event Withdrawn(address _gauge, address _token, uint256 _amount);
 
-    //////////////////////////////// Errors ////////////////////////////////
+    // --- Errors
     error AMOUNT_NULL();
     error ADDRESS_NULL();
     error CLAIM_FAILED();

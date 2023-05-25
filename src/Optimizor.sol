@@ -11,7 +11,9 @@ import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
 contract Optimizor {
-    //////////////////////////////// Constants ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- CONSTANTS
+    //////////////////////////////////////////////////////
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV Token
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B); // CVX Token
 
@@ -23,16 +25,21 @@ contract Optimizor {
     uint256 public constant FEES_CONVEX = 17e16; // 17% Convex
     uint256 public constant FEES_STAKEDAO = 16e16; // 16% StakeDAO
 
-    //////////////////////////////// Variables ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- VARIABLES
+    //////////////////////////////////////////////////////
     uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
     address[] public fallbacks;
     bool public isConvexFraxKilled;
 
-    //////////////////////////////// Contracts ////////////////////////////////
+    // --- Contracts
     CurveStrategy public curveStrategy;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
+    //////////////////////////////////////////////////////
+    /// --- CONSTRUCTOR
+    //////////////////////////////////////////////////////
     constructor() {
         fallbackConvexFrax = new FallbackConvexFrax(msg.sender);
         fallbackConvexCurve = new FallbackConvexCurve();
@@ -43,7 +50,9 @@ contract Optimizor {
         fallbacks.push(address(fallbackConvexFrax));
     }
 
-    //////////////////////////////// Optimization ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- OPTIMIZATION FOR STAKEDAO
+    //////////////////////////////////////////////////////
     // This function return the optimal amount of lps that must be held by the locker
     function optimization1(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
@@ -119,6 +128,9 @@ contract Optimizor {
         return balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost)) * 1e18;
     }
 
+    //////////////////////////////////////////////////////
+    /// --- OPTIMIZATION FOR STRATEGIE DEPOSIT & WITHDRAW
+    //////////////////////////////////////////////////////
     // This function return the amount that need to be deposited StakeDAO locker and on each fallback
     function optimizeDeposit(address lpToken, address liquidityGauge, uint256 amount)
         public
@@ -250,6 +262,9 @@ contract Optimizor {
         return (fallbacks, amounts);
     }
 
+    //////////////////////////////////////////////////////
+    /// --- REMOVE CONVEX FRAX
+    //////////////////////////////////////////////////////
     function killConvexFrax() public {
         isConvexFraxKilled = true;
 

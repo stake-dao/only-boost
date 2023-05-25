@@ -19,7 +19,9 @@ contract CurveStrategy is EventsAndErrors {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    //////////////////////////////// Constants ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- CONSTANTS
+    //////////////////////////////////////////////////////
     ILocker public constant LOCKER_STAKEDAO = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6); // StakeDAO CRV Locker
     address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
     address public constant CRV_FEE_D = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc;
@@ -27,16 +29,19 @@ contract CurveStrategy is EventsAndErrors {
     address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     uint256 public constant BASE_FEE = 10000; // 100% fees
 
-    //////////////////////////////// Contracts ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- VARIABLES
+    //////////////////////////////////////////////////////
+    // --- Contracts and Interfaces
     Optimizor public optimizor; // Optimizor contract
-
-    //////////////////////////////// Variables ////////////////////////////////
     IAccumulator public accumulator = IAccumulator(0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A); // Stake DAO CRV Accumulator
+
+    // --- Addresses
     address public rewardsReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
     address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C;
     address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E;
 
-    //////////////////////////////// Mappings /////////////////////////////////
+    // --- Mappings
     mapping(address => address) public gauges; // lp token from curve -> curve gauge
 
     // Following mappings need to be initialized on the deployment to match with the previous contract
@@ -45,11 +50,16 @@ contract CurveStrategy is EventsAndErrors {
     mapping(address => uint256) public lGaugeType;
     mapping(address => bool) public vaults;
 
+    //////////////////////////////////////////////////////
+    /// --- CONSTRUCTOR
+    //////////////////////////////////////////////////////
     constructor() {
         optimizor = new Optimizor();
     }
 
-    //////////////////////////////// Deposit ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- DEPOSIT
+    //////////////////////////////////////////////////////
     function deposit(address token, uint256 amount) external {
         // Transfer the token to this contract
         ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -105,7 +115,9 @@ contract CurveStrategy is EventsAndErrors {
         emit Deposited(gauge, token, amount);
     }
 
-    //////////////////////////////// Withdraw ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- WITHDRAW
+    //////////////////////////////////////////////////////
     function withdraw(address token, uint256 amount) external {
         // Do the withdraw process
         _withdraw(token, amount);
@@ -154,7 +166,9 @@ contract CurveStrategy is EventsAndErrors {
         emit Withdrawn(gauge, token, amount);
     }
 
-    //////////////////////////////// Claim ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- CLAIM
+    //////////////////////////////////////////////////////
     function claim(address token) external {
         // Get the gauge address
         address gauge = gauges[token];
@@ -290,7 +304,9 @@ contract CurveStrategy is EventsAndErrors {
         accumulator.depositToken(token, amount);
     }
 
-    //////////////////////////////// Migration ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- MIGRATION
+    //////////////////////////////////////////////////////
     function migrateLP(address lpToken) external {
         // Only callable by the vault
 
@@ -312,7 +328,9 @@ contract CurveStrategy is EventsAndErrors {
         if (!success) revert CALL_FAILED();
     }
 
-    //////////////////////////////// Setters ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- SETTERS
+    //////////////////////////////////////////////////////
     function toggleVault(address vault) external {
         if (vault == address(0)) revert ADDRESS_NULL();
         vaults[vault] = !vaults[vault];
@@ -385,7 +403,9 @@ contract CurveStrategy is EventsAndErrors {
         emit FeeManaged(manageFee_, gauge, newFee);
     }
 
-    //////////////////////////////// Execute ////////////////////////////////
+    //////////////////////////////////////////////////////
+    /// --- EXECUTE
+    //////////////////////////////////////////////////////
     function execute(address to, uint256 value, bytes calldata data) external returns (bool, bytes memory) {
         (bool success, bytes memory result) = to.call{value: value}(data);
         return (success, result);
