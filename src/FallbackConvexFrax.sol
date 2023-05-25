@@ -22,6 +22,8 @@ contract FallbackConvexFrax is BaseFallback {
     mapping(uint256 => address) public vaults; // pid from convex frax -> personal vault for convex frax
     mapping(address => bytes32) public kekIds; // personal vault on convex frax -> kekId
 
+    event Redeposited(address lpToken, uint256 amount);
+
     constructor(address _curveStrategy) {
         boosterConvexFrax = IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa);
         poolRegistryConvexFrax = IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69);
@@ -142,6 +144,8 @@ contract FallbackConvexFrax is BaseFallback {
         ERC20(lpToken).safeApprove(vaults[pid], remaining);
         // Stake back the remaining curve lp
         kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(remaining, lockingIntervalSec);
+
+        emit Redeposited(lpToken, remaining);
     }
 
     function getPid(address lpToken) external view override returns (PidsInfo memory) {

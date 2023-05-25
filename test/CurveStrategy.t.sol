@@ -107,89 +107,60 @@ contract CurveStrategyTest is BaseTest {
     // --- Withdraw --- //
     function test_Withdraw_AllFromStakeDAO() public {
         // === DEPOSIT PROCESS === //
-        (uint256 partStakeDAO,) = _calculDepositAmount(CRV3, 1, 0);
-        _deposit(CRV3, partStakeDAO, 0, 0);
-
-        // Check Stake DAO balance before withdraw
-        uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, 1, 0);
+        _deposit(CRV3, partStakeDAO, partConvex);
 
         // === WITHDRAW PROCESS === //
-        curveStrategy.withdraw(address(CRV3), partStakeDAO);
-
-        // === ASSERTIONS === //
-        //Assertion 1: Check test received token
-        assertEq(CRV3.balanceOf(address(this)), partStakeDAO, "1");
-        // Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
-        assertEq(balanceBeforeStakeDAO - ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)), partStakeDAO, "2");
+        _withdrawTest(CRV3, partStakeDAO, partConvex, 0);
     }
 
     function test_Withdraw_UsingConvexCurveFallback() public {
         // === DEPOSIT PROCESS === //
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, MAX, 1);
-        _deposit(CRV3, partStakeDAO, partConvex, 0);
+        _deposit(CRV3, partStakeDAO, partConvex);
 
-        // Check Stake DAO balance before withdraw
-        uint256 balanceBeforeStakeDAO = ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO));
-
-        uint256 toWithtdraw = partStakeDAO / 2 + partConvex;
         // === WITHDRAW PROCESS === //
-        curveStrategy.withdraw(address(CRV3), toWithtdraw);
-
-        // === ASSERTIONS === //
-        //Assertion 1: Check test received token
-        assertEq(CRV3.balanceOf(address(this)), toWithtdraw, "1");
-        //Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
-        assertEq(balanceBeforeStakeDAO - ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_STAKEDAO)), partStakeDAO / 2, "2");
+        _withdrawTest(CRV3, partStakeDAO / 2, partConvex, 0);
     }
 
-    function test_Withdraw_UsingConvexFraxFallback() public {
+    function test_Withdraw_UsingConvexFraxFallbackPartly() public {
         // === DEPOSIT PROCESS === //
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
-
-        // Get all needed infos for following assertions
-        BaseFallback.PidsInfo memory pidsInfo = fallbackConvexFrax.getPid(address(ALUSD_FRAXBP));
-        address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
-        (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
-
-        uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
-        IFraxUnifiedFarm.LockedStake memory infosBefore =
-            IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCount - 1];
-
-        // Withdraw only convex part
-        uint256 toWithtdraw = partConvex / 2;
-        uint256 timejump = fallbackConvexFrax.lockingIntervalSec();
-        skip(timejump);
+        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex);
 
         // Withdraw ALUSD_FRAXBP
-        curveStrategy.withdraw(address(ALUSD_FRAXBP), toWithtdraw);
+        _withdrawTest(ALUSD_FRAXBP, 0, partConvex / 2, fallbackConvexFrax.lockingIntervalSec());
+    }
 
-        // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
-        // and the last one is emptyed. So we need to get the last one.
-        lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
-        IFraxUnifiedFarm.LockedStake memory infosAfter =
-            IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCount - 1];
+    function test_Withdraw_UsingConvexFraxFallbackFully() public {
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
+        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex);
 
-        // === ASSERTIONS === //
-        //Assertion 1: Check test received token
-        assertEq(ALUSD_FRAXBP.balanceOf(address(this)), toWithtdraw, "1");
-        //Assertion 2: Check length of lockedStakesOf, should be 2 due to withdraw and redeposit
-        assertEq(IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault), 2, "2");
-        //Assertion 3: Check kek_id is different due to new lockStake
-        assertTrue(infosAfter.kek_id != infosBefore.kek_id, "3");
+        // Withdraw ALUSD_FRAXBP
+        _withdrawTest(ALUSD_FRAXBP, 0, partConvex, fallbackConvexFrax.lockingIntervalSec());
     }
 
     // --- Claim --- //
     function test_Claim_NoExtraRewards() public {
-        _claimTest(CRV3, ERC20(address(0)));
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, 1, 0);
+
+        _deposit(CRV3, partStakeDAO, partConvex);
+        _claimLiquidLockerTest(CRV3, 1 weeks, ERC20(address(0)));
     }
 
     function test_Claim_ExtraRewardsWithReceiver() public {
-        _claimTest(CNC_ETH, CNC);
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CNC_ETH, 1, 0);
+
+        _deposit(CNC_ETH, partStakeDAO, partConvex);
+        _claimLiquidLockerTest(CNC_ETH, 1 weeks, CNC);
     }
 
     function test_ClaimExtraRewardsWithoutReceiver() public {
-        _claimTest(STETH_ETH, LDO);
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(STETH_ETH, 1, 0);
+
+        _deposit(STETH_ETH, partStakeDAO, partConvex);
+        _claimLiquidLockerTest(STETH_ETH, 1 weeks, LDO);
     }
 
     function test_Claim3CRV() public {
@@ -214,6 +185,10 @@ contract CurveStrategyTest is BaseTest {
     // --- Mutative functions helper --- //
     function _deposit(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex, uint256 timejump) internal {
         skip(timejump);
+        _deposit(token, amountStakeDAO, amountConvex);
+    }
+
+    function _deposit(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex) internal {
         uint256 totalAmount = amountStakeDAO + amountConvex;
 
         // Deal token to this contract
@@ -228,55 +203,22 @@ contract CurveStrategyTest is BaseTest {
         curveStrategy.deposit(address(token), totalAmount);
     }
 
-    // --- Test with modifier --- //
-    function _depositTest(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex, uint256 timejump)
-        internal
-        _depositTestMod(token, amountStakeDAO, amountConvex, timejump)
-    {
-        _deposit(token, amountStakeDAO, amountConvex, timejump);
+    function _withdraw(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex, uint256 timejump) internal {
+        skip(timejump);
+        // Withdraw token
+        curveStrategy.withdraw(address(token), amountStakeDAO + amountConvex);
     }
 
-    function _claimTest(ERC20 token, ERC20 extraToken) internal {
-        // Cache balance before
-        uint256 balanceBeforeLG = CRV.balanceOf(liquidityGaugeMocks[address(token)]);
-        uint256 balanceBeforeAC = CRV.balanceOf(address(curveStrategy.accumulator()));
-        uint256 balanceBeforeMS = CRV.balanceOf(address(curveStrategy.rewardsReceiver()));
-        uint256 balanceBeforeVE = CRV.balanceOf(address(curveStrategy.veSDTFeeProxy()));
-        uint256 balanceBeforeCL = CRV.balanceOf(ALICE);
-        uint256 balanceBeforeExtra;
-
-        if (address(extraToken) != address(0)) {
-            balanceBeforeExtra = extraToken.balanceOf(liquidityGaugeMocks[address(token)]);
-        }
-
-        // === DEPOSIT PROCESS === //
-        _deposit(token, 1, 0, 0);
-
+    function _claimLiquidLocker(ERC20 token, uint256 timejump) internal {
         // Timejump 1 week
-        skip(1 weeks);
+        skip(timejump);
 
         // === CLAIM PROCESS === //
         vm.prank(ALICE);
         curveStrategy.claim(address(token));
-
-        // === ASSERTIONS === //
-        //Assertion 1: Check test gauge received token
-        assertGt(CRV.balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeLG, "1");
-        //Assertion 2: Check test accumulator received token
-        assertGt(CRV.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "2");
-        //Assertion 3: Check test rewards receiver received token
-        assertGt(CRV.balanceOf(address(curveStrategy.rewardsReceiver())), balanceBeforeMS, "3");
-        //Assertion 4: Check test veSDT fee proxy received token
-        assertGt(CRV.balanceOf(address(curveStrategy.veSDTFeeProxy())), balanceBeforeVE, "4");
-        //Assertion 5: Check test alice received token
-        assertGt(CRV.balanceOf(ALICE), balanceBeforeCL, "5");
-
-        if (address(extraToken) == address(0)) return;
-        // Assertion 6: Check extra token received
-        assertGt(extraToken.balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeExtra, "6");
     }
 
-    // --- Modifiers --- //
+    // --- Modifiers for Assertions--- //
     modifier _depositTestMod(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex, uint256 timejump) {
         // --- Before Deposit --- //
         uint256 balanceBeforeStakeDAO = ERC20(gauges[address(token)]).balanceOf(address(LOCKER_STAKEDAO));
@@ -347,6 +289,120 @@ contract CurveStrategyTest is BaseTest {
         }
     }
 
+    modifier _withdrawTestMod(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex) {
+        // Check Stake DAO balance before withdraw
+        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(token)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceBeforeConvex;
+        BaseFallback.PidsInfo memory pidsInfo;
+        IFraxUnifiedFarm.LockedStake memory infosBefore;
+        address personalVault;
+        address staking;
+        uint256 lockCountBefore;
+        if (isMetapool[address(token)]) {
+            // Get all needed infos for following assertions
+            pidsInfo = fallbackConvexFrax.getPid(address(ALUSD_FRAXBP));
+            personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
+            (, staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
+            lockCountBefore = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
+            if (lockCountBefore > 0) {
+                infosBefore = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCountBefore - 1];
+            }
+        } else {
+            balanceBeforeConvex = fallbackConvexCurve.balanceOf(address(token));
+        }
+
+        _; // Withdraw process happen here
+
+        uint256 lockCountAfter;
+        IFraxUnifiedFarm.LockedStake memory infosAfter;
+        if (isMetapool[address(token)]) {
+            lockCountAfter = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
+            if (lockCountAfter > 0) {
+                infosAfter = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCountAfter - 1];
+            }
+        }
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test received token
+        assertEq(token.balanceOf(address(this)), amountStakeDAO + amountConvex, "1");
+        // Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
+        assertEq(
+            balanceBeforeStakeDAO - ERC20(gauges[address(token)]).balanceOf(address(LOCKER_STAKEDAO)),
+            amountStakeDAO,
+            "2"
+        );
+        // Assertion 3: Check Convex balance of fallbackConvexFrax or fallbackConvexCurve
+        if (!isMetapool[address(token)]) {
+            assertEq(balanceBeforeConvex - fallbackConvexCurve.balanceOf(address(token)), amountConvex, "3");
+        } else {
+            // If withdrawn amount is not total balance, remaining amount is redeposited
+            if (amountConvex != infosBefore.liquidity) {
+                //Assertion 3: Check length of lockedStakesOf, should be 2 due to withdraw and redeposit
+                assertEq(lockCountAfter, lockCountBefore + 1, "3");
+                //Assertion 4: Check kek_id is different due to new lockStake
+                assertTrue(infosAfter.kek_id != infosBefore.kek_id, "4");
+            } else {
+                //Assertion 3: Check length of lockedStakesOf, should be 1 due to full withdraw
+                assertEq(lockCountAfter, lockCountBefore, "3");
+                //Assertion 4: Check kek_id is the same due to no new lockStake
+                assertTrue(infosAfter.kek_id == bytes32(0), "4");
+            }
+        }
+    }
+
+    modifier _claimLiquidLockerMod(ERC20 token, ERC20 extraToken) {
+        // Cache balance before
+        uint256 balanceBeforeLG = CRV.balanceOf(liquidityGaugeMocks[address(token)]);
+        uint256 balanceBeforeAC = CRV.balanceOf(address(curveStrategy.accumulator()));
+        uint256 balanceBeforeMS = CRV.balanceOf(address(curveStrategy.rewardsReceiver()));
+        uint256 balanceBeforeVE = CRV.balanceOf(address(curveStrategy.veSDTFeeProxy()));
+        uint256 balanceBeforeCL = CRV.balanceOf(ALICE);
+        uint256 balanceBeforeExtra;
+
+        if (address(extraToken) != address(0)) {
+            balanceBeforeExtra = extraToken.balanceOf(liquidityGaugeMocks[address(token)]);
+        }
+
+        _; // Claim process happen here
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check test gauge received token
+        assertGt(CRV.balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeLG, "1");
+        //Assertion 2: Check test accumulator received token
+        assertGt(CRV.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "2");
+        //Assertion 3: Check test rewards receiver received token
+        assertGt(CRV.balanceOf(address(curveStrategy.rewardsReceiver())), balanceBeforeMS, "3");
+        //Assertion 4: Check test veSDT fee proxy received token
+        assertGt(CRV.balanceOf(address(curveStrategy.veSDTFeeProxy())), balanceBeforeVE, "4");
+        //Assertion 5: Check test alice received token
+        assertGt(CRV.balanceOf(ALICE), balanceBeforeCL, "5");
+
+        if (address(extraToken) == address(0)) return;
+        // Assertion 6: Check extra token received
+        assertGt(extraToken.balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeExtra, "6");
+    }
+
+    // --- Test with modifier --- //
+    function _depositTest(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex, uint256 timejump)
+        internal
+        _depositTestMod(token, amountStakeDAO, amountConvex, timejump)
+    {
+        _deposit(token, amountStakeDAO, amountConvex, timejump);
+    }
+
+    function _withdrawTest(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex, uint256 timejump)
+        internal
+        _withdrawTestMod(token, amountStakeDAO, amountConvex)
+    {
+        _withdraw(token, amountStakeDAO, amountConvex, timejump);
+    }
+
+    function _claimLiquidLockerTest(ERC20 token, uint256 timejump, ERC20 extraToken)
+        internal
+        _claimLiquidLockerMod(token, extraToken)
+    {
+        _claimLiquidLocker(token, timejump);
+    }
 
     // This need to have the same timestamp as the deposit! So need to use `skip` and `rewind`
     function _calculDepositAmount(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex)
