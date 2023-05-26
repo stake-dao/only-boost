@@ -41,6 +41,8 @@ contract CurveStrategy is EventsAndErrors {
     address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C;
     address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E;
 
+    bool public claimAll = true;
+
     // --- Mappings
     mapping(address => address) public gauges; // lp token from curve -> curve gauge
 
@@ -174,6 +176,8 @@ contract CurveStrategy is EventsAndErrors {
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
+        if (claimAll) claimFallbacks(token);
+
         // Get the CRV amount before claim
         uint256 crvBeforeClaim = ERC20(CRV).balanceOf(address(LOCKER_STAKEDAO));
 
@@ -258,6 +262,26 @@ contract CurveStrategy is EventsAndErrors {
                 ERC20(rewardToken).safeApprove(multiGauges[gauge], rewardsBalance);
                 ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(rewardToken, rewardsBalance);
                 emit Claimed(gauge, rewardToken, rewardsBalance);
+            }
+        }
+    }
+
+    function claimFallbacks(address token) public {
+        // Get the gauge address
+        address gauge = gauges[token];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        address[] memory fallbacks = optimizor.getFallbacks();
+
+        uint256 len = fallbacks.length;
+        for (uint8 i = 0; i < len; ++i) {
+            if (fallbacks[i] == address(LOCKER_STAKEDAO)) continue;
+            (address[10] memory tokens, uint256[10] memory amounts) = BaseFallback(fallbacks[i]).claimRewards(token);
+
+            for (uint8 j; j < 10; ++j) {
+                if (amounts[j] == 0) continue;
+                ERC20(tokens[j]).safeApprove(multiGauges[gauge], amounts[j]);
+                ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(tokens[j], amounts[j]);
             }
         }
     }

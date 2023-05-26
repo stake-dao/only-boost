@@ -150,4 +150,22 @@ contract CurveStrategyTest is BaseTest {
         //Assertion 1: Check test accumulator received token
         assertGt(CRV3.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "1");
     }
+
+    function test_Claim_ConvexCurveRewards() public {
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, MAX, 1);
+
+        _deposit(CRV3, partStakeDAO, partConvex, 0);
+
+        skip(1 weeks);
+        curveStrategy.claim(address(CRV3));
+    }
+
+    function test_Claim_ConvexFraxRewards() public {
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
+
+        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
+
+        skip(1 weeks);
+        curveStrategy.claim(address(ALUSD_FRAXBP));
+    }
 }

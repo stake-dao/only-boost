@@ -5,7 +5,11 @@ pragma solidity 0.8.19;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 contract LiquidityGaugeMock {
+    event LiquidityGaugeDeposit(address token, uint256 amount);
+
     function deposit_reward_token(address token, uint256 amount) external {
         ERC20(token).transferFrom(msg.sender, address(this), amount);
+
+        emit LiquidityGaugeDeposit(token, amount);
     }
 }

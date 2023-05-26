@@ -265,7 +265,7 @@ contract Optimizor {
     //////////////////////////////////////////////////////
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
-    function killConvexFrax() public {
+    function killConvexFrax() external {
         isConvexFraxKilled = true;
 
         uint256 len = fallbackConvexFrax.lastPidsCount();
@@ -283,7 +283,11 @@ contract Optimizor {
         }
     }
 
-    function fallbacksLength() public view returns (uint256) {
+    function getFallbacks() external view returns (address[] memory) {
+        return fallbacks;
+    }
+
+    function fallbacksLength() external view returns (uint256) {
         return fallbacks.length;
     }
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 
 import "./BaseFallback.sol";
 
+import {IFraxFarmERC20} from "src/interfaces/IFraxFarmERC20.sol";
 import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
 import {IStakingProxyConvex} from "src/interfaces/IStakingProxyConvex.sol";
@@ -14,6 +15,7 @@ contract FallbackConvexFrax is BaseFallback {
 
     IBoosterConvexFrax public boosterConvexFrax; // Convex Frax booster
     IPoolRegistryConvexFrax public poolRegistryConvexFrax; // ConvexFrax pool Registry
+    ERC20 public constant FXS = ERC20(0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0);
 
     address public curveStrategy;
     uint256 public lockingIntervalSec = 7 days; // 7 days
@@ -146,6 +148,57 @@ contract FallbackConvexFrax is BaseFallback {
         kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(remaining, lockingIntervalSec);
 
         emit Redeposited(lpToken, remaining);
+    }
+
+    function claimRewards(address lpToken)
+        external
+        override
+        returns (address[10] memory tokens, uint256[10] memory amounts)
+    {
+        // Todo: add possibility to charges fees
+
+        // Cache the pid
+        PidsInfo memory pidInfo = pids[stkTokens[lpToken]];
+
+        // Only claim if the pid is initialized
+        if (!pidInfo.isInitialized) return (tokens, amounts);
+
+        // Release all the locked curve lp
+        IStakingProxyConvex(vaults[pidInfo.pid]).getReward(true);
+
+        // Transfer CRV rewards to strategy
+        uint256 balanceCRV = CRV.balanceOf(address(this));
+        if (balanceCRV > 0) CRV.safeTransfer(msg.sender, balanceCRV);
+        tokens[0] = address(CRV);
+        amounts[0] = balanceCRV;
+        // Transfer CVX rewards to strategy
+        uint256 balanceCVX = CVX.balanceOf(address(this));
+        if (balanceCVX > 0) CVX.safeTransfer(msg.sender, balanceCVX);
+        tokens[1] = address(CVX);
+        amounts[1] = balanceCVX;
+        // Transfer FXS rewards to strategy
+        uint256 balanceFXS = FXS.balanceOf(address(this));
+        if (balanceFXS > 0) FXS.safeTransfer(msg.sender, balanceFXS);
+        tokens[2] = address(FXS);
+        amounts[2] = balanceFXS;
+
+        // Handle extra rewards
+        address[] memory rewardTokens =
+            IFraxFarmERC20(IStakingProxyConvex(vaults[pidInfo.pid]).stakingAddress()).getAllRewardTokens();
+
+        uint256 len = rewardTokens.length;
+        if (len > 0) {
+            for (uint256 i = 0; i < len; ++i) {
+                uint256 balance = ERC20(rewardTokens[i]).balanceOf(address(this));
+                if (balance > 0) {
+                    ERC20(rewardTokens[i]).safeTransfer(msg.sender, balance);
+                    tokens[i + 3] = rewardTokens[i];
+                    amounts[i + 3] = balance;
+                }
+            }
+        }
+
+        emit ClaimedRewards(lpToken, balanceCRV, balanceCVX);
     }
 
     function getPid(address lpToken) external view override returns (PidsInfo memory) {
