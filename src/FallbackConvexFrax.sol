@@ -12,6 +12,7 @@ import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.so
 
 contract FallbackConvexFrax is BaseFallback {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     IBoosterConvexFrax public boosterConvexFrax; // Convex Frax booster
     IPoolRegistryConvexFrax public poolRegistryConvexFrax; // ConvexFrax pool Registry
@@ -166,21 +167,39 @@ contract FallbackConvexFrax is BaseFallback {
         // Release all the locked curve lp
         IStakingProxyConvex(vaults[pidInfo.pid]).getReward(true);
 
-        // Transfer CRV rewards to strategy
-        uint256 balanceCRV = CRV.balanceOf(address(this));
-        if (balanceCRV > 0) CRV.safeTransfer(msg.sender, balanceCRV);
-        tokens[0] = address(CRV);
-        amounts[0] = balanceCRV;
-        // Transfer CVX rewards to strategy
-        uint256 balanceCVX = CVX.balanceOf(address(this));
-        if (balanceCVX > 0) CVX.safeTransfer(msg.sender, balanceCVX);
-        tokens[1] = address(CVX);
-        amounts[1] = balanceCVX;
-        // Transfer FXS rewards to strategy
-        uint256 balanceFXS = FXS.balanceOf(address(this));
-        if (balanceFXS > 0) FXS.safeTransfer(msg.sender, balanceFXS);
-        tokens[2] = address(FXS);
-        amounts[2] = balanceFXS;
+        // Transfer CRV rewards to strategy and charge fees
+        amounts[0] = CRV.balanceOf(address(this));
+        if (amounts[0] > 0) {
+            uint256 feeAmount;
+            tokens[0] = address(CRV);
+            if (feesOnRewards > 0) {
+                feeAmount = amounts[0].mulWadDown(feesOnRewards);
+                CRV.safeTransfer(feesReceiver, feeAmount);
+            }
+            CRV.safeTransfer(msg.sender, amounts[0] - feeAmount);
+        }
+        // Transfer CVX rewards to strategy and charge fees
+        amounts[1] = CVX.balanceOf(address(this));
+        if (amounts[1] > 0) {
+            uint256 feeAmount;
+            tokens[1] = address(CVX);
+            if (feesOnRewards > 0) {
+                feeAmount = amounts[1].mulWadDown(feesOnRewards);
+                CVX.safeTransfer(feesReceiver, feeAmount);
+            }
+            CVX.safeTransfer(msg.sender, amounts[1] - feeAmount);
+        }
+        // Transfer FXS rewards to strategy and charge fees
+        amounts[2] = FXS.balanceOf(address(this));
+        if (amounts[2] > 0) {
+            uint256 feeAmount;
+            tokens[2] = address(FXS);
+            if (feesOnRewards > 0) {
+                feeAmount = amounts[2].mulWadDown(feesOnRewards);
+                FXS.safeTransfer(feesReceiver, feeAmount);
+            }
+            FXS.safeTransfer(msg.sender, amounts[2] - feeAmount);
+        }
 
         // Handle extra rewards
         address[] memory rewardTokens =
@@ -189,16 +208,21 @@ contract FallbackConvexFrax is BaseFallback {
         uint256 len = rewardTokens.length;
         if (len > 0) {
             for (uint256 i = 0; i < len; ++i) {
-                uint256 balance = ERC20(rewardTokens[i]).balanceOf(address(this));
-                if (balance > 0) {
-                    ERC20(rewardTokens[i]).safeTransfer(msg.sender, balance);
+                amounts[i + 3] = ERC20(rewardTokens[i]).balanceOf(address(this));
+                if (amounts[i + 3] > 0) {
                     tokens[i + 3] = rewardTokens[i];
-                    amounts[i + 3] = balance;
+                    uint256 feeAmount;
+
+                    if (feesOnRewards > 0) {
+                        feeAmount = amounts[i + 3].mulWadDown(feesOnRewards);
+                        ERC20(rewardTokens[i]).safeTransfer(feesReceiver, feeAmount);
+                    }
+                    ERC20(rewardTokens[i]).safeTransfer(msg.sender, amounts[i + 3] - feeAmount);
                 }
             }
         }
 
-        emit ClaimedRewards(lpToken, balanceCRV, balanceCVX);
+        emit ClaimedRewards(lpToken, amounts[0], amounts[1]);
     }
 
     function getPid(address lpToken) external view override returns (PidsInfo memory) {
