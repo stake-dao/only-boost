@@ -271,17 +271,37 @@ contract CurveStrategy is EventsAndErrors {
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
+        // Get fallbacks addresses
         address[] memory fallbacks = optimizor.getFallbacks();
 
+        // Cache the fallbacks length
         uint256 len = fallbacks.length;
         for (uint8 i = 0; i < len; ++i) {
+            // Skip the locker fallback
             if (fallbacks[i] == address(LOCKER_STAKEDAO)) continue;
-            (address[10] memory tokens, uint256[10] memory amounts) = BaseFallback(fallbacks[i]).claimRewards(token);
 
-            for (uint8 j; j < 10; ++j) {
-                if (amounts[j] == 0) continue;
-                ERC20(tokens[j]).safeApprove(multiGauges[gauge], amounts[j]);
-                ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(tokens[j], amounts[j]);
+            // Get the rewards tokens list
+            address[] memory rewardsTokens = BaseFallback(fallbacks[i]).getRewardsTokens(token);
+            // Init the balances before array
+            uint256[] memory balancesBefore = new uint256[](rewardsTokens.length);
+
+            // Check balance before claim
+            for (uint8 j = 0; j < rewardsTokens.length; ++j) {
+                balancesBefore[j] = ERC20(rewardsTokens[j]).balanceOf(address(this));
+            }
+
+            // Do the claim
+            BaseFallback(fallbacks[i]).claimRewards(token, rewardsTokens);
+
+            // Check balance after claim
+            for (uint8 j; j < rewardsTokens.length; ++j) {
+                uint256 rewardObtained = ERC20(rewardsTokens[j]).balanceOf(address(this)) - balancesBefore[j];
+
+                // Skip if no reward obtained
+                if (rewardObtained == 0) continue;
+                // Approve and deposit the reward to the multi gauge
+                ERC20(rewardsTokens[j]).safeApprove(multiGauges[gauge], rewardObtained);
+                ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(rewardsTokens[j], rewardObtained);
             }
         }
     }
