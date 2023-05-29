@@ -118,21 +118,28 @@ contract CurveStrategyTest is BaseTest {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, 1, 0);
 
         _deposit(CRV3, partStakeDAO, partConvex);
-        _claimLiquidLockerTest(CRV3, 1 weeks, ERC20(address(0)));
+
+        _claimLiquidLockerTest(CRV3, 1 weeks, new ERC20[](0));
     }
 
     function test_Claim_ExtraRewardsWithReceiver() public {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CNC_ETH, 1, 0);
 
         _deposit(CNC_ETH, partStakeDAO, partConvex);
-        _claimLiquidLockerTest(CNC_ETH, 1 weeks, CNC);
+
+        ERC20[] memory extraTokens = new ERC20[](1);
+        extraTokens[0] = CNC;
+        _claimLiquidLockerTest(CNC_ETH, 1 weeks, extraTokens);
     }
 
     function test_ClaimExtraRewardsWithoutReceiver() public {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(STETH_ETH, 1, 0);
 
         _deposit(STETH_ETH, partStakeDAO, partConvex);
-        _claimLiquidLockerTest(STETH_ETH, 1 weeks, LDO);
+
+        ERC20[] memory extraTokens = new ERC20[](1);
+        extraTokens[0] = LDO;
+        _claimLiquidLockerTest(STETH_ETH, 1 weeks, extraTokens);
     }
 
     function test_Claim3CRV() public {
@@ -156,8 +163,13 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CRV3, partStakeDAO, partConvex, 0);
 
-        skip(1 weeks);
-        curveStrategy.claim(address(CRV3));
+        ERC20[] memory extraTokens = new ERC20[](2);
+        extraTokens[0] = CRV;
+        extraTokens[1] = CVX;
+
+        fallbackConvexCurve.setFeesOnRewards(1e16);
+
+        _claimLiquidLockerTest(CRV3, 1 weeks, extraTokens);
     }
 
     function test_Claim_ConvexFraxRewards() public {
@@ -165,7 +177,13 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
 
-        skip(1 weeks);
-        curveStrategy.claim(address(ALUSD_FRAXBP));
+        ERC20[] memory extraTokens = new ERC20[](3);
+        extraTokens[0] = CRV;
+        extraTokens[1] = CVX;
+        extraTokens[2] = FXS;
+
+        fallbackConvexCurve.setFeesOnRewards(1e16);
+
+        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, extraTokens);
     }
 }
