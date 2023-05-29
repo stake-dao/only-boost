@@ -7,6 +7,9 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 contract BaseFallback {
+    using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
+
     struct PidsInfo {
         uint256 pid;
         bool isInitialized;
@@ -25,6 +28,9 @@ contract BaseFallback {
     event Withdrawn(address token, uint256 amount);
     event ClaimedRewards(address token, uint256 amountCRV, uint256 amountCVX);
 
+    //////////////////////////////////////////////////////
+    /// --- MUTATIVE FUNCTIONS
+    //////////////////////////////////////////////////////
     function setFeesOnRewards(uint256 _feesOnRewards) external {
         feesOnRewards = _feesOnRewards;
     }
@@ -33,6 +39,57 @@ contract BaseFallback {
         feesReceiver = _feesReceiver;
     }
 
+    function _handleRewards(address lpToken, address[] calldata rewardsTokens) internal {
+        // Transfer CRV rewards to strategy and charge fees
+        uint256 balanceCRV = CRV.balanceOf(address(this));
+        if (balanceCRV > 0) {
+            if (feesOnRewards > 0) {
+                uint256 feeAmount = balanceCRV.mulWadDown(feesOnRewards);
+                balanceCRV -= feeAmount;
+                CRV.safeTransfer(feesReceiver, feeAmount);
+            }
+            CRV.safeTransfer(msg.sender, balanceCRV);
+        }
+
+        // Transfer CVX rewards to strategy and charge fees
+        uint256 balanceCVX = CVX.balanceOf(address(this));
+        if (balanceCVX > 0) {
+            if (feesOnRewards > 0) {
+                uint256 feeAmount = balanceCVX.mulWadDown(feesOnRewards);
+                balanceCVX -= feeAmount;
+                CVX.safeTransfer(feesReceiver, feeAmount);
+            }
+            CVX.safeTransfer(msg.sender, balanceCVX);
+        }
+
+        emit ClaimedRewards(lpToken, balanceCRV, balanceCVX);
+
+        // Cache extra rewards tokens length
+        uint256 extraRewardsLength = rewardsTokens.length;
+        // Transfer extra rewards to strategy if any
+        if (extraRewardsLength > 0) {
+            for (uint256 i = 0; i < extraRewardsLength; ++i) {
+                // Cache extra rewards token balance
+                uint256 balanceReward = ERC20(rewardsTokens[i]).balanceOf(address(this));
+
+                if (balanceReward > 0) {
+                    // Handle fees on extra rewards
+                    if (feesOnRewards > 0) {
+                        uint256 feeAmount = balanceReward.mulWadDown(feesOnRewards);
+                        balanceReward -= feeAmount;
+                        ERC20(rewardsTokens[i]).safeTransfer(feesReceiver, feeAmount);
+                    }
+
+                    // Send remaining rewards to strategy
+                    ERC20(rewardsTokens[i]).safeTransfer(msg.sender, balanceReward);
+                }
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////
+    /// --- VIRTUAL FUNCTIONS
+    //////////////////////////////////////////////////////
     function setPid(uint256 index) public virtual {}
 
     function setAllPidsOptimized() public virtual {}
@@ -45,11 +102,9 @@ contract BaseFallback {
 
     function withdraw(address lpToken, uint256 amount) external virtual {}
 
-    function claimRewards(address lpToken)
-        external
-        virtual
-        returns (address[10] memory tokens, uint256[10] memory amounts)
-    {}
+    function claimRewards(address lpToken, address[] calldata) external virtual {}
+
+    function getRewardsTokens(address lpToken) public view virtual returns (address[] memory) {}
 
     function getPid(address lpToken) external view virtual returns (PidsInfo memory) {}
 }

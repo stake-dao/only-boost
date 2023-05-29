@@ -9,7 +9,6 @@ import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 
 contract FallbackConvexCurve is BaseFallback {
     using SafeTransferLib for ERC20;
-    using FixedPointMathLib for uint256;
 
     IBoosterConvexCurve public boosterConvexCurve; // ConvexCurve booster contract
 
@@ -85,69 +84,45 @@ contract FallbackConvexCurve is BaseFallback {
         emit Withdrawn(lpToken, amount);
     }
 
-    function claimRewards(address lpToken)
-        external
-        override
-        returns (address[10] memory tokens, uint256[10] memory amounts)
-    {
-        // Todo: add possibility to charges fees
+    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override {
         // Only callable by the strategy
 
         // Cache the pid
         PidsInfo memory pidInfo = pids[lpToken];
         // Only claim if the pid is initialized
-        if (!pidInfo.isInitialized) return (tokens, amounts);
+        if (!pidInfo.isInitialized) return;
+
+        // Get cvxLpToken address
+        (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pidInfo.pid);
+        // Withdraw from ConvexCurve gauge
+        IBaseRewardsPool(crvRewards).getReward(address(this), rewardsTokens.length > 0 ? true : false);
+
+        // Handle extra rewards split
+        _handleRewards(lpToken, rewardsTokens);
+    }
+
+    function getRewardsTokens(address lpToken) public view override returns (address[] memory) {
+        // Cache the pid
+        PidsInfo memory pidInfo = pids[lpToken];
+        // Only claim if the pid is initialized
+        if (!pidInfo.isInitialized) return (new address[](0));
 
         // Get cvxLpToken address
         (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pidInfo.pid);
         // Check if there is extra rewards
         uint256 extraRewardsLength = IBaseRewardsPool(crvRewards).extraRewardsLength();
-        // Withdraw from ConvexCurve gauge
-        IBaseRewardsPool(crvRewards).getReward(address(this), extraRewardsLength > 0 ? true : false);
 
-        // Transfer CRV rewards to strategy and charge fees
-        amounts[0] = CRV.balanceOf(address(this));
-        if (amounts[0] > 0) {
-            uint256 feeAmount;
-            tokens[0] = address(CRV);
-            if (feesOnRewards > 0) {
-                feeAmount = amounts[0].mulWadDown(feesOnRewards);
-                CRV.safeTransfer(feesReceiver, feeAmount);
-            }
-            CRV.safeTransfer(msg.sender, amounts[0] - feeAmount);
-        }
-        // Transfer CVX rewards to strategy and charge fees
-        amounts[1] = CVX.balanceOf(address(this));
-        if (amounts[1] > 0) {
-            uint256 feeAmount;
-            tokens[1] = address(CVX);
-            if (feesOnRewards > 1) {
-                feeAmount = amounts[1].mulWadDown(feesOnRewards);
-                CVX.safeTransfer(feesReceiver, feeAmount);
-            }
-            CVX.safeTransfer(msg.sender, amounts[1] - feeAmount);
-        }
+        address[] memory tokens = new address[](extraRewardsLength + 2);
+        tokens[0] = address(CRV);
+        tokens[1] = address(CVX);
 
-        // Transfer extra rewards to strategy if any
         if (extraRewardsLength > 0) {
             for (uint256 i = 0; i < extraRewardsLength; ++i) {
                 tokens[i + 2] = IBaseRewardsPool(crvRewards).extraRewards(i);
-                amounts[i + 2] = ERC20(tokens[i + 2]).balanceOf(address(this));
-                uint256 feeAmount;
-                if (amounts[i + 2] > 0) {
-                    if (feesOnRewards > 0) {
-                        feeAmount = amounts[i + 2].mulWadDown(feesOnRewards);
-                        ERC20(tokens[i + 2]).safeTransfer(feesReceiver, feeAmount);
-                    }
-                    ERC20(tokens[i + 2]).safeTransfer(msg.sender, amounts[i + 2] - feeAmount);
-                }
             }
         }
 
-        // Returning the tokens and amounts using arrays is surely not optimal!
-        // To be optimized in the future
-
-        emit ClaimedRewards(lpToken, amounts[0], amounts[1]);
+        return tokens;
     }
 
     function getPid(address lpToken) external view override returns (PidsInfo memory) {
