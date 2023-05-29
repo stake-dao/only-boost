@@ -24,7 +24,7 @@ contract FallbackConvexFrax is BaseFallback {
 
     event Redeposited(address lpToken, uint256 amount);
 
-    constructor(address _curveStrategy) BaseFallback(_curveStrategy) {
+    constructor(address _curveStrategy, address _fallbackGov) BaseFallback(_curveStrategy, _fallbackGov) {
         boosterConvexFrax = IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa);
         poolRegistryConvexFrax = IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69);
 
@@ -68,7 +68,7 @@ contract FallbackConvexFrax is BaseFallback {
         return pids[stkTokens[lpToken]].isInitialized && _isActive == 1;
     }
 
-    function deposit(address lpToken, uint256 amount) external override onlyStrategy {
+    function deposit(address lpToken, uint256 amount) external override requiresAuth {
         // Cache the pid
         uint256 pid = pids[stkTokens[lpToken]].pid;
 
@@ -89,7 +89,7 @@ contract FallbackConvexFrax is BaseFallback {
         emit Deposited(lpToken, amount);
     }
 
-    function withdraw(address lpToken, uint256 amount) external override onlyStrategy {
+    function withdraw(address lpToken, uint256 amount) external override requiresAuth {
         // Cache the pid
         uint256 pid = pids[stkTokens[lpToken]].pid;
 
@@ -116,7 +116,7 @@ contract FallbackConvexFrax is BaseFallback {
         emit Redeposited(lpToken, remaining);
     }
 
-    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override onlyStrategy {
+    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override requiresAuth {
         // Cache the pid
         PidsInfo memory pidInfo = pids[stkTokens[lpToken]];
 

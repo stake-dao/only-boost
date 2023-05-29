@@ -3,10 +3,11 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-contract BaseFallback {
+contract BaseFallback is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -29,14 +30,7 @@ contract BaseFallback {
     event Withdrawn(address token, uint256 amount);
     event ClaimedRewards(address token, uint256 amountCRV, uint256 amountCVX);
 
-    error ONLY_STRATEGY();
-
-    modifier onlyStrategy() {
-        if (msg.sender != curveStrategy) revert ONLY_STRATEGY();
-        _;
-    }
-
-    constructor(address _curveStrategy) {
+    constructor(address _curveStrategy, address _fallbackGov) Auth(_fallbackGov, Authority(address(0))) {
         curveStrategy = _curveStrategy;
     }
 
@@ -99,7 +93,7 @@ contract BaseFallback {
         }
     }
 
-    function rescueERC20(address token, address to, uint256 amount) external onlyStrategy {
+    function rescueERC20(address token, address to, uint256 amount) external requiresAuth {
         ERC20(token).safeTransfer(to, amount);
     }
 

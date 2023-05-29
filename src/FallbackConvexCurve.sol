@@ -16,7 +16,7 @@ contract FallbackConvexCurve is BaseFallback {
 
     error DEPOSIT_FAIL();
 
-    constructor(address _curveStrategy) BaseFallback(_curveStrategy) {
+    constructor(address _curveStrategy, address _fallbackGov) BaseFallback(_curveStrategy, _fallbackGov) {
         boosterConvexCurve = IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
         curveStrategy = _curveStrategy;
 
@@ -57,7 +57,7 @@ contract FallbackConvexCurve is BaseFallback {
         return pids[lpToken].isInitialized && !shutdown;
     }
 
-    function deposit(address lpToken, uint256 amount) external override onlyStrategy {
+    function deposit(address lpToken, uint256 amount) external override requiresAuth {
         // Approve the amount
         ERC20(lpToken).safeApprove(address(boosterConvexCurve), amount);
         // Deposit the amount
@@ -69,7 +69,7 @@ contract FallbackConvexCurve is BaseFallback {
         emit Deposited(lpToken, amount);
     }
 
-    function withdraw(address lpToken, uint256 amount) external override onlyStrategy {
+    function withdraw(address lpToken, uint256 amount) external override requiresAuth {
         // Get cvxLpToken address
         (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pids[lpToken].pid);
         // Withdraw from ConvexCurve gauge
@@ -81,7 +81,7 @@ contract FallbackConvexCurve is BaseFallback {
         emit Withdrawn(lpToken, amount);
     }
 
-    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override onlyStrategy {
+    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override requiresAuth {
         // Only callable by the strategy
 
         // Cache the pid

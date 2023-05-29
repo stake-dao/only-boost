@@ -42,8 +42,8 @@ contract Optimizor is Auth {
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
     constructor(address gov) Auth(gov, Authority(address(0))) {
-        fallbackConvexFrax = new FallbackConvexFrax(msg.sender);
-        fallbackConvexCurve = new FallbackConvexCurve(msg.sender);
+        fallbackConvexFrax = new FallbackConvexFrax(msg.sender, gov);
+        fallbackConvexCurve = new FallbackConvexCurve(msg.sender, gov);
         curveStrategy = CurveStrategy(msg.sender);
 
         fallbacks.push(LOCKER_STAKEDAO);

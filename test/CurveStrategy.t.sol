@@ -17,6 +17,8 @@ contract CurveStrategyTest is BaseTest {
         // Deployment contracts
         rolesStrategy = new RolesAuthority(address(this), Authority(address(0)));
         rolesOptimizor = new RolesAuthority(address(this), Authority(address(0)));
+        rolesFallbackConvexFrax = new RolesAuthority(address(this), Authority(address(0)));
+        rolesFallbackConvexCurve = new RolesAuthority(address(this), Authority(address(0)));
         curveStrategy = new CurveStrategy(Authority(address(rolesStrategy)), address(this));
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock();
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock();

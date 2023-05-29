@@ -39,6 +39,8 @@ contract BaseTest is Test {
     CurveStrategy public curveStrategy;
     RolesAuthority public rolesStrategy;
     RolesAuthority public rolesOptimizor;
+    RolesAuthority public rolesFallbackConvexFrax;
+    RolesAuthority public rolesFallbackConvexCurve;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
@@ -183,15 +185,46 @@ contract BaseTest is Test {
             curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
         }
 
-        // Grant access to function
+        // Grant access to function for curve strategy
         rolesStrategy.setPublicCapability(address(curveStrategy), CurveStrategy.claim.selector, true);
         rolesStrategy.setPublicCapability(address(curveStrategy), CurveStrategy.claim3Crv.selector, true);
 
+        // Grant access to function for optimizor
         optimizor.setAuthority(rolesOptimizor);
-        rolesOptimizor.setRoleCapability(uint8(1), address(optimizor), Optimizor.optimizeDeposit.selector, true);
-        rolesOptimizor.setRoleCapability(uint8(2), address(optimizor), Optimizor.optimizeWithdraw.selector, true);
-        rolesOptimizor.setUserRole(address(curveStrategy), uint8(1), true);
-        rolesOptimizor.setUserRole(address(curveStrategy), uint8(2), true);
+        rolesOptimizor.setRoleCapability(1, address(optimizor), Optimizor.optimizeDeposit.selector, true);
+        rolesOptimizor.setRoleCapability(2, address(optimizor), Optimizor.optimizeWithdraw.selector, true);
+        rolesOptimizor.setUserRole(address(curveStrategy), 1, true);
+        rolesOptimizor.setUserRole(address(curveStrategy), 2, true);
+
+        // Grant access to function for fallback convex frax
+        fallbackConvexFrax.setAuthority(rolesFallbackConvexFrax);
+        rolesFallbackConvexFrax.setRoleCapability(
+            1, address(fallbackConvexFrax), FallbackConvexFrax.deposit.selector, true
+        );
+        rolesFallbackConvexFrax.setRoleCapability(
+            2, address(fallbackConvexFrax), FallbackConvexFrax.withdraw.selector, true
+        );
+        rolesFallbackConvexFrax.setRoleCapability(
+            3, address(fallbackConvexFrax), FallbackConvexFrax.claimRewards.selector, true
+        );
+        rolesFallbackConvexFrax.setUserRole(address(curveStrategy), 1, true);
+        rolesFallbackConvexFrax.setUserRole(address(curveStrategy), 2, true);
+        rolesFallbackConvexFrax.setUserRole(address(curveStrategy), 3, true);
+
+        // Grant access to function for fallback convex curve
+        fallbackConvexCurve.setAuthority(rolesFallbackConvexCurve);
+        rolesFallbackConvexCurve.setRoleCapability(
+            1, address(fallbackConvexCurve), FallbackConvexCurve.deposit.selector, true
+        );
+        rolesFallbackConvexCurve.setRoleCapability(
+            2, address(fallbackConvexCurve), FallbackConvexCurve.withdraw.selector, true
+        );
+        rolesFallbackConvexCurve.setRoleCapability(
+            3, address(fallbackConvexCurve), FallbackConvexCurve.claimRewards.selector, true
+        );
+        rolesFallbackConvexCurve.setUserRole(address(curveStrategy), 1, true);
+        rolesFallbackConvexCurve.setUserRole(address(curveStrategy), 2, true);
+        rolesFallbackConvexCurve.setUserRole(address(curveStrategy), 3, true);
     }
 
     function _labelAddress() internal {
@@ -230,6 +263,8 @@ contract BaseTest is Test {
         // Auth
         vm.label(address(rolesStrategy), "RolesStrategy");
         vm.label(address(rolesOptimizor), "RolesOptimizor");
+        vm.label(address(rolesFallbackConvexFrax), "RolesFallbackConvexFrax");
+        vm.label(address(rolesFallbackConvexCurve), "RolesFallbackConvexCurve");
 
         // Mocks
         vm.label(address(liquidityGaugeMockCRV3), "LiquidityGaugeMockCRV3");
