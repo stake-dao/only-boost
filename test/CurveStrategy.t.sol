@@ -15,7 +15,9 @@ contract CurveStrategyTest is BaseTest {
         vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER));
 
         // Deployment contracts
-        curveStrategy = new CurveStrategy();
+        rolesStrategy = new RolesAuthority(address(this), Authority(address(0)));
+        rolesOptimizor = new RolesAuthority(address(this), Authority(address(0)));
+        curveStrategy = new CurveStrategy(Authority(address(rolesStrategy)), address(this));
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock();
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock();
         liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock();

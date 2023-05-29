@@ -16,20 +16,16 @@ contract FallbackConvexCurve is BaseFallback {
 
     error DEPOSIT_FAIL();
 
-    constructor() {
+    constructor(address _curveStrategy) BaseFallback(_curveStrategy) {
         boosterConvexCurve = IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+        curveStrategy = _curveStrategy;
 
         setAllPidsOptimized();
     }
 
-    function setPid(uint256 index) public override {
-        // Get the lpToken address
-        (address lpToken,,,,,) = boosterConvexCurve.poolInfo(index);
-
-        // Map the lpToken to the pool infos
-        pids[lpToken] = PidsInfo(index, true);
-    }
-
+    //////////////////////////////////////////////////////
+    /// --- MUTATIVE FUNCTIONS
+    //////////////////////////////////////////////////////
     function setAllPidsOptimized() public override {
         // Cache the length of the pool registry
         uint256 len = boosterConvexCurve.poolLength();
@@ -39,11 +35,19 @@ contract FallbackConvexCurve is BaseFallback {
 
         // If the length is smaller, update pids mapping
         for (uint256 i = lastPidsCount; i < len; ++i) {
-            setPid(i);
+            _setPid(i);
         }
 
         // Update the last length
         lastPidsCount = len;
+    }
+
+    function _setPid(uint256 index) internal override {
+        // Get the lpToken address
+        (address lpToken,,,,,) = boosterConvexCurve.poolInfo(index);
+
+        // Map the lpToken to the pool infos
+        pids[lpToken] = PidsInfo(index, true);
     }
 
     function isActive(address lpToken) external override returns (bool) {
@@ -53,14 +57,7 @@ contract FallbackConvexCurve is BaseFallback {
         return pids[lpToken].isInitialized && !shutdown;
     }
 
-    function balanceOf(address lpToken) external view override returns (uint256) {
-        // Get cvxLpToken address
-        (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pids[lpToken].pid);
-        // Check current balance on convexCurve
-        return ERC20(crvRewards).balanceOf(address(this));
-    }
-
-    function deposit(address lpToken, uint256 amount) external override {
+    function deposit(address lpToken, uint256 amount) external override onlyStrategy {
         // Approve the amount
         ERC20(lpToken).safeApprove(address(boosterConvexCurve), amount);
         // Deposit the amount
@@ -72,19 +69,19 @@ contract FallbackConvexCurve is BaseFallback {
         emit Deposited(lpToken, amount);
     }
 
-    function withdraw(address lpToken, uint256 amount) external override {
+    function withdraw(address lpToken, uint256 amount) external override onlyStrategy {
         // Get cvxLpToken address
         (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pids[lpToken].pid);
         // Withdraw from ConvexCurve gauge
         IBaseRewardsPool(crvRewards).withdrawAndUnwrap(amount, claimOnWithdraw);
 
         // Transfer the amount
-        ERC20(lpToken).safeTransfer(msg.sender, amount);
+        ERC20(lpToken).safeTransfer(curveStrategy, amount);
 
         emit Withdrawn(lpToken, amount);
     }
 
-    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override {
+    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override onlyStrategy {
         // Only callable by the strategy
 
         // Cache the pid
@@ -101,6 +98,9 @@ contract FallbackConvexCurve is BaseFallback {
         _handleRewards(lpToken, rewardsTokens);
     }
 
+    //////////////////////////////////////////////////////
+    /// --- VIEW FUNCTIONS
+    //////////////////////////////////////////////////////
     function getRewardsTokens(address lpToken) public view override returns (address[] memory) {
         // Cache the pid
         PidsInfo memory pidInfo = pids[lpToken];
@@ -127,5 +127,12 @@ contract FallbackConvexCurve is BaseFallback {
 
     function getPid(address lpToken) external view override returns (PidsInfo memory) {
         return pids[lpToken];
+    }
+
+    function balanceOf(address lpToken) external view override returns (uint256) {
+        // Get cvxLpToken address
+        (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pids[lpToken].pid);
+        // Check current balance on convexCurve
+        return ERC20(crvRewards).balanceOf(address(this));
     }
 }

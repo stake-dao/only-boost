@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 // --- Libraries
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Authority} from "solmate/auth/Auth.sol";
+import {RolesAuthority} from "solmate/auth/authorities/RolesAuthority.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 // --- Contracts
@@ -36,6 +37,8 @@ contract BaseTest is Test {
     // --- Contracts
     Optimizor public optimizor;
     CurveStrategy public curveStrategy;
+    RolesAuthority public rolesStrategy;
+    RolesAuthority public rolesOptimizor;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
@@ -179,6 +182,16 @@ contract BaseTest is Test {
             curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.ACCUMULATORFEE, gauges[address(token)], FEE_ACCU);
             curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
         }
+
+        // Grant access to function
+        rolesStrategy.setPublicCapability(address(curveStrategy), CurveStrategy.claim.selector, true);
+        rolesStrategy.setPublicCapability(address(curveStrategy), CurveStrategy.claim3Crv.selector, true);
+
+        optimizor.setAuthority(rolesOptimizor);
+        rolesOptimizor.setRoleCapability(uint8(1), address(optimizor), Optimizor.optimizeDeposit.selector, true);
+        rolesOptimizor.setRoleCapability(uint8(2), address(optimizor), Optimizor.optimizeWithdraw.selector, true);
+        rolesOptimizor.setUserRole(address(curveStrategy), uint8(1), true);
+        rolesOptimizor.setUserRole(address(curveStrategy), uint8(2), true);
     }
 
     function _labelAddress() internal {
@@ -213,6 +226,10 @@ contract BaseTest is Test {
         vm.label(address(boosterConvexFrax), "BoosterConvexFrax");
         vm.label(address(boosterConvexCurve), "BoosterConvexCurve");
         vm.label(address(poolRegistryConvexFrax), "PoolRegistryConvexFrax");
+
+        // Auth
+        vm.label(address(rolesStrategy), "RolesStrategy");
+        vm.label(address(rolesOptimizor), "RolesOptimizor");
 
         // Mocks
         vm.label(address(liquidityGaugeMockCRV3), "LiquidityGaugeMockCRV3");

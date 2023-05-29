@@ -3,6 +3,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
@@ -15,7 +16,7 @@ import {IAccumulator} from "src/interfaces/IAccumulator.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 
-contract CurveStrategy is EventsAndErrors {
+contract CurveStrategy is EventsAndErrors, Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -55,14 +56,14 @@ contract CurveStrategy is EventsAndErrors {
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
-    constructor() {
-        optimizor = new Optimizor();
+    constructor(Authority _authority, address optimizorGov) Auth(msg.sender, _authority) {
+        optimizor = new Optimizor(optimizorGov);
     }
 
     //////////////////////////////////////////////////////
     /// --- DEPOSIT
     //////////////////////////////////////////////////////
-    function deposit(address token, uint256 amount) external {
+    function deposit(address token, uint256 amount) external requiresAuth {
         // Transfer the token to this contract
         ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -70,7 +71,7 @@ contract CurveStrategy is EventsAndErrors {
         _deposit(token, amount);
     }
 
-    function depositForOptimizor(address token, uint256 amount) external {
+    function depositForOptimizor(address token, uint256 amount) external requiresAuth {
         // Should be better named after
         // Do the deposit process
         _deposit(token, amount);
@@ -120,7 +121,7 @@ contract CurveStrategy is EventsAndErrors {
     //////////////////////////////////////////////////////
     /// --- WITHDRAW
     //////////////////////////////////////////////////////
-    function withdraw(address token, uint256 amount) external {
+    function withdraw(address token, uint256 amount) external requiresAuth {
         // Do the withdraw process
         _withdraw(token, amount);
 
@@ -171,7 +172,7 @@ contract CurveStrategy is EventsAndErrors {
     //////////////////////////////////////////////////////
     /// --- CLAIM
     //////////////////////////////////////////////////////
-    function claim(address token) external {
+    function claim(address token) external requiresAuth {
         // Get the gauge address
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
@@ -195,7 +196,7 @@ contract CurveStrategy is EventsAndErrors {
         if (!success) revert CALL_FAILED();
 
         // Distribute CRV to fees recipients and gauges
-        uint256 crvNetRewards = sendFee(gauge, CRV, crvMinted);
+        uint256 crvNetRewards = _sendFee(gauge, CRV, crvMinted);
         ERC20(CRV).safeApprove(multiGauges[gauge], crvNetRewards);
         ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(CRV, crvNetRewards);
         emit Claimed(gauge, CRV, crvMinted);
@@ -266,7 +267,7 @@ contract CurveStrategy is EventsAndErrors {
         }
     }
 
-    function claimFallbacks(address token) public {
+    function claimFallbacks(address token) public requiresAuth {
         // Get the gauge address
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
@@ -306,7 +307,7 @@ contract CurveStrategy is EventsAndErrors {
         }
     }
 
-    function claim3Crv(bool notify) external {
+    function claim3Crv(bool notify) external requiresAuth {
         // Claim 3crv from the curve fee Distributor, it will send 3crv to the crv locker
         (bool success,) = LOCKER_STAKEDAO.execute(CRV_FEE_D, 0, abi.encodeWithSignature("claim()"));
         if (!success) revert CLAIM_FAILED();
@@ -327,7 +328,7 @@ contract CurveStrategy is EventsAndErrors {
         emit Crv3Claimed(amountToSend, notify);
     }
 
-    function sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
+    function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
         Fees memory fee = feesInfos[gauge];
         // calculate the amount for each fee recipient
         uint256 multisigFee = rewardsBalance.mulDivDown(fee.perfFee, BASE_FEE);
@@ -343,7 +344,7 @@ contract CurveStrategy is EventsAndErrors {
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
-    function sendToAccumulator(address token, uint256 amount) external {
+    function sendToAccumulator(address token, uint256 amount) external requiresAuth {
         ERC20(token).safeApprove(address(accumulator), amount);
         accumulator.depositToken(token, amount);
     }
@@ -351,7 +352,7 @@ contract CurveStrategy is EventsAndErrors {
     //////////////////////////////////////////////////////
     /// --- MIGRATION
     //////////////////////////////////////////////////////
-    function migrateLP(address lpToken) external {
+    function migrateLP(address lpToken) external requiresAuth {
         // Only callable by the vault
 
         // Get gauge address
@@ -375,55 +376,55 @@ contract CurveStrategy is EventsAndErrors {
     //////////////////////////////////////////////////////
     /// --- SETTERS
     //////////////////////////////////////////////////////
-    function toggleVault(address vault) external {
+    function toggleVault(address vault) external requiresAuth {
         if (vault == address(0)) revert ADDRESS_NULL();
         vaults[vault] = !vaults[vault];
         emit VaultToggled(vault, vaults[vault]);
     }
 
-    function setGauge(address token, address gauge) external {
+    function setGauge(address token, address gauge) external requiresAuth {
         if (token == address(0)) revert ADDRESS_NULL();
         gauges[token] = gauge;
         emit GaugeSet(gauge, token);
     }
 
-    function setLGtype(address gauge, uint256 gaugeType) external {
+    function setLGtype(address gauge, uint256 gaugeType) external requiresAuth {
         if (gauge == address(0)) revert ADDRESS_NULL();
         lGaugeType[gauge] = gaugeType;
         emit GaugeTypeSet(gauge, gaugeType);
     }
 
-    function setMultiGauge(address gauge, address multiGauge) external {
+    function setMultiGauge(address gauge, address multiGauge) external requiresAuth {
         if (gauge == address(0) || multiGauge == address(0)) revert ADDRESS_NULL();
         multiGauges[gauge] = multiGauge;
         emit MultiGaugeSet(gauge, multiGauge);
     }
 
-    function setVeSDTProxy(address newVeSDTProxy) external {
+    function setVeSDTProxy(address newVeSDTProxy) external requiresAuth {
         if (newVeSDTProxy == address(0)) revert ADDRESS_NULL();
         veSDTFeeProxy = newVeSDTProxy;
         emit VeSDTProxySet(newVeSDTProxy);
     }
 
-    function setAccumulator(address newAccumulator) external {
+    function setAccumulator(address newAccumulator) external requiresAuth {
         if (newAccumulator == address(0)) revert ADDRESS_NULL();
         accumulator = IAccumulator(newAccumulator);
         emit AccumulatorSet(newAccumulator);
     }
 
-    function setRewardsReceiver(address newRewardsReceiver) external {
+    function setRewardsReceiver(address newRewardsReceiver) external requiresAuth {
         if (newRewardsReceiver == address(0)) revert ADDRESS_NULL();
         rewardsReceiver = newRewardsReceiver;
         emit RewardsReceiverSet(newRewardsReceiver);
     }
 
-    function setOptimizor(address newOptimizor) external {
+    function setOptimizor(address newOptimizor) external requiresAuth {
         if (newOptimizor == address(0)) revert ADDRESS_NULL();
         optimizor = Optimizor(newOptimizor);
         emit OptimizorSet(newOptimizor);
     }
 
-    function manageFee(MANAGEFEE manageFee_, address gauge, uint256 newFee) external {
+    function manageFee(MANAGEFEE manageFee_, address gauge, uint256 newFee) external requiresAuth {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         if (manageFee_ == MANAGEFEE.PERFFEE) {
@@ -450,7 +451,11 @@ contract CurveStrategy is EventsAndErrors {
     //////////////////////////////////////////////////////
     /// --- EXECUTE
     //////////////////////////////////////////////////////
-    function execute(address to, uint256 value, bytes calldata data) external returns (bool, bytes memory) {
+    function execute(address to, uint256 value, bytes calldata data)
+        external
+        requiresAuth
+        returns (bool, bytes memory)
+    {
         (bool success, bytes memory result) = to.call{value: value}(data);
         return (success, result);
     }

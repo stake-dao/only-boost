@@ -15,9 +15,7 @@ contract FallbackConvexFrax is BaseFallback {
 
     IBoosterConvexFrax public boosterConvexFrax; // Convex Frax booster
     IPoolRegistryConvexFrax public poolRegistryConvexFrax; // ConvexFrax pool Registry
-    ERC20 public constant FXS = ERC20(0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0);
 
-    address public curveStrategy;
     uint256 public lockingIntervalSec = 7 days; // 7 days
 
     mapping(address => address) public stkTokens; // lpToken address --> staking token contract address
@@ -26,15 +24,33 @@ contract FallbackConvexFrax is BaseFallback {
 
     event Redeposited(address lpToken, uint256 amount);
 
-    constructor(address _curveStrategy) {
+    constructor(address _curveStrategy) BaseFallback(_curveStrategy) {
         boosterConvexFrax = IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa);
         poolRegistryConvexFrax = IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69);
-        curveStrategy = _curveStrategy;
 
         setAllPidsOptimized();
     }
 
-    function setPid(uint256 index) public override {
+    //////////////////////////////////////////////////////
+    /// --- MUTATIVE FUNCTIONS
+    //////////////////////////////////////////////////////
+    function setAllPidsOptimized() public override {
+        // Cache the length of the pool registry
+        uint256 len = poolRegistryConvexFrax.poolLength();
+
+        // If the length is the same, no need to update
+        if (lastPidsCount == len) return;
+
+        // If the length is smaller, update pids mapping
+        for (uint256 i = lastPidsCount; i < len; ++i) {
+            _setPid(i);
+        }
+
+        // Update the last length
+        lastPidsCount = len;
+    }
+
+    function _setPid(uint256 index) internal override {
         (address lpToken, address stkToken) = getLP(index);
 
         if (lpToken != address(0)) {
@@ -45,33 +61,6 @@ contract FallbackConvexFrax is BaseFallback {
         }
     }
 
-    function getLP(uint256 pid) public returns (address, address) {
-        // Get the staking token address
-        (,, address stkToken,,) = poolRegistryConvexFrax.poolInfo(pid);
-
-        // Get the underlying curve lp token address
-        (bool success, bytes memory data) = stkToken.call(abi.encodeWithSignature("curveToken()"));
-
-        // Return the curve lp token address if call succeed otherwise return address(0)
-        return success ? (abi.decode(data, (address)), stkToken) : (address(0), stkToken);
-    }
-
-    function setAllPidsOptimized() public override {
-        // Cache the length of the pool registry
-        uint256 len = poolRegistryConvexFrax.poolLength();
-
-        // If the length is the same, no need to update
-        if (lastPidsCount == len) return;
-
-        // If the length is smaller, update pids mapping
-        for (uint256 i = lastPidsCount; i < len; ++i) {
-            setPid(i);
-        }
-
-        // Update the last length
-        lastPidsCount = len;
-    }
-
     function isActive(address lpToken) external override returns (bool) {
         setAllPidsOptimized();
 
@@ -79,30 +68,7 @@ contract FallbackConvexFrax is BaseFallback {
         return pids[stkTokens[lpToken]].isInitialized && _isActive == 1;
     }
 
-    function balanceOf(address lpToken) external view override returns (uint256) {
-        // Cache the pid
-        uint256 pid = pids[stkTokens[lpToken]].pid;
-
-        return balanceOf(pid);
-    }
-
-    function balanceOf(uint256 pid) public view returns (uint256) {
-        // Withdraw from ConvexFrax
-        (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pid);
-        // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
-        // and the last one is emptyed. So we need to get the last one.
-        uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(vaults[pid]);
-
-        // If no lockedStakes, return 0
-        if (lockCount == 0) return 0;
-
-        // Cache lockedStakes infos
-        IFraxUnifiedFarm.LockedStake memory infos = IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
-
-        return block.timestamp >= infos.ending_timestamp ? infos.liquidity : 0;
-    }
-
-    function deposit(address lpToken, uint256 amount) external override {
+    function deposit(address lpToken, uint256 amount) external override onlyStrategy {
         // Cache the pid
         uint256 pid = pids[stkTokens[lpToken]].pid;
 
@@ -123,7 +89,7 @@ contract FallbackConvexFrax is BaseFallback {
         emit Deposited(lpToken, amount);
     }
 
-    function withdraw(address lpToken, uint256 amount) external override {
+    function withdraw(address lpToken, uint256 amount) external override onlyStrategy {
         // Cache the pid
         uint256 pid = pids[stkTokens[lpToken]].pid;
 
@@ -150,7 +116,7 @@ contract FallbackConvexFrax is BaseFallback {
         emit Redeposited(lpToken, remaining);
     }
 
-    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override {
+    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override onlyStrategy {
         // Cache the pid
         PidsInfo memory pidInfo = pids[stkTokens[lpToken]];
 
@@ -164,6 +130,9 @@ contract FallbackConvexFrax is BaseFallback {
         _handleRewards(lpToken, rewardsTokens);
     }
 
+    //////////////////////////////////////////////////////
+    /// --- VIEW FUNCTIONS
+    //////////////////////////////////////////////////////
     function getRewardsTokens(address lpToken) public view override returns (address[] memory) {
         // Cache the pid
         PidsInfo memory pidInfo = pids[stkTokens[lpToken]];
@@ -186,5 +155,39 @@ contract FallbackConvexFrax is BaseFallback {
 
     function getPid(address lpToken) external view override returns (PidsInfo memory) {
         return pids[stkTokens[lpToken]];
+    }
+
+    function balanceOf(address lpToken) external view override returns (uint256) {
+        // Cache the pid
+        uint256 pid = pids[stkTokens[lpToken]].pid;
+
+        return balanceOf(pid);
+    }
+
+    function balanceOf(uint256 pid) public view returns (uint256) {
+        // Withdraw from ConvexFrax
+        (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pid);
+        // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
+        // and the last one is emptyed. So we need to get the last one.
+        uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(vaults[pid]);
+
+        // If no lockedStakes, return 0
+        if (lockCount == 0) return 0;
+
+        // Cache lockedStakes infos
+        IFraxUnifiedFarm.LockedStake memory infos = IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
+
+        return block.timestamp >= infos.ending_timestamp ? infos.liquidity : 0;
+    }
+
+    function getLP(uint256 pid) public returns (address, address) {
+        // Get the staking token address
+        (,, address stkToken,,) = poolRegistryConvexFrax.poolInfo(pid);
+
+        // Get the underlying curve lp token address
+        (bool success, bytes memory data) = stkToken.call(abi.encodeWithSignature("curveToken()"));
+
+        // Return the curve lp token address if call succeed otherwise return address(0)
+        return success ? (abi.decode(data, (address)), stkToken) : (address(0), stkToken);
     }
 }

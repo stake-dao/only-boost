@@ -21,12 +21,24 @@ contract BaseFallback {
     uint256 public lastPidsCount; // Number of pools on ConvexCurve or ConvexFrax
     uint256 public feesOnRewards; // Fees to be collected from the strategy, in WAD unit
 
+    address public curveStrategy;
     address public feesReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063; // Address to receive fees, MS Stake DAO
     mapping(address => PidsInfo) public pids; // lpToken address --> pool ids from ConvexCurve or ConvexFrax
 
     event Deposited(address token, uint256 amount);
     event Withdrawn(address token, uint256 amount);
     event ClaimedRewards(address token, uint256 amountCRV, uint256 amountCVX);
+
+    error ONLY_STRATEGY();
+
+    modifier onlyStrategy() {
+        if (msg.sender != curveStrategy) revert ONLY_STRATEGY();
+        _;
+    }
+
+    constructor(address _curveStrategy) {
+        curveStrategy = _curveStrategy;
+    }
 
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS
@@ -48,7 +60,7 @@ contract BaseFallback {
                 balanceCRV -= feeAmount;
                 CRV.safeTransfer(feesReceiver, feeAmount);
             }
-            CRV.safeTransfer(msg.sender, balanceCRV);
+            CRV.safeTransfer(curveStrategy, balanceCRV);
         }
 
         // Transfer CVX rewards to strategy and charge fees
@@ -59,7 +71,7 @@ contract BaseFallback {
                 balanceCVX -= feeAmount;
                 CVX.safeTransfer(feesReceiver, feeAmount);
             }
-            CVX.safeTransfer(msg.sender, balanceCVX);
+            CVX.safeTransfer(curveStrategy, balanceCVX);
         }
 
         emit ClaimedRewards(lpToken, balanceCRV, balanceCVX);
@@ -81,16 +93,20 @@ contract BaseFallback {
                     }
 
                     // Send remaining rewards to strategy
-                    ERC20(rewardsTokens[i]).safeTransfer(msg.sender, balanceReward);
+                    ERC20(rewardsTokens[i]).safeTransfer(curveStrategy, balanceReward);
                 }
             }
         }
     }
 
+    function rescueERC20(address token, address to, uint256 amount) external onlyStrategy {
+        ERC20(token).safeTransfer(to, amount);
+    }
+
     //////////////////////////////////////////////////////
     /// --- VIRTUAL FUNCTIONS
     //////////////////////////////////////////////////////
-    function setPid(uint256 index) public virtual {}
+    function _setPid(uint256 index) internal virtual {}
 
     function setAllPidsOptimized() public virtual {}
 

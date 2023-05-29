@@ -3,6 +3,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Auth, Authority} from "solmate/auth/Auth.sol";
 
 import {CurveStrategy} from "src/CurveStrategy.sol";
 import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
@@ -10,7 +11,7 @@ import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
-contract Optimizor {
+contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
@@ -40,9 +41,9 @@ contract Optimizor {
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
-    constructor() {
+    constructor(address gov) Auth(gov, Authority(address(0))) {
         fallbackConvexFrax = new FallbackConvexFrax(msg.sender);
-        fallbackConvexCurve = new FallbackConvexCurve();
+        fallbackConvexCurve = new FallbackConvexCurve(msg.sender);
         curveStrategy = CurveStrategy(msg.sender);
 
         fallbacks.push(LOCKER_STAKEDAO);
@@ -134,6 +135,7 @@ contract Optimizor {
     // This function return the amount that need to be deposited StakeDAO locker and on each fallback
     function optimizeDeposit(address lpToken, address liquidityGauge, uint256 amount)
         public
+        requiresAuth
         returns (address[] memory, uint256[] memory)
     {
         // Check if the lp token has pool on ConvexCurve or ConvexFrax
@@ -187,6 +189,7 @@ contract Optimizor {
     function optimizeWithdraw(address lpToken, address liquidityGauge, uint256 amount)
         public
         view
+        requiresAuth
         returns (address[] memory, uint256[] memory)
     {
         // Cache the balance of all fallbacks
@@ -265,7 +268,7 @@ contract Optimizor {
     //////////////////////////////////////////////////////
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
-    function killConvexFrax() external {
+    function killConvexFrax() external requiresAuth {
         isConvexFraxKilled = true;
 
         uint256 len = fallbackConvexFrax.lastPidsCount();
