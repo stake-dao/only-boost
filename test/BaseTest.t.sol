@@ -392,7 +392,7 @@ contract BaseTest is Test {
         }
     }
 
-    modifier _claimLiquidLockerMod(ERC20 token, ERC20[] memory extraTokens) {
+    modifier _claimLiquidLockerMod(ERC20 token, address[] memory extraTokens) {
         // Cache balance before
         uint256 balanceBeforeLG = CRV.balanceOf(liquidityGaugeMocks[address(token)]);
         uint256 balanceBeforeAC = CRV.balanceOf(address(curveStrategy.accumulator()));
@@ -405,11 +405,13 @@ contract BaseTest is Test {
 
         if (extraTokensLength > 0) {
             for (uint256 i = 0; i < extraTokensLength; ++i) {
-                balanceBeforeExtraLG[i] = extraTokens[i].balanceOf(liquidityGaugeMocks[address(token)]);
+                balanceBeforeExtraLG[i] = ERC20(extraTokens[i]).balanceOf(liquidityGaugeMocks[address(token)]);
                 if (isMetapool[address(token)]) {
-                    balanceBeforeFeeReceiver[i] = extraTokens[i].balanceOf(address(fallbackConvexFrax.feesReceiver()));
+                    balanceBeforeFeeReceiver[i] =
+                        ERC20(extraTokens[i]).balanceOf(address(fallbackConvexFrax.feesReceiver()));
                 } else {
-                    balanceBeforeFeeReceiver[i] = extraTokens[i].balanceOf(address(fallbackConvexCurve.feesReceiver()));
+                    balanceBeforeFeeReceiver[i] =
+                        ERC20(extraTokens[i]).balanceOf(address(fallbackConvexCurve.feesReceiver()));
                 }
             }
         }
@@ -432,20 +434,20 @@ contract BaseTest is Test {
         if (extraTokensLength == 0) return;
         for (uint256 i = 0; i < extraTokensLength; ++i) {
             //Assertion 6: Check extra token received
-            assertGt(extraTokens[i].balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeExtraLG[i], "6");
+            assertGt(ERC20(extraTokens[i]).balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeExtraLG[i], "6");
 
             //Assertion 7: Check extra token received by fee receiver
             if (isMetapool[address(token)]) {
                 if (fallbackConvexFrax.feesOnRewards() == 0) continue;
                 assertGt(
-                    extraTokens[i].balanceOf(address(fallbackConvexFrax.feesReceiver())),
+                    ERC20(extraTokens[i]).balanceOf(address(fallbackConvexFrax.feesReceiver())),
                     balanceBeforeFeeReceiver[i],
                     "7"
                 );
             } else {
                 if (fallbackConvexCurve.feesOnRewards() == 0) continue;
                 assertGt(
-                    extraTokens[i].balanceOf(address(fallbackConvexCurve.feesReceiver())),
+                    ERC20(extraTokens[i]).balanceOf(address(fallbackConvexCurve.feesReceiver())),
                     balanceBeforeFeeReceiver[i],
                     "7"
                 );
@@ -468,7 +470,7 @@ contract BaseTest is Test {
         _withdraw(token, amountStakeDAO, amountConvex, timejump);
     }
 
-    function _claimLiquidLockerTest(ERC20 token, uint256 timejump, ERC20[] memory extraTokens)
+    function _claimLiquidLockerTest(ERC20 token, uint256 timejump, address[] memory extraTokens)
         internal
         _claimLiquidLockerMod(token, extraTokens)
     {

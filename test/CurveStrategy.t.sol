@@ -119,7 +119,7 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CRV3, partStakeDAO, partConvex);
 
-        _claimLiquidLockerTest(CRV3, 1 weeks, new ERC20[](0));
+        _claimLiquidLockerTest(CRV3, 1 weeks, new address[](0));
     }
 
     function test_Claim_ExtraRewardsWithReceiver() public {
@@ -127,8 +127,9 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CNC_ETH, partStakeDAO, partConvex);
 
-        ERC20[] memory extraTokens = new ERC20[](1);
-        extraTokens[0] = CNC;
+        address[] memory extraTokens = new address[](1);
+        extraTokens[0] = address(CNC);
+
         _claimLiquidLockerTest(CNC_ETH, 1 weeks, extraTokens);
     }
 
@@ -137,8 +138,8 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(STETH_ETH, partStakeDAO, partConvex);
 
-        ERC20[] memory extraTokens = new ERC20[](1);
-        extraTokens[0] = LDO;
+        address[] memory extraTokens = new address[](1);
+        extraTokens[0] = address(LDO);
         _claimLiquidLockerTest(STETH_ETH, 1 weeks, extraTokens);
     }
 
@@ -158,32 +159,43 @@ contract CurveStrategyTest is BaseTest {
         assertGt(CRV3.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "1");
     }
 
-    function test_Claim_ConvexCurveRewards() public {
+    function test_Claim_ConvexCurveRewardsWithoutFees() public {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, MAX, 1);
 
         _deposit(CRV3, partStakeDAO, partConvex, 0);
 
-        ERC20[] memory extraTokens = new ERC20[](2);
-        extraTokens[0] = CRV;
-        extraTokens[1] = CVX;
+        fallbackConvexCurve.setFeesOnRewards(0);
+
+        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(ALUSD_FRAXBP)));
+    }
+
+    function test_Claim_ConvexCurveRewardsWithFees() public {
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, MAX, 1);
+
+        _deposit(CRV3, partStakeDAO, partConvex, 0);
 
         fallbackConvexCurve.setFeesOnRewards(1e16);
 
-        _claimLiquidLockerTest(CRV3, 1 weeks, extraTokens);
+        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(CRV3)));
     }
 
-    function test_Claim_ConvexFraxRewards() public {
+    function test_Claim_ConvexFraxRewardsWithoutFees() public {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
 
         _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
 
-        ERC20[] memory extraTokens = new ERC20[](3);
-        extraTokens[0] = CRV;
-        extraTokens[1] = CVX;
-        extraTokens[2] = FXS;
+        fallbackConvexCurve.setFeesOnRewards(0);
 
-        fallbackConvexCurve.setFeesOnRewards(1e16);
+        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)));
+    }
 
-        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, extraTokens);
+    function test_Claim_ConvexFraxRewardsWithFees() public {
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
+
+        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
+
+        fallbackConvexFrax.setFeesOnRewards(1e16);
+
+        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)));
     }
 }
