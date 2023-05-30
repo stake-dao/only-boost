@@ -4,3 +4,4 @@ out
 .env
 old
 lcov.info
+coverage.txt

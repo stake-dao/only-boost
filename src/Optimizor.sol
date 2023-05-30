@@ -163,7 +163,7 @@ contract Optimizor is Auth {
             // Convex Curve
             // amounts[1] = 0;
             // Convex Frax
-            amounts[2] = amount - amounts[0]; //min(opt - gaugeBalance, amount);
+            amounts[2] = amount - amounts[0];
         }
         // If available on Convex Curve
         else if (statusCurve) {
@@ -281,8 +281,6 @@ contract Optimizor is Auth {
         convexFraxPausedTimestamp = block.timestamp;
     }
 
-    event log_named_uint(string name, uint256 value);
-
     function killConvexFrax() external requiresAuth {
         if (!convexFraxPaused) revert NOT_PAUSED();
         if ((convexFraxPausedTimestamp + fallbackConvexFrax.lockingIntervalSec()) > block.timestamp) {
@@ -294,8 +292,8 @@ contract Optimizor is Auth {
 
         for (uint256 i = 0; i < len; ++i) {
             uint256 balance = fallbackConvexFrax.balanceOf(i);
-            (address lpToken,) = fallbackConvexFrax.getLP(i);
-            if (balance > 0 && lpToken != address(0)) {
+            if (balance > 0) {
+                (address lpToken,) = fallbackConvexFrax.getLP(i);
                 // Withdraw from convex frax
                 fallbackConvexFrax.withdraw(lpToken, balance);
 

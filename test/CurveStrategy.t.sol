@@ -234,7 +234,7 @@ contract CurveStrategyTest is BaseTest {
         rolesStrategy.setUserRole(address(optimizor), 1, true);
 
         assertGt(fallbackConvexFrax.balanceOf(address(ALUSD_FRAXBP)), 0, "0");
-        
+
         uint256 balanceBeforeConvexCurve = fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP));
         uint256 balanceBeforeStakeDAO = ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER_STAKEDAO));
 
@@ -248,6 +248,25 @@ contract CurveStrategyTest is BaseTest {
         assertGt(fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP)), balanceBeforeConvexCurve, "2");
         //Assertion 3: Check StakeDAO balance
         assertGt(ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER_STAKEDAO)), balanceBeforeStakeDAO, "3");
+    }
+
+    function test_RevertWhen_OptimizorAlreadyPaused() public {
+        optimizor.pauseConvexFraxDeposit();
+
+        vm.expectRevert(Optimizor.ALREADY_PAUSED.selector);
+        optimizor.pauseConvexFraxDeposit();
+    }
+
+    function test_RevertWhen_OptimizorNotPaused() public {
+        vm.expectRevert(Optimizor.NOT_PAUSED.selector);
+        optimizor.killConvexFrax();
+    }
+
+    function test_RevertWhen_OptimizorTooSoon() public {
+        optimizor.pauseConvexFraxDeposit();
+
+        vm.expectRevert(Optimizor.TOO_SOON.selector);
+        optimizor.killConvexFrax();
     }
 
     function test_PauseConvexFraxDeposit() public {
