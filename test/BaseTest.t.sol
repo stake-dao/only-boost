@@ -322,7 +322,7 @@ contract BaseTest is Test {
         IFraxUnifiedFarm.LockedStake memory infosBefore;
         address crvRewards;
         if (amountConvex != 0) {
-            if (isMetapool[address(token)]) {
+            if (isMetapool[address(token)] && !optimizor.convexFraxPaused()) {
                 pidsInfoBefore = fallbackConvexFrax.getPid(address(token));
                 address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfoBefore.pid, address(fallbackConvexFrax));
                 (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfoBefore.pid);
@@ -343,7 +343,7 @@ contract BaseTest is Test {
         BaseFallback.PidsInfo memory pidsInfo;
         IFraxUnifiedFarm.LockedStake memory infos;
         if (amountConvex != 0) {
-            if (isMetapool[address(token)]) {
+            if (isMetapool[address(token)] && !optimizor.convexFraxPaused()) {
                 pidsInfo = fallbackConvexFrax.getPid(address(token));
                 address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
                 (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
@@ -366,7 +366,7 @@ contract BaseTest is Test {
             "1"
         );
 
-        if (isMetapool[address(token)] && amountConvex != 0) {
+        if (isMetapool[address(token)] && amountConvex != 0 && !optimizor.convexFraxPaused()) {
             // Assertion 2: Check personal vault created
             assertTrue(poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax)) != address(0), "2");
             // Assertion 3: Check value for personal vault, such as liquidity, kek_id, timestamps, lock_multiplier
@@ -377,7 +377,7 @@ contract BaseTest is Test {
             assertGt(infos.lock_multiplier, 0, "7");
         } else if (amountConvex != 0) {
             // Assertion 2: Check Gauge balance of Convex Liquid Locker
-            assertEq(ERC20(GAUGE_CRV3).balanceOf(address(LOCKER_CONVEX)) - balanceBeforeConvex, amountConvex, "2");
+            assertEq(ERC20(gauges[address(token)]).balanceOf(address(LOCKER_CONVEX)) - balanceBeforeConvex, amountConvex, "2");
             // Assertion 3: Check Convex balance of Curve Strategy
             assertEq(ERC20(crvRewards).balanceOf(address(fallbackConvexCurve)), amountConvex, "3");
         }
@@ -543,7 +543,9 @@ contract BaseTest is Test {
             amountStakeDAO = REF_AMOUNT;
         } else if (amountStakeDAO == MAX) {
             // Calculate optimal amount
-            uint256 optimalAmount = optimizor.optimization1(gauges[address(token)], isMetapool[address(token)]);
+            uint256 optimalAmount = optimizor.optimization1(
+                gauges[address(token)], isMetapool[address(token)] && !optimizor.convexFraxPaused()
+            );
             assert(optimalAmount > 0);
 
             amountStakeDAO = optimalAmount - ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);

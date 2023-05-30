@@ -3,3 +3,4 @@ lib
 out
 .env
 old
+lcov.info

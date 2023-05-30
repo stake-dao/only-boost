@@ -80,6 +80,15 @@ contract CurveStrategyTest is BaseTest {
         // Note: Locking additional liquidity doesn't change ending-timestamp
     }
 
+    function test_Deposit_WhenConvexFraxIsPaused() public {
+        // Pause ConvexFrax deposit
+        optimizor.pauseConvexFraxDeposit();
+
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO1, uint256 partConvex1) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
+        _depositTest(ALUSD_FRAXBP, partStakeDAO1, partConvex1, 0);
+    }
+
     // --- Withdraw
     function test_Withdraw_AllFromStakeDAO() public {
         // === DEPOSIT PROCESS === //
@@ -201,5 +210,54 @@ contract CurveStrategyTest is BaseTest {
         fallbackConvexFrax.setFeesOnRewards(1e16);
 
         _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)));
+    }
+
+    // --- Kill ConvexFrax
+    function test_KillConvexFrax() public {
+        // === DEPOSIT PROCESS === //
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1_000_000e18);
+        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex);
+
+        // Pause ConvexFrax deposit
+        optimizor.pauseConvexFraxDeposit();
+
+        skip(1 weeks);
+
+        // Allow optimizor to withdraw from ConvexFrax
+        rolesFallbackConvexFrax.setRoleCapability(
+            4, address(fallbackConvexFrax), FallbackConvexFrax.withdraw.selector, true
+        );
+        rolesFallbackConvexFrax.setUserRole(address(optimizor), 4, true);
+
+        // Allow optimizor to call depositForOptimizor on CurveStrategy
+        rolesStrategy.setRoleCapability(1, address(curveStrategy), CurveStrategy.depositForOptimizor.selector, true);
+        rolesStrategy.setUserRole(address(optimizor), 1, true);
+
+        assertGt(fallbackConvexFrax.balanceOf(address(ALUSD_FRAXBP)), 0, "0");
+        
+        uint256 balanceBeforeConvexCurve = fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP));
+        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER_STAKEDAO));
+
+        // === KILL PROCESS === //
+        optimizor.killConvexFrax();
+
+        // === ASSERTIONS === //
+        //Assertion 1: Check ConvexFrax balance
+        assertEq(fallbackConvexFrax.balanceOf(address(ALUSD_FRAXBP)), 0, "1");
+        //Assertion 2: Check ConvexCurve balance
+        assertGt(fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP)), balanceBeforeConvexCurve, "2");
+        //Assertion 3: Check StakeDAO balance
+        assertGt(ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER_STAKEDAO)), balanceBeforeStakeDAO, "3");
+    }
+
+    function test_PauseConvexFraxDeposit() public {
+        assertEq(optimizor.convexFraxPaused(), false, "0");
+        assertEq(optimizor.convexFraxPausedTimestamp(), 0, "1");
+
+        // Pause ConvexFrax deposit
+        optimizor.pauseConvexFraxDeposit();
+
+        assertEq(optimizor.convexFraxPaused(), true, "2");
+        assertEq(optimizor.convexFraxPausedTimestamp(), block.timestamp, "3");
     }
 }

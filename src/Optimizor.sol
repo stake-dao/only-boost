@@ -32,11 +32,17 @@ contract Optimizor is Auth {
     uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
     address[] public fallbacks;
     bool public isConvexFraxKilled;
+    bool public convexFraxPaused;
+    uint256 public convexFraxPausedTimestamp;
 
     // --- Contracts
     CurveStrategy public curveStrategy;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
+
+    error TOO_SOON();
+    error NOT_PAUSED();
+    error ALREADY_PAUSED();
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -146,7 +152,7 @@ contract Optimizor is Auth {
         uint256[] memory amounts = new uint256[](3);
 
         // If Metapool and available on Convex Frax
-        if (statusFrax && !isConvexFraxKilled) {
+        if (statusFrax && !convexFraxPaused) {
             // Get the optimal amount of lps that must be held by the locker
             uint256 opt = optimization1(liquidityGauge, true);
             // Get the balance of the locker on the liquidity gauge
@@ -268,7 +274,20 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
+    function pauseConvexFraxDeposit() external requiresAuth {
+        if (convexFraxPaused) revert ALREADY_PAUSED();
+
+        convexFraxPaused = true;
+        convexFraxPausedTimestamp = block.timestamp;
+    }
+
+    event log_named_uint(string name, uint256 value);
+
     function killConvexFrax() external requiresAuth {
+        if (!convexFraxPaused) revert NOT_PAUSED();
+        if ((convexFraxPausedTimestamp + fallbackConvexFrax.lockingIntervalSec()) > block.timestamp) {
+            revert TOO_SOON();
+        }
         isConvexFraxKilled = true;
 
         uint256 len = fallbackConvexFrax.lastPidsCount();
