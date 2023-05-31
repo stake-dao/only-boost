@@ -77,6 +77,7 @@ contract BaseTest is Test {
     address public constant GAUGE_EUR3 = 0x1E212e054d74ed136256fc5a5DDdB4867c6E003F;
     address public constant GAUGE_CNC_ETH = 0x5A8fa46ebb404494D718786e55c4E043337B10bF;
     address public constant GAUGE_STETH_ETH = 0x182B723a58739a9c974cFDB385ceaDb237453c28;
+    address public constant GAUGE_COIL_FRAXBP = 0x06B30D5F2341C2FB3F6B48b109685997022Bd272;
     address public constant GAUGE_ALUSD_FRAXBP = 0x740BA8aa0052E07b925908B380248cb03f3DE5cB;
 
     // --- Lockers address
@@ -122,6 +123,7 @@ contract BaseTest is Test {
         gauges[address(CNC_ETH)] = GAUGE_CNC_ETH;
         gauges[address(ALUSD_FRAXBP)] = GAUGE_ALUSD_FRAXBP;
         gauges[address(STETH_ETH)] = GAUGE_STETH_ETH;
+        gauges[address(COIL_FRAXBP)] = GAUGE_COIL_FRAXBP;
 
         // Set mapping for metapools
         isMetapool[address(CRV3)] = false;
@@ -150,6 +152,7 @@ contract BaseTest is Test {
         curveStrategy.setGauge(address(CNC_ETH), GAUGE_CNC_ETH);
         curveStrategy.setGauge(address(STETH_ETH), GAUGE_STETH_ETH);
         curveStrategy.setGauge(address(ALUSD_FRAXBP), GAUGE_ALUSD_FRAXBP);
+        curveStrategy.setGauge(address(COIL_FRAXBP), GAUGE_COIL_FRAXBP);
 
         // Add all stake dao gauges
         curveStrategy.setMultiGauge(gauges[address(CRV3)], address(liquidityGaugeMockCRV3));
@@ -175,6 +178,7 @@ contract BaseTest is Test {
         tokens[1] = address(ALUSD_FRAXBP);
         tokens[2] = address(CNC_ETH);
         tokens[3] = address(STETH_ETH);
+        tokens[4] = address(COIL_FRAXBP);
 
         uint256 len = tokens.length;
         for (uint8 i; i < len; ++i) {
@@ -230,6 +234,7 @@ contract BaseTest is Test {
         vm.label(address(EUR3), "EUR3");
         vm.label(address(CNC_ETH), "CNC_ETH");
         vm.label(address(STETH_ETH), "STETH_ETH");
+        vm.label(address(COIL_FRAXBP), "COIL_FRAXBP");
         vm.label(address(ALUSD_FRAXBP), "ALUSD_FRAXBP");
 
         // Gauge addresses
@@ -237,6 +242,7 @@ contract BaseTest is Test {
         vm.label(GAUGE_EUR3, "GAUGE_EUR3");
         vm.label(GAUGE_CNC_ETH, "GAUGE_CNC_ETH");
         vm.label(GAUGE_STETH_ETH, "GAUGE_STETH_ETH");
+        vm.label(GAUGE_COIL_FRAXBP, "GAUGE_COIL_FRAXBP");
         vm.label(GAUGE_ALUSD_FRAXBP, "GAUGE_ALUSD_FRAXBP");
     }
 
@@ -256,6 +262,18 @@ contract BaseTest is Test {
         vm.label(address(liquidityGaugeMockCNC_ETH), "LiquidityGaugeMockCNC_ETH");
         vm.label(address(liquidityGaugeMockSTETH_ETH), "LiquidityGaugeMockSTETH_ETH");
         vm.label(address(liquidityGaugeMockALUSD_FRAXBP), "LiquidityGaugeMockALUSD_FRAXBP");
+    }
+
+    function _addCOIL_FRAXBPOnConvexFrax() internal {
+        // This need to be call at block.number 17326000, using following tx
+        // https://etherscan.io/tx/0xbcc25272dad48329ed963991f156b929b28ee171e4ad157e2d9b749f3d85eb7b
+        // Add all the stuff for ConvexFrax
+        vm.prank(0x947B7742C403f20e5FaCcDAc5E092C943E7D0277); // Convex Deployer
+        boosterConvexFrax.addPool(
+            0x7D54C53e6940E88a7ac1970490DAFbBF85D982f4,
+            0x39cd4db6460d8B5961F73E997E86DdbB7Ca4D5F6,
+            0xa5B6f8Ec4122c5Fe0dBc4Ead8Bfe66A412aE427C
+        );
     }
 
     //////////////////////////////////////////////////////
@@ -391,7 +409,7 @@ contract BaseTest is Test {
         uint256 lockCountBefore;
         if (isMetapool[address(token)]) {
             // Get all needed infos for following assertions
-            pidsInfo = fallbackConvexFrax.getPid(address(ALUSD_FRAXBP));
+            pidsInfo = fallbackConvexFrax.getPid(address(token));
             personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
             (, staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
             lockCountBefore = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
@@ -426,17 +444,20 @@ contract BaseTest is Test {
         if (!isMetapool[address(token)]) {
             assertEq(balanceBeforeConvex - fallbackConvexCurve.balanceOf(address(token)), amountConvex, "3");
         } else {
-            // If withdrawn amount is not total balance, remaining amount is redeposited
-            if (amountConvex != infosBefore.liquidity) {
-                //Assertion 3: Check length of lockedStakesOf, should be 2 due to withdraw and redeposit
-                assertEq(lockCountAfter, lockCountBefore + 1, "3");
-                //Assertion 4: Check kek_id is different due to new lockStake
-                assertTrue(infosAfter.kek_id != infosBefore.kek_id, "4");
-            } else {
+            // If withdrawn amount is not total balance, remaining amount is redeposited or special edgecase for COIL_FRAXBP tests
+            if (amountConvex == infosBefore.liquidity || token == COIL_FRAXBP) {
+                // token == COIL_FRAXBP -> Test the edge case where there is amount to withdraw for both fallbacks
+                // This edge case should only be testing when withdrawing all COIL_FRAXBP
+
                 //Assertion 3: Check length of lockedStakesOf, should be 1 due to full withdraw
-                assertEq(lockCountAfter, lockCountBefore, "3");
+                assertEq(lockCountAfter, lockCountBefore, "3.2");
                 //Assertion 4: Check kek_id is the same due to no new lockStake
-                assertTrue(infosAfter.kek_id == bytes32(0), "4");
+                assertTrue(infosAfter.kek_id == bytes32(0), "4.2");
+            } else {
+                //Assertion 3: Check length of lockedStakesOf, should be 2 due to withdraw and redeposit
+                assertEq(lockCountAfter, lockCountBefore + 1, "3.1");
+                //Assertion 4: Check kek_id is different due to new lockStake
+                assertTrue(infosAfter.kek_id != infosBefore.kek_id, "4.1");
             }
         }
     }
@@ -545,7 +566,8 @@ contract BaseTest is Test {
             );
             assert(optimalAmount > 0);
 
-            amountStakeDAO = optimalAmount - ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+            uint256 currentBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+            amountStakeDAO = optimalAmount > currentBalance ? optimalAmount - currentBalance : 0;
         }
 
         // Amount for Convex

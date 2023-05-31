@@ -103,20 +103,31 @@ contract CurveStrategyTest is BaseTest {
         _depositTest(ALUSD_FRAXBP, partStakeDAO1, partConvex1, 0);
     }
 
-    /*
-    function test_Deposit_OnConvexCurveAndFrax() public useFork(forkId2) {
+    function test_Deposit_UsingConvexCurveAndFrax() public useFork(forkId2) {
         // This situation could rarely happen, but it's possible
         // When a pool is added on ConvexCurve, user can deposit on curveStategy for this pool
         // And some times after, the pool is added on ConvexFrax
         // so this should have some tokens on both fallbacks,
         // let's test it using COIL_FRAXBP, added on ConvexFrax at block 17326004 on this tx :
         // https://etherscan.io/tx/0xbcc25272dad48329ed963991f156b929b28ee171e4ad157e2d9b749f3d85eb7b
-        
 
-        // First deposit into StakeDAO Locker and Convex Curve 
-                (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, MAX, 1);
-                _deposit
-    }*/
+        // First deposit into StakeDAO Locker and Convex Curve,
+        // at the moment COIL_FRAXBP is not added on Metapool mapping on this test
+        (uint256 partStakeDAO, uint256 partConvexBefore) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
+        _depositTest(COIL_FRAXBP, partStakeDAO, partConvexBefore, 0);
+
+        _addCOIL_FRAXBPOnConvexFrax();
+        isMetapool[address(COIL_FRAXBP)] = true;
+
+        // Second deposit into StakeDAO Locker and Convex Frax
+        (uint256 partStakeDAOAfter, uint256 partConvexAfter) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
+        _depositTest(COIL_FRAXBP, partStakeDAOAfter, partConvexAfter, 0);
+
+        skip(1 weeks);
+        // Check that we have tokens on both fallbacks
+        assertEq(fallbackConvexFrax.balanceOf(address(COIL_FRAXBP)), partConvexAfter, "1");
+        assertEq(fallbackConvexCurve.balanceOf(address(COIL_FRAXBP)), partConvexBefore, "2");
+    }
 
     // --- Withdraw
     function test_Withdraw_AllFromStakeDAO() public useFork(forkId1) {
@@ -162,6 +173,37 @@ contract CurveStrategyTest is BaseTest {
 
         // Withdraw ALUSD_FRAXBP
         _withdrawTest(ALUSD_FRAXBP, 0, partConvex, fallbackConvexFrax.lockingIntervalSec());
+    }
+
+    function test_Withdraw_AllUsingConvexCurveAndFrax() public useFork(forkId2) {
+        // This is the following ot test_Deposit_OnConvexCurveAndFrax
+        // On this withdraw we need to take tokens from both fallbacks
+
+        // === DEPOSIT PROCESS === //
+        // First deposit into StakeDAO Locker and Convex Curve,
+        // at the moment COIL_FRAXBP is not added on Metapool mapping on this test
+        (uint256 partStakeDAOBefore, uint256 partConvexBefore) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
+        console.log("partStakeDAOBefore", partStakeDAOBefore);
+        _depositTest(COIL_FRAXBP, partStakeDAOBefore, partConvexBefore, 0);
+
+        // Add the pool on ConvexFrax
+        _addCOIL_FRAXBPOnConvexFrax();
+        isMetapool[address(COIL_FRAXBP)] = true;
+
+        // Second deposit into StakeDAO Locker and Convex Frax
+        (uint256 partStakeDAOAfter, uint256 partConvexAfter) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
+        _depositTest(COIL_FRAXBP, partStakeDAOAfter, partConvexAfter, 0);
+
+        // Use the total amount owned by the locker to be sure to withdraw all
+        uint256 balanceOfStakeDAO = ERC20(gauges[address(COIL_FRAXBP)]).balanceOf(LOCKER_STAKEDAO);
+
+        // === WITHDRAW PROCESS === //
+        _withdrawTest(
+            COIL_FRAXBP,
+            partStakeDAOAfter + partStakeDAOBefore + balanceOfStakeDAO,
+            partConvexAfter + partConvexBefore,
+            fallbackConvexFrax.lockingIntervalSec()
+        );
     }
 
     // --- Claim
