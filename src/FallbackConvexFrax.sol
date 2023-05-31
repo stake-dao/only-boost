@@ -24,7 +24,9 @@ contract FallbackConvexFrax is BaseFallback {
 
     event Redeposited(address lpToken, uint256 amount);
 
-    constructor(address _curveStrategy, address _fallbackGov) BaseFallback(_curveStrategy, _fallbackGov) {
+    constructor(address owner, Authority authority, address _curveStrategy)
+        BaseFallback(owner, authority, _curveStrategy)
+    {
         boosterConvexFrax = IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa);
         poolRegistryConvexFrax = IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69);
 

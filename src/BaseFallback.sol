@@ -30,7 +30,7 @@ contract BaseFallback is Auth {
     event Withdrawn(address token, uint256 amount);
     event ClaimedRewards(address token, uint256 amountCRV, uint256 amountCVX);
 
-    constructor(address _curveStrategy, address _fallbackGov) Auth(_fallbackGov, Authority(address(0))) {
+    constructor(address owner, Authority _authority, address _curveStrategy) Auth(owner, _authority) {
         curveStrategy = _curveStrategy;
     }
 

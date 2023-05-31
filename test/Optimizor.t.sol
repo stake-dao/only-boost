@@ -16,7 +16,7 @@ contract OptimizorTest is BaseTest {
         vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER));
 
         // Deploy Optimizor
-        optimizor = new Optimizor(address(this));
+        optimizor = new Optimizor(address(this), Authority(address(0)));
         // End for deployment
 
         fallbackConvexFrax = optimizor.fallbackConvexFrax();

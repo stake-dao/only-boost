@@ -37,10 +37,7 @@ contract BaseTest is Test {
     // --- Contracts
     Optimizor public optimizor;
     CurveStrategy public curveStrategy;
-    RolesAuthority public rolesStrategy;
-    RolesAuthority public rolesOptimizor;
-    RolesAuthority public rolesFallbackConvexFrax;
-    RolesAuthority public rolesFallbackConvexCurve;
+    RolesAuthority public rolesAuthority;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
@@ -85,7 +82,7 @@ contract BaseTest is Test {
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
 
     // --- Users address
-    address public immutable ALICE;
+    address public immutable ALICE = makeAddr("Alice");
 
     // --- Fees amounts in basis points
     uint256 public constant FEE_PERF = 100; // 1%
@@ -124,9 +121,6 @@ contract BaseTest is Test {
         isMetapool[address(CNC_ETH)] = false;
         isMetapool[address(ALUSD_FRAXBP)] = true;
         isMetapool[address(STETH_ETH)] = false;
-
-        // Set user address
-        ALICE = makeAddr("Alice");
     }
 
     //////////////////////////////////////////////////////
@@ -185,46 +179,34 @@ contract BaseTest is Test {
             curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
         }
 
-        // Grant access to function for curve strategy
-        rolesStrategy.setPublicCapability(address(curveStrategy), CurveStrategy.claim.selector, true);
-        rolesStrategy.setPublicCapability(address(curveStrategy), CurveStrategy.claim3Crv.selector, true);
+        // Grant public access to claim function for curve strategy
+        rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.claim.selector, true);
+        rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.claim3Crv.selector, true);
 
-        // Grant access to function for optimizor
-        optimizor.setAuthority(rolesOptimizor);
-        rolesOptimizor.setRoleCapability(1, address(optimizor), Optimizor.optimizeDeposit.selector, true);
-        rolesOptimizor.setRoleCapability(2, address(optimizor), Optimizor.optimizeWithdraw.selector, true);
-        rolesOptimizor.setUserRole(address(curveStrategy), 1, true);
-        rolesOptimizor.setUserRole(address(curveStrategy), 2, true);
+        // Grant access to deposit/withdraw function for optimizor to curveStrategy
+        rolesAuthority.setRoleCapability(1, address(optimizor), Optimizor.optimizeDeposit.selector, true);
+        rolesAuthority.setRoleCapability(2, address(optimizor), Optimizor.optimizeWithdraw.selector, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 1, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 2, true);
 
-        // Grant access to function for fallback convex frax
-        fallbackConvexFrax.setAuthority(rolesFallbackConvexFrax);
-        rolesFallbackConvexFrax.setRoleCapability(
-            1, address(fallbackConvexFrax), FallbackConvexFrax.deposit.selector, true
-        );
-        rolesFallbackConvexFrax.setRoleCapability(
-            2, address(fallbackConvexFrax), FallbackConvexFrax.withdraw.selector, true
-        );
-        rolesFallbackConvexFrax.setRoleCapability(
-            3, address(fallbackConvexFrax), FallbackConvexFrax.claimRewards.selector, true
-        );
-        rolesFallbackConvexFrax.setUserRole(address(curveStrategy), 1, true);
-        rolesFallbackConvexFrax.setUserRole(address(curveStrategy), 2, true);
-        rolesFallbackConvexFrax.setUserRole(address(curveStrategy), 3, true);
+        // Grant access to deposit/withdraw/claim function for fallback convex frax to curveStrategy
+        rolesAuthority.setRoleCapability(1, address(fallbackConvexFrax), FallbackConvexFrax.deposit.selector, true);
+        rolesAuthority.setRoleCapability(2, address(fallbackConvexFrax), FallbackConvexFrax.withdraw.selector, true);
+        rolesAuthority.setRoleCapability(3, address(fallbackConvexFrax), FallbackConvexFrax.claimRewards.selector, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 1, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 2, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 3, true);
 
-        // Grant access to function for fallback convex curve
-        fallbackConvexCurve.setAuthority(rolesFallbackConvexCurve);
-        rolesFallbackConvexCurve.setRoleCapability(
-            1, address(fallbackConvexCurve), FallbackConvexCurve.deposit.selector, true
-        );
-        rolesFallbackConvexCurve.setRoleCapability(
-            2, address(fallbackConvexCurve), FallbackConvexCurve.withdraw.selector, true
-        );
-        rolesFallbackConvexCurve.setRoleCapability(
+        // Grant access to deposit/withdraw/claim function for fallback convex curve to curveStrategy
+        fallbackConvexCurve.setAuthority(rolesAuthority);
+        rolesAuthority.setRoleCapability(1, address(fallbackConvexCurve), FallbackConvexCurve.deposit.selector, true);
+        rolesAuthority.setRoleCapability(2, address(fallbackConvexCurve), FallbackConvexCurve.withdraw.selector, true);
+        rolesAuthority.setRoleCapability(
             3, address(fallbackConvexCurve), FallbackConvexCurve.claimRewards.selector, true
         );
-        rolesFallbackConvexCurve.setUserRole(address(curveStrategy), 1, true);
-        rolesFallbackConvexCurve.setUserRole(address(curveStrategy), 2, true);
-        rolesFallbackConvexCurve.setUserRole(address(curveStrategy), 3, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 1, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 2, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 3, true);
     }
 
     function _labelAddress() internal {
@@ -251,6 +233,7 @@ contract BaseTest is Test {
     }
 
     function _labelContract() internal {
+        vm.label(address(rolesAuthority), "RolesAuthority");
         vm.label(address(curveStrategy), "CurveStrategy");
         vm.label(address(curveStrategy.optimizor()), "Optimizor");
         vm.label(address(fallbackConvexFrax), "FallbackConvexFrax");
@@ -259,12 +242,6 @@ contract BaseTest is Test {
         vm.label(address(boosterConvexFrax), "BoosterConvexFrax");
         vm.label(address(boosterConvexCurve), "BoosterConvexCurve");
         vm.label(address(poolRegistryConvexFrax), "PoolRegistryConvexFrax");
-
-        // Auth
-        vm.label(address(rolesStrategy), "RolesStrategy");
-        vm.label(address(rolesOptimizor), "RolesOptimizor");
-        vm.label(address(rolesFallbackConvexFrax), "RolesFallbackConvexFrax");
-        vm.label(address(rolesFallbackConvexCurve), "RolesFallbackConvexCurve");
 
         // Mocks
         vm.label(address(liquidityGaugeMockCRV3), "LiquidityGaugeMockCRV3");
@@ -310,6 +287,16 @@ contract BaseTest is Test {
         // === CLAIM PROCESS === //
         vm.prank(ALICE);
         curveStrategy.claim(address(token));
+    }
+
+    function _killConvexFraxAuth() internal {
+        // Allow optimizor to withdraw from ConvexFrax
+        rolesAuthority.setRoleCapability(1, address(fallbackConvexFrax), FallbackConvexFrax.withdraw.selector, true);
+        rolesAuthority.setUserRole(address(optimizor), 1, true);
+
+        // Allow optimizor to call depositForOptimizor on CurveStrategy
+        rolesAuthority.setRoleCapability(1, address(curveStrategy), CurveStrategy.depositForOptimizor.selector, true);
+        rolesAuthority.setUserRole(address(optimizor), 1, true);
     }
 
     // --- Assertions
@@ -377,7 +364,9 @@ contract BaseTest is Test {
             assertGt(infos.lock_multiplier, 0, "7");
         } else if (amountConvex != 0) {
             // Assertion 2: Check Gauge balance of Convex Liquid Locker
-            assertEq(ERC20(gauges[address(token)]).balanceOf(address(LOCKER_CONVEX)) - balanceBeforeConvex, amountConvex, "2");
+            assertEq(
+                ERC20(gauges[address(token)]).balanceOf(address(LOCKER_CONVEX)) - balanceBeforeConvex, amountConvex, "2"
+            );
             // Assertion 3: Check Convex balance of Curve Strategy
             assertEq(ERC20(crvRewards).balanceOf(address(fallbackConvexCurve)), amountConvex, "3");
         }

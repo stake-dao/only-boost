@@ -15,11 +15,8 @@ contract CurveStrategyTest is BaseTest {
         vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER));
 
         // Deployment contracts
-        rolesStrategy = new RolesAuthority(address(this), Authority(address(0)));
-        rolesOptimizor = new RolesAuthority(address(this), Authority(address(0)));
-        rolesFallbackConvexFrax = new RolesAuthority(address(this), Authority(address(0)));
-        rolesFallbackConvexCurve = new RolesAuthority(address(this), Authority(address(0)));
-        curveStrategy = new CurveStrategy(Authority(address(rolesStrategy)), address(this));
+        rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
+        curveStrategy = new CurveStrategy(address(this), rolesAuthority);
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock();
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock();
         liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock();
@@ -146,7 +143,7 @@ contract CurveStrategyTest is BaseTest {
         _claimLiquidLockerTest(CNC_ETH, 1 weeks, extraTokens);
     }
 
-    function test_ClaimExtraRewardsWithoutReceiver() public {
+    function test_Claim_ExtraRewardsWithoutReceiver() public {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(STETH_ETH, 1, 0);
 
         _deposit(STETH_ETH, partStakeDAO, partConvex);
@@ -221,17 +218,11 @@ contract CurveStrategyTest is BaseTest {
         // Pause ConvexFrax deposit
         optimizor.pauseConvexFraxDeposit();
 
+        // Wait 1 week
         skip(1 weeks);
 
-        // Allow optimizor to withdraw from ConvexFrax
-        rolesFallbackConvexFrax.setRoleCapability(
-            4, address(fallbackConvexFrax), FallbackConvexFrax.withdraw.selector, true
-        );
-        rolesFallbackConvexFrax.setUserRole(address(optimizor), 4, true);
-
-        // Allow optimizor to call depositForOptimizor on CurveStrategy
-        rolesStrategy.setRoleCapability(1, address(curveStrategy), CurveStrategy.depositForOptimizor.selector, true);
-        rolesStrategy.setUserRole(address(optimizor), 1, true);
+        // Authorize Optimizor to withdraw from convexFrax and deposit into strategy
+        _killConvexFraxAuth();
 
         assertGt(fallbackConvexFrax.balanceOf(address(ALUSD_FRAXBP)), 0, "0");
 
