@@ -183,7 +183,6 @@ contract CurveStrategyTest is BaseTest {
         // First deposit into StakeDAO Locker and Convex Curve,
         // at the moment COIL_FRAXBP is not added on Metapool mapping on this test
         (uint256 partStakeDAOBefore, uint256 partConvexBefore) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
-        console.log("partStakeDAOBefore", partStakeDAOBefore);
         _depositTest(COIL_FRAXBP, partStakeDAOBefore, partConvexBefore, 0);
 
         // Add the pool on ConvexFrax

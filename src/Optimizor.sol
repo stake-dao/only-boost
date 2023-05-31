@@ -245,15 +245,6 @@ contract Optimizor is Auth {
                 amounts[0] = min(amount, balanceOfStakeDAO);
                 // Update the amount to withdraw
                 amount -= amounts[0];
-
-                // If there is still amount to withdraw, but this situation should happen only rarely
-                // Because there should not have deposit both on convex curve and convex frax
-                if (amount > 0 && balanceOfConvexFrax > 0) {
-                    // Withdraw as much as possible from Convex Frax
-                    amounts[2] = min(amount, balanceOfConvexFrax);
-                    // Update the amount to withdraw
-                    amount -= amounts[2];
-                }
             }
         }
         // === Situation n°3 === //
