@@ -13,7 +13,7 @@ contract OptimizorTest is BaseTest {
         // 17136745 : 27 April 2023 09:51:47 UTC
         // 17137000 : 27 April 2023 10:43:59 UTC
         // Create Fork
-        vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER));
+        vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_1));
 
         // Deploy Optimizor
         optimizor = new Optimizor(address(this), Authority(address(0)));

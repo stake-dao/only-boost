@@ -69,6 +69,7 @@ contract BaseTest is Test {
     ERC20 public constant EUR3 = ERC20(0xb9446c4Ef5EBE66268dA6700D26f96273DE3d571);
     ERC20 public constant CNC_ETH = ERC20(0xF9835375f6b268743Ea0a54d742Aa156947f8C06);
     ERC20 public constant STETH_ETH = ERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
+    ERC20 public constant COIL_FRAXBP = ERC20(0xb85010193FD15aF8390dbD62790Da70F46c1126B);
     ERC20 public constant ALUSD_FRAXBP = ERC20(0xB30dA2376F63De30b42dC055C93fa474F31330A5);
 
     // --- Curve Gauges address
@@ -94,7 +95,13 @@ contract BaseTest is Test {
     // --- Usefull constants
     uint256 public constant REF_AMOUNT = 1_000e18;
     uint256 public constant MAX = type(uint256).max;
-    uint256 public constant FORK_BLOCK_NUMBER = 17330000;
+
+    // --- Fork block numbers
+    uint256 public constant FORK_BLOCK_NUMBER_1 = 17330000;
+    uint256 public constant FORK_BLOCK_NUMBER_2 = 17326000; // DO NOT TOUCH IT !!
+
+    uint256 public forkId1;
+    uint256 public forkId2;
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES

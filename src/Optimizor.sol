@@ -207,7 +207,7 @@ contract Optimizor is Auth {
         uint256[] memory amounts = new uint256[](3);
 
         // === Situation n°1 === //
-        // If available on Convex Curve
+        // If available on Convex Frax
         if (balanceOfConvexFrax > 0) {
             // Withdraw as much as possible from Convex Frax
             amounts[2] = min(amount, balanceOfConvexFrax);
