@@ -20,6 +20,7 @@ import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 // --- Mocks
 import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
+import {FallbackConvexCurveMock} from "src/mocks/FallbackConvexCurveMock.sol";
 
 // --- Interfaces
 import {ILocker} from "src/interfaces/ILocker.sol";

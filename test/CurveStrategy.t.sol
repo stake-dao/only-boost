@@ -46,10 +46,16 @@ contract CurveStrategyTest is BaseTest {
     }
 
     // --- Deposit
-    function test_Deposit_AllOnStakeDAO() public {
+    function test_Deposit_AllOnStakeDAOWithOptimalAmount() public {
         (uint256 partStakeDAO,) = _calculDepositAmount(CRV3, 1, 0);
 
         _depositTest(CRV3, partStakeDAO, 0, 0);
+    }
+
+    function test_Deposit_AllOnStakeDAOBecauseOnlyChoice() public {
+        FallbackConvexCurveMock mock = new FallbackConvexCurveMock(address(curveStrategy));
+        optimizor.setFallbackAddresses(address(mock), address(fallbackConvexFrax));
+        _deposit(CRV3, 5_000_000e18, 0, 0);
     }
 
     function test_Deposit_UsingConvexCurveFallback() public {
