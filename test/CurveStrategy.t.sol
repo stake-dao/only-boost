@@ -205,6 +205,14 @@ contract CurveStrategyTest is BaseTest {
         );
     }
 
+    function test_RevertWhen_WithdrawTooMuch() public useFork(forkId1) {
+        _deposit(CRV3, 100, 0);
+
+        uint256 balanceOfStakeDAO = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
+        vm.expectRevert(Optimizor.WRONG_AMOUNT.selector);
+        curveStrategy.withdraw(address(CRV3), balanceOfStakeDAO + 1);
+    }
+
     // --- Claim
     function test_Claim_NoExtraRewards() public useFork(forkId1) {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, 1, 0);

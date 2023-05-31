@@ -87,4 +87,10 @@ contract OptimizorTest is BaseTest {
         assertEq(results[1], amountFallbackCurve, "4");
         assertEq(results[2], amountFallbackFrax, "5");
     }
+
+    function test_Min() public {
+        // Only coverage purpose
+        assertEq(optimizor.min(1, 2), 1);
+        assertEq(optimizor.min(2, 1), 1);
+    }
 }

@@ -42,6 +42,7 @@ contract Optimizor is Auth {
 
     error TOO_SOON();
     error NOT_PAUSED();
+    error WRONG_AMOUNT();
     error ALREADY_PAUSED();
 
     //////////////////////////////////////////////////////
@@ -257,7 +258,7 @@ contract Optimizor is Auth {
         }
 
         // If there is still some amount to withdraw, it means that optimizor miss calculated
-        assert(amount == 0);
+        if (amount != 0) revert WRONG_AMOUNT();
 
         return (fallbacks, amounts);
     }
