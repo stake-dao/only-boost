@@ -351,13 +351,13 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_PauseConvexFraxDeposit() public useFork(forkId1) {
-        assertEq(optimizor.convexFraxPaused(), false, "0");
+        assertEq(optimizor.isConvexFraxPaused(), false, "0");
         assertEq(optimizor.convexFraxPausedTimestamp(), 0, "1");
 
         // Pause ConvexFrax deposit
         optimizor.pauseConvexFraxDeposit();
 
-        assertEq(optimizor.convexFraxPaused(), true, "2");
+        assertEq(optimizor.isConvexFraxPaused(), true, "2");
         assertEq(optimizor.convexFraxPausedTimestamp(), block.timestamp, "3");
     }
 }

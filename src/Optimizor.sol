@@ -12,9 +12,14 @@ import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
 contract Optimizor is Auth {
+    struct CachedOptimization {
+        uint256 value;
+        uint256 timestamp;
+    }
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
+
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV Token
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B); // CVX Token
 
@@ -30,10 +35,17 @@ contract Optimizor is Auth {
     /// --- VARIABLES
     //////////////////////////////////////////////////////
     uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
+    uint256 public convexFraxPausedTimestamp; // Timestamp of the Convex FRAX pause
+    uint256 public cachePeriod = 7 days; //
     address[] public fallbacks;
-    bool public isConvexFraxKilled;
-    bool public convexFraxPaused;
-    uint256 public convexFraxPausedTimestamp;
+    // List of fallbacks
+
+    bool public isConvexFraxPaused; // Pause Convex FRAX Deposit
+    bool public isConvexFraxKilled; // Kill Convex FRAX Deposit and Withdraw
+    bool public useLastOpti; // Use last optimization value
+
+    mapping(address => CachedOptimization) public lastOpti;
+    mapping(address => CachedOptimization) public lastOptiMetapool;
 
     // --- Contracts
     CurveStrategy public curveStrategy;
@@ -153,9 +165,19 @@ contract Optimizor is Auth {
         uint256[] memory amounts = new uint256[](3);
 
         // If Metapool and available on Convex Frax
-        if (statusFrax && !convexFraxPaused) {
+        if (statusFrax && !isConvexFraxPaused) {
             // Get the optimal amount of lps that must be held by the locker
-            uint256 opt = optimization1(liquidityGauge, true);
+            uint256 opt;
+            // If optimize calculation is activated and the last optimization is not too old, use the cached value
+            if (useLastOpti && lastOptiMetapool[liquidityGauge].timestamp + cachePeriod > block.timestamp) {
+                opt = lastOptiMetapool[liquidityGauge].value;
+            }
+            // Else, calculate the optimal amount and cache it
+            else {
+                opt = optimization1(liquidityGauge, true);
+                lastOptiMetapool[liquidityGauge] = CachedOptimization(opt, block.timestamp);
+            }
+
             // Get the balance of the locker on the liquidity gauge
             uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER_STAKEDAO));
 
@@ -169,7 +191,16 @@ contract Optimizor is Auth {
         // If available on Convex Curve
         else if (statusCurve) {
             // Get the optimal amount of lps that must be held by the locker
-            uint256 opt = optimization1(liquidityGauge, false);
+            uint256 opt;
+            // If optimize calculation is activated and the last optimization is not too old, use the cached value
+            if (useLastOpti && lastOpti[liquidityGauge].timestamp + cachePeriod > block.timestamp) {
+                opt = lastOpti[liquidityGauge].value;
+            }
+            // Else, calculate the optimal amount and cache it
+            else {
+                opt = optimization1(liquidityGauge, false);
+                lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
+            }
             // Get the balance of the locker on the liquidity gauge
             uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER_STAKEDAO));
 
@@ -267,14 +298,14 @@ contract Optimizor is Auth {
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
     function pauseConvexFraxDeposit() external requiresAuth {
-        if (convexFraxPaused) revert ALREADY_PAUSED();
+        if (isConvexFraxPaused) revert ALREADY_PAUSED();
 
-        convexFraxPaused = true;
+        isConvexFraxPaused = true;
         convexFraxPausedTimestamp = block.timestamp;
     }
 
     function killConvexFrax() external requiresAuth {
-        if (!convexFraxPaused) revert NOT_PAUSED();
+        if (!isConvexFraxPaused) revert NOT_PAUSED();
         if ((convexFraxPausedTimestamp + fallbackConvexFrax.lockingIntervalSec()) > block.timestamp) {
             revert TOO_SOON();
         }

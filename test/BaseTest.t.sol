@@ -335,7 +335,7 @@ contract BaseTest is Test {
         IFraxUnifiedFarm.LockedStake memory infosBefore;
         address crvRewards;
         if (amountConvex != 0) {
-            if (isMetapool[address(token)] && !optimizor.convexFraxPaused()) {
+            if (isMetapool[address(token)] && !optimizor.isConvexFraxPaused()) {
                 pidsInfoBefore = fallbackConvexFrax.getPid(address(token));
                 address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfoBefore.pid, address(fallbackConvexFrax));
                 (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfoBefore.pid);
@@ -356,7 +356,7 @@ contract BaseTest is Test {
         BaseFallback.PidsInfo memory pidsInfo;
         IFraxUnifiedFarm.LockedStake memory infos;
         if (amountConvex != 0) {
-            if (isMetapool[address(token)] && !optimizor.convexFraxPaused()) {
+            if (isMetapool[address(token)] && !optimizor.isConvexFraxPaused()) {
                 pidsInfo = fallbackConvexFrax.getPid(address(token));
                 address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
                 (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
@@ -379,7 +379,7 @@ contract BaseTest is Test {
             "1"
         );
 
-        if (isMetapool[address(token)] && amountConvex != 0 && !optimizor.convexFraxPaused()) {
+        if (isMetapool[address(token)] && amountConvex != 0 && !optimizor.isConvexFraxPaused()) {
             // Assertion 2: Check personal vault created
             assertTrue(poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax)) != address(0), "2");
             // Assertion 3: Check value for personal vault, such as liquidity, kek_id, timestamps, lock_multiplier
@@ -562,7 +562,7 @@ contract BaseTest is Test {
         } else if (amountStakeDAO == MAX) {
             // Calculate optimal amount
             uint256 optimalAmount = optimizor.optimization1(
-                gauges[address(token)], isMetapool[address(token)] && !optimizor.convexFraxPaused()
+                gauges[address(token)], isMetapool[address(token)] && !optimizor.isConvexFraxPaused()
             );
             assert(optimalAmount > 0);
 
