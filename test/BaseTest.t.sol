@@ -325,6 +325,39 @@ contract BaseTest is Test {
         rolesAuthority.setUserRole(address(optimizor), 1, true);
     }
 
+    function _optimizedDepositReturnedValueAfter4And7Days(ERC20 token) internal {
+        // Toggle using last optimization
+        optimizor.toggleUseLastOptimization();
+
+        // Call the optimize deposit
+        (, uint256[] memory valuesBefore) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+
+        skip(4 days);
+
+        // Call the optimize deposit
+        (, uint256[] memory valuesAfter) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+
+        assertEq(valuesBefore[0], valuesAfter[0], "0");
+        assertEq(valuesBefore[1], valuesAfter[1], "1");
+        assertEq(valuesBefore[2], valuesAfter[2], "2");
+
+        // Skip 4 extra days, now cachePeriod is over, need to calcul again
+        skip(7 days);
+
+        // Call the optimize deposit
+        (, valuesAfter) = optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+        assertTrue(valuesBefore[0] != valuesAfter[0], "3");
+        if (isMetapool[address(token)]) {
+            assertTrue(valuesBefore[1] == valuesAfter[1], "4.1");
+            assertTrue(valuesBefore[2] != valuesAfter[2], "5.1");
+        } else {
+            assertTrue(valuesBefore[1] != valuesAfter[1], "4.2");
+            assertTrue(valuesBefore[2] == valuesAfter[2], "5.2");
+        }
+    }
+
     // --- Assertions
     modifier _depositTestMod(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex, uint256 timejump) {
         // --- Before Deposit --- //

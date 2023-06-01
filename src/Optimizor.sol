@@ -37,15 +37,16 @@ contract Optimizor is Auth {
     uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
     uint256 public convexFraxPausedTimestamp; // Timestamp of the Convex FRAX pause
     uint256 public cachePeriod = 7 days; //
-    address[] public fallbacks;
+
     // List of fallbacks
+    address[] public fallbacks;
 
     bool public isConvexFraxPaused; // Pause Convex FRAX Deposit
     bool public isConvexFraxKilled; // Kill Convex FRAX Deposit and Withdraw
     bool public useLastOpti; // Use last optimization value
 
-    mapping(address => CachedOptimization) public lastOpti;
-    mapping(address => CachedOptimization) public lastOptiMetapool;
+    mapping(address => CachedOptimization) public lastOpti; // liquidityGauge => CachedOptimization
+    mapping(address => CachedOptimization) public lastOptiMetapool; // liquidityGauge => CachedOptimization
 
     // --- Contracts
     CurveStrategy public curveStrategy;
@@ -294,6 +295,14 @@ contract Optimizor is Auth {
         return (fallbacks, amounts);
     }
 
+    function toggleUseLastOptimization() external requiresAuth {
+        useLastOpti = !useLastOpti;
+    }
+
+    function setCachePeriod(uint256 newCachePeriod) external requiresAuth {
+        cachePeriod = newCachePeriod;
+    }
+
     //////////////////////////////////////////////////////
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
@@ -344,5 +353,9 @@ contract Optimizor is Auth {
 
     function min(uint256 a, uint256 b) public pure returns (uint256) {
         return (a < b) ? a : b;
+    }
+
+    function rescueToken(address token, address receiver, uint256 amount) external requiresAuth {
+        ERC20(token).transfer(receiver, amount);
     }
 }

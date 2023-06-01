@@ -360,4 +360,70 @@ contract CurveStrategyTest is BaseTest {
         assertEq(optimizor.isConvexFraxPaused(), true, "2");
         assertEq(optimizor.convexFraxPausedTimestamp(), block.timestamp, "3");
     }
+
+    // --- Optimizor
+    function test_ToggleUseLastOptimization() public useFork(forkId1) {
+        assertEq(optimizor.useLastOpti(), false, "0");
+
+        optimizor.toggleUseLastOptimization();
+
+        assertEq(optimizor.useLastOpti(), true, "1");
+    }
+
+    function test_SetCachePeriod() public useFork(forkId1) {
+        assertEq(optimizor.cachePeriod(), 7 days, "0");
+
+        optimizor.setCachePeriod(2 weeks);
+
+        assertEq(optimizor.cachePeriod(), 2 weeks, "1");
+    }
+
+    function test_LastOptiMappingWriting() public useFork(forkId1) {
+        // Toggle using last optimization
+        optimizor.toggleUseLastOptimization();
+
+        // --- Test for Metapool
+        // Get last optimization value
+        (uint256 valueBefore, uint256 tsBefore) = optimizor.lastOptiMetapool(gauges[address(ALUSD_FRAXBP)]);
+        // Calculate optimization
+        uint256 calculatedOpti = optimizor.optimization1(address(gauges[address(ALUSD_FRAXBP)]), true);
+
+        // Call the optimize deposit
+        optimizor.optimizeDeposit(address(ALUSD_FRAXBP), gauges[address(ALUSD_FRAXBP)], 1_000_000e18);
+
+        // Get last optimization value
+        (uint256 valueAfter, uint256 tsAfter) = optimizor.lastOptiMetapool(gauges[address(ALUSD_FRAXBP)]);
+
+        // Assertions
+        assertEq(valueBefore, 0, "0");
+        assertEq(tsBefore, 0, "1");
+        assertEq(valueAfter, calculatedOpti, "2");
+        assertEq(tsAfter, block.timestamp, "3");
+
+        // --- Test for non Metapool
+        // Get last optimization value
+        (valueBefore, tsBefore) = optimizor.lastOpti(gauges[address(CRV3)]);
+        // Calculate optimization
+        calculatedOpti = optimizor.optimization1(address(gauges[address(CRV3)]), false);
+
+        // Call the optimize deposit
+        optimizor.optimizeDeposit(address(CRV3), gauges[address(CRV3)], 1_000_000e18);
+
+        // Get last optimization value
+        (valueAfter, tsAfter) = optimizor.lastOpti(gauges[address(CRV3)]);
+
+        // Assertions
+        assertEq(valueBefore, 0, "4");
+        assertEq(tsBefore, 0, "5");
+        assertEq(valueAfter, calculatedOpti, "6");
+        assertEq(tsAfter, block.timestamp, "7");
+    }
+
+    function test_OptimizeDepositReturnedValueAfter4And7DaysMetapool() public useFork(forkId1) {
+        _optimizedDepositReturnedValueAfter4And7Days(ALUSD_FRAXBP);
+    }
+
+    function test_OptimizeDepositReturnedValueAfter4And7DaysNotMetapool() public useFork(forkId1) {
+        _optimizedDepositReturnedValueAfter4And7Days(CRV3);
+    }
 }
