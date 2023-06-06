@@ -158,13 +158,14 @@ contract CurveStrategy is EventsAndErrors, Auth {
         uint256 _before = ERC20(token).balanceOf(address(LOCKER_STAKEDAO));
 
         (bool success,) = LOCKER_STAKEDAO.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
-        require(success, "Transfer failed!");
+        if (!success) revert WITHDRAW_FAILED();
+
         uint256 _after = ERC20(token).balanceOf(address(LOCKER_STAKEDAO));
 
         uint256 _net = _after - _before;
         (success,) =
             LOCKER_STAKEDAO.execute(token, 0, abi.encodeWithSignature("transfer(address,uint256)", address(this), _net));
-        require(success, "Transfer failed!");
+        if (!success) revert CALL_FAILED();
 
         emit Withdrawn(gauge, token, amount);
     }
@@ -229,7 +230,9 @@ contract CurveStrategy is EventsAndErrors, Auth {
             );
 
             // Claim on behalf of locker if previous call failed
-            if (!success) ILiquidityGauge(gauge).claim_rewards(address(LOCKER_STAKEDAO));
+            if (!success) {
+                ILiquidityGauge(gauge).claim_rewards(address(LOCKER_STAKEDAO));
+            }
 
             for (uint8 i = 0; i < 8; ++i) {
                 // Get reward token from previous cache
