@@ -8,4 +8,8 @@ contract AccumulatorMock {
     function depositToken(address token, uint256 amount) external {
         ERC20(token).transferFrom(msg.sender, address(this), amount);
     }
+
+    function notifyAll() public {
+        // do nothing
+    }
 }

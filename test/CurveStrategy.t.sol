@@ -106,7 +106,7 @@ contract CurveStrategyTest is BaseTest {
 
     function test_Deposit_UsingConvexCurveAndFrax() public useFork(forkId2) {
         // This situation could rarely happen, but it's possible
-        // When a pool is added on ConvexCurve, user can deposit on curveStategy for this pool
+        // When a pool is added on ConvexCurve, user can deposit on curveStrategy for this pool
         // And some times after, the pool is added on ConvexFrax
         // so this should have some tokens on both fallbacks,
         // let's test it using COIL_FRAXBP, added on ConvexFrax at block 17326004 on this tx :
@@ -230,6 +230,46 @@ contract CurveStrategyTest is BaseTest {
         curveStrategy.withdraw(address(CVX), 1);
     }
 
+    function test_RevertWhen_WithdrawFailed_MigrateLP() public useFork(forkId1) {
+        // Get balance of the gauge
+        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER_STAKEDAO));
+        // data used on executed function by the LL
+        bytes memory data = abi.encodeWithSignature("withdraw(uint256)", balanceGauge);
+
+        // Mock the call to force the fail on withdraw from gauge from the LL
+        vm.mockCall(
+            address(LOCKER_STAKEDAO),
+            abi.encodeWithSignature("execute(address,uint256,bytes)", gauges[address(CRV3)], 0, data),
+            abi.encode(false, 0x0)
+        );
+
+        // Assert Error
+        vm.expectRevert(EventsAndErrors.WITHDRAW_FAILED.selector);
+        curveStrategy.migrateLP(address(CRV3));
+    }
+
+    function test_RevertWhen_CallFailed_MigrateLP() public useFork(forkId1) {
+        // Get balance of the gauge
+        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER_STAKEDAO));
+        // Get balance of the locker
+        uint256 balanceLocker = CRV3.balanceOf(address(LOCKER_STAKEDAO));
+
+        // data used on executed function by the LL
+        bytes memory data =
+            abi.encodeWithSignature("transfer(address,uint256)", address(this), balanceGauge + balanceLocker);
+
+        // Mock the call to force the fail on transfer LP from the LL
+        vm.mockCall(
+            address(LOCKER_STAKEDAO),
+            abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV3), 0, data),
+            abi.encode(false, 0x0)
+        );
+
+        // Assert Revert
+        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        curveStrategy.migrateLP(address(CRV3));
+    }
+
     // --- Claim
     function test_Claim_NoExtraRewards() public useFork(forkId1) {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, 1, 0);
@@ -261,6 +301,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Claim3CRV() public useFork(forkId1) {
+        curveStrategy.setAccumulator(address(accumulatorMock));
         // Cache balance before
         uint256 balanceBeforeAC = CRV3.balanceOf(address(curveStrategy.accumulator()));
 
@@ -269,7 +310,7 @@ contract CurveStrategyTest is BaseTest {
 
         // === CLAIM 3CRV PROCESS === //
         // No need to notify all, because it will call back the same exact process
-        curveStrategy.claim3Crv(false);
+        curveStrategy.claim3Crv(true);
 
         // === ASSERTIONS === //
         //Assertion 1: Check test accumulator received token
@@ -324,6 +365,32 @@ contract CurveStrategyTest is BaseTest {
     function test_RevertWhen_AddressNull_Fallbacks() public useFork(forkId1) {
         vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
         curveStrategy.claimFallbacks(address(CVX));
+    }
+
+    function test_RevertWhen_AmountNull_Claim3CRV() public useFork(forkId1) {
+        // Because no time has been skipped, there is no rewards to claim
+        vm.expectRevert(EventsAndErrors.AMOUNT_NULL.selector);
+        curveStrategy.claim3Crv(false);
+    }
+
+    // --- Migrate LP
+    function test_MigrateLP() public useFork(forkId1) {
+        assertEq(CRV3.balanceOf(address(this)), 0, "0");
+
+        uint256 balanceGaugeBefore = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
+        // === DEPOSIT PROCESS === //
+        _deposit(CRV3, 100, 0);
+
+        // === MIGRATE LP PROCESS === //
+        curveStrategy.migrateLP(address(CRV3));
+
+        // === ASSERTIONS === //
+        assertEq(CRV3.balanceOf(address(this)), balanceGaugeBefore + 100, "1");
+    }
+
+    function test_RevertWhen_AddressNull_MigrateLP() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.migrateLP(address(CVX));
     }
 
     // --- Kill ConvexFrax
