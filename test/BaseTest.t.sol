@@ -19,6 +19,7 @@ import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 // --- Mocks
+import {AccumulatorMock} from "src/mocks/AccumulatorMock.sol";
 import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
 import {FallbackConvexCurveMock} from "src/mocks/FallbackConvexCurveMock.sol";
 
@@ -43,6 +44,7 @@ contract BaseTest is Test {
     FallbackConvexCurve public fallbackConvexCurve;
 
     // --- Mocks
+    AccumulatorMock public accumulatorMock;
     LiquidityGaugeMock public liquidityGaugeMockCRV3;
     LiquidityGaugeMock public liquidityGaugeMockCNC_ETH;
     LiquidityGaugeMock public liquidityGaugeMockSTETH_ETH;
@@ -258,6 +260,7 @@ contract BaseTest is Test {
         vm.label(address(poolRegistryConvexFrax), "PoolRegistryConvexFrax");
 
         // Mocks
+        vm.label(address(accumulatorMock), "AccumulatorMock");
         vm.label(address(liquidityGaugeMockCRV3), "LiquidityGaugeMockCRV3");
         vm.label(address(liquidityGaugeMockCNC_ETH), "LiquidityGaugeMockCNC_ETH");
         vm.label(address(liquidityGaugeMockSTETH_ETH), "LiquidityGaugeMockSTETH_ETH");

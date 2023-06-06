@@ -30,6 +30,7 @@ contract CurveStrategyTest is BaseTest {
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock();
         liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock();
         liquidityGaugeMockALUSD_FRAXBP = new LiquidityGaugeMock();
+        accumulatorMock = new AccumulatorMock();
         // End deployment contracts
 
         // Setup contract
@@ -129,6 +130,17 @@ contract CurveStrategyTest is BaseTest {
         assertEq(fallbackConvexCurve.balanceOf(address(COIL_FRAXBP)), partConvexBefore, "2");
     }
 
+    function test_RevertWhen_AddresNull_Deposit() public useFork(forkId1) {
+        // Give some tokens to this contract
+        deal(address(CVX), address(this), 1);
+        // Approve CurveStrategy to spend CVX
+        CVX.safeApprove(address(curveStrategy), 1);
+
+        // Should revert because no gauge for CVX
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.deposit(address(CVX), 1);
+    }
+
     // --- Withdraw
     function test_Withdraw_AllFromStakeDAO() public useFork(forkId1) {
         // === DEPOSIT PROCESS === //
@@ -211,6 +223,11 @@ contract CurveStrategyTest is BaseTest {
         uint256 balanceOfStakeDAO = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
         vm.expectRevert(Optimizor.WRONG_AMOUNT.selector);
         curveStrategy.withdraw(address(CRV3), balanceOfStakeDAO + 1);
+    }
+
+    function test_RevertWhen_AddresNull_Withdraw() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.withdraw(address(CVX), 1);
     }
 
     // --- Claim
@@ -299,6 +316,16 @@ contract CurveStrategyTest is BaseTest {
         _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)));
     }
 
+    function test_RevertWhen_AddressNull_Claim() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.claim(address(CVX));
+    }
+
+    function test_RevertWhen_AddressNull_Fallbacks() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.claimFallbacks(address(CVX));
+    }
+
     // --- Kill ConvexFrax
     function test_KillConvexFrax() public useFork(forkId1) {
         // === DEPOSIT PROCESS === //
@@ -359,6 +386,24 @@ contract CurveStrategyTest is BaseTest {
 
         assertEq(optimizor.isConvexFraxPaused(), true, "2");
         assertEq(optimizor.convexFraxPausedTimestamp(), block.timestamp, "3");
+    }
+
+    // --- SendToAccumulator
+    function test_SendToAccumulator() public useFork(forkId1) {
+        // Send 1_000 ALUSD_FRAXBP to the curve strategy
+        deal(address(ALUSD_FRAXBP), address(curveStrategy), 1_000e18);
+
+        // Set the accumulator address using mock contract
+        curveStrategy.setAccumulator(address(accumulatorMock));
+
+        // Check that the accumulator balance is 0
+        assertEq(ALUSD_FRAXBP.balanceOf(address(curveStrategy.accumulator())), 0, "0");
+
+        // Send 1_000 ALUSD_FRAXBP to the accumulator
+        curveStrategy.sendToAccumulator(address(ALUSD_FRAXBP), 1_000e18);
+
+        // Check that the accumulator balance is 1_000
+        assertEq(ALUSD_FRAXBP.balanceOf(address(curveStrategy.accumulator())), 1_000e18, "1");
     }
 
     // --- Optimizor
@@ -425,5 +470,132 @@ contract CurveStrategyTest is BaseTest {
 
     function test_OptimizeDepositReturnedValueAfter4And7DaysNotMetapool() public useFork(forkId1) {
         _optimizedDepositReturnedValueAfter4And7Days(CRV3);
+    }
+
+    // --- Setters
+    function test_ToggleVault() public useFork(forkId1) {
+        assertEq(curveStrategy.vaults(address(0x1)), false, "0");
+
+        curveStrategy.toggleVault(address(0x1));
+
+        assertEq(curveStrategy.vaults(address(0x1)), true, "1");
+    }
+
+    function test_SetGauge() public useFork(forkId1) {
+        assertEq(curveStrategy.gauges(address(0x1)), address(0x0), "0");
+
+        curveStrategy.setGauge(address(0x1), address(0x2));
+
+        assertEq(curveStrategy.gauges(address(0x1)), address(0x2), "1");
+    }
+
+    function test_SetLGType() public useFork(forkId1) {
+        assertEq(curveStrategy.lGaugeType(address(0x1)), 0, "0");
+
+        curveStrategy.setLGtype(address(0x1), 1);
+
+        assertEq(curveStrategy.lGaugeType(address(0x1)), 1, "1");
+    }
+
+    function test_SetMultiGauge() public useFork(forkId1) {
+        assertEq(curveStrategy.multiGauges(address(0x1)), address(0), "0");
+
+        curveStrategy.setMultiGauge(address(0x1), address(0x2));
+
+        assertEq(curveStrategy.multiGauges(address(0x1)), address(0x2), "1");
+    }
+
+    function test_SetVeSDTProxy() public useFork(forkId1) {
+        assertTrue(curveStrategy.veSDTFeeProxy() != address(0), "0");
+
+        curveStrategy.setVeSDTProxy(address(0x1));
+
+        assertEq(curveStrategy.veSDTFeeProxy(), address(0x1), "1");
+    }
+
+    function test_SetAccumulator() public useFork(forkId1) {
+        assertTrue(address(curveStrategy.accumulator()) != address(0), "0");
+
+        curveStrategy.setAccumulator(address(0x1));
+
+        assertEq(address(curveStrategy.accumulator()), address(0x1), "1");
+    }
+
+    function test_SetRewardsReceiver() public useFork(forkId1) {
+        assertTrue(curveStrategy.rewardsReceiver() != address(0), "0");
+
+        curveStrategy.setRewardsReceiver(address(0x1));
+
+        assertEq(curveStrategy.rewardsReceiver(), address(0x1), "1");
+    }
+
+    function test_SetOptimizor() public useFork(forkId1) {
+        assertTrue(address(curveStrategy.optimizor()) != address(0), "0");
+
+        curveStrategy.setOptimizor(address(0x1));
+
+        assertEq(address(curveStrategy.optimizor()), address(0x1), "1");
+    }
+
+    function test_RevertWhen_AddressNull_ToggleVault() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.toggleVault(address(0));
+    }
+
+    function test_RevertWhen_AddressNull_SetGauge() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.setGauge(address(0), address(0x2));
+    }
+
+    function test_RevertWhen_AddressNull_SetLGType() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.setLGtype(address(0), 1);
+    }
+
+    function test_RevertWhen_AddressNull_SetMultiGauge() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.setMultiGauge(address(0), address(0x2));
+
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.setMultiGauge(address(0x2), address(0));
+    }
+
+    function test_RevertWhen_AddressNull_SetVeSDTProxy() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.setVeSDTProxy(address(0));
+    }
+
+    function test_RevertWhen_AddressNull_SetAccumulator() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.setAccumulator(address(0));
+    }
+
+    function test_RevertWhen_AddressNull_SetRewardsReceiver() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.setRewardsReceiver(address(0));
+    }
+
+    function test_RevertWhen_AddressNull_SetOptimizor() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.setOptimizor(address(0));
+    }
+
+    function test_RevertWhen_AddressNull_ManageFee() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.PERFFEE, address(0), 10);
+    }
+
+    function test_RevertWhen_FeeTooHigh_ManageFee() public useFork(forkId1) {
+        vm.expectRevert(EventsAndErrors.FEE_TOO_HIGH.selector);
+        curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.PERFFEE, gauges[address(ALUSD_FRAXBP)], 10001);
+    }
+
+    // --- Execute
+    function test_Execute() public useFork(forkId1) {
+        (bool success, bytes memory data) =
+            curveStrategy.execute(address(optimizor), 0, abi.encodeWithSignature("CRV()"));
+
+        assertTrue(success, "0");
+        assertEq(abi.decode(data, (address)), address(CRV), "1");
     }
 }

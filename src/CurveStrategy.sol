@@ -113,7 +113,7 @@ contract CurveStrategy is EventsAndErrors, Auth {
 
         // Locker deposit token
         (bool success,) = LOCKER_STAKEDAO.execute(gauge, 0, abi.encodeWithSignature("deposit(uint256)", amount));
-        require(success, "Deposit failed!");
+        if (!success) revert CALL_FAILED();
 
         emit Deposited(gauge, token, amount);
     }
