@@ -96,7 +96,7 @@ contract OptimizorTest is BaseTest {
 
     function test_RescueToken() public {
         deal(address(CRV), address(optimizor), 100);
-        
+
         assertEq(CRV.balanceOf(address(this)), 0);
         optimizor.rescueToken(address(CRV), address(this), 100);
         assertEq(CRV.balanceOf(address(this)), 100);

@@ -810,4 +810,20 @@ contract CurveStrategyTest is BaseTest {
         assertTrue(success, "0");
         assertEq(abi.decode(data, (address)), address(CRV), "1");
     }
+
+    //////////////////////////////////////////////////////
+    /// --- FALLBACKS
+    //////////////////////////////////////////////////////
+    function test_setFeesReceiver() public useFork(forkId1) {
+        assertTrue(fallbackConvexFrax.feesReceiver() != address(0x1), "0");
+        fallbackConvexFrax.setFeesReceiver(address(0x1));
+        assertEq(fallbackConvexFrax.feesReceiver(), address(0x1), "1");
+    }
+
+    function test_RescueTokens() public useFork(forkId1) {
+        deal(address(CRV), address(fallbackConvexFrax), 1000);
+        assertEq(CRV.balanceOf(address(fallbackConvexFrax)), 1000, "0");
+        fallbackConvexFrax.rescueERC20(address(CRV), address(this), 1000);
+        assertEq(CRV.balanceOf(address(fallbackConvexFrax)), 0, "1");
+    }
 }
