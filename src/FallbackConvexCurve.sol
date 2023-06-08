@@ -62,10 +62,7 @@ contract FallbackConvexCurve is BaseFallback {
         // Approve the amount
         ERC20(lpToken).safeApprove(address(boosterConvexCurve), amount);
         // Deposit the amount
-        bool success = boosterConvexCurve.deposit(pids[lpToken].pid, amount, true);
-
-        // Check if the deposit was successful
-        if (!success) revert DEPOSIT_FAIL();
+        boosterConvexCurve.deposit(pids[lpToken].pid, amount, true);
 
         emit Deposited(lpToken, amount);
     }

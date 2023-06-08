@@ -14,6 +14,7 @@ contract CurveStrategyTest is BaseTest {
         // Create a fork of mainnet, fixing block number for faster testing
         forkId1 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_1);
         forkId2 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_2);
+        forkId3 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_3);
     }
 
     modifier useFork(uint256 forkId) {
@@ -825,5 +826,29 @@ contract CurveStrategyTest is BaseTest {
         assertEq(CRV.balanceOf(address(fallbackConvexFrax)), 1000, "0");
         fallbackConvexFrax.rescueERC20(address(CRV), address(this), 1000);
         assertEq(CRV.balanceOf(address(fallbackConvexFrax)), 0, "1");
+    }
+
+    function test_SetAllPidsOptimizedOnConvexCurve() public useFork(forkId3) {
+        // Need to  be done before the following tx on mainnet
+        // https://etherscan.io/tx/0x3d480ef9c77434b38e4b9881bd7cb7dd8f03ffaca62bae05edd38f44c6bde520
+
+        address poolManager = 0xc461E1CE3795Ee30bA2EC59843d5fAe14d5782D5;
+        address gaugeToAdd = 0xb0a6F55a758C8F035C067672e89903d76A5AbE9b;
+        (bool success,) = poolManager.call(abi.encodeWithSignature("addPool(address)", gaugeToAdd));
+        assertTrue(success, "0");
+
+        uint256 lastPidCount = fallbackConvexCurve.lastPidsCount();
+        fallbackConvexCurve.setAllPidsOptimized();
+
+        assertEq(fallbackConvexCurve.lastPidsCount(), lastPidCount + 1, "0");
+    }
+
+    function test_SetAllPidsOptimizedOnConvexFrax() public useFork(forkId2) {
+        _addCOIL_FRAXBPOnConvexFrax();
+
+        uint256 lastPidCount = fallbackConvexFrax.lastPidsCount();
+        fallbackConvexFrax.setAllPidsOptimized();
+
+        assertEq(fallbackConvexFrax.lastPidsCount(), lastPidCount + 1, "0");
     }
 }

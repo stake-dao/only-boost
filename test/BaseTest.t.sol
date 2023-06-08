@@ -102,9 +102,11 @@ contract BaseTest is Test {
     // --- Fork block numbers
     uint256 public constant FORK_BLOCK_NUMBER_1 = 17330000;
     uint256 public constant FORK_BLOCK_NUMBER_2 = 17326000; // DO NOT TOUCH IT !!
+    uint256 public constant FORK_BLOCK_NUMBER_3 = 17323000; // DO NOT TOUCH IT !!
 
     uint256 public forkId1;
     uint256 public forkId2;
+    uint256 public forkId3;
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
