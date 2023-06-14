@@ -16,16 +16,25 @@ install:
 test:
 	forge test
 
-test-%:
+test-f-%:
 	@FOUNDRY_MATCH_TEST=$* make test
+
+test-c-%:
+	@FOUNDRY_MATCH_CONTRACT=$* make test
 
 coverage:
 	forge coverage --report lcov
-	lcov --remove lcov.info -o lcov.info "test/*"
+	lcov --remove ./lcov.info -o ./lcov.info.pruned 'test/*'
+
+coverage-c-%:
+	forge coverage --report lcov --mc $*
+	lcov --remove ./lcov.info -o ./lcov.info.pruned 'test/*'
+
 
 coverage-html:
 	make coverage
-	@echo Transforming the lcov coverage report into html
-	genhtml lcov.info -o coverage
+	genhtml ./lcov.info.pruned -o report --branch-coverage --output-dir ./coverage
+	rm ./lcov.info*
+
 
 .PHONY: test coverage

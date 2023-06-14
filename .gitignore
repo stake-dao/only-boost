@@ -4,3 +4,5 @@ out
 old
 lcov.info
 coverage.txt
+coverage/
+.DS_Store
