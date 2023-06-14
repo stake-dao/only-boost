@@ -56,9 +56,7 @@ contract CurveStrategy is EventsAndErrors, Auth {
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
-    constructor(address owner, Authority authority) Auth(owner, authority) {
-        optimizor = new Optimizor(owner, authority );
-    }
+    constructor(address owner, Authority authority) Auth(owner, authority) {}
 
     //////////////////////////////////////////////////////
     /// --- DEPOSIT

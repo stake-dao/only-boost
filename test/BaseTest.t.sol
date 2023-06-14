@@ -141,10 +141,8 @@ contract BaseTest is Test {
     /// --- HELPER FUNCTIONS
     //////////////////////////////////////////////////////
     function _afterDeployment() internal {
+        curveStrategy.setOptimizor(address(optimizor));
         // Setup contracts
-        optimizor = curveStrategy.optimizor();
-        fallbackConvexFrax = optimizor.fallbackConvexFrax();
-        fallbackConvexCurve = optimizor.fallbackConvexCurve();
         locker = ILocker(LOCKER_STAKEDAO);
         boosterConvexFrax = IBoosterConvexFrax(fallbackConvexFrax.boosterConvexFrax());
         boosterConvexCurve = IBoosterConvexCurve(fallbackConvexCurve.boosterConvexCurve());
