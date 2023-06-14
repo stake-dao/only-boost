@@ -26,11 +26,6 @@ coverage:
 	forge coverage --report lcov
 	lcov --remove ./lcov.info -o ./lcov.info.pruned 'test/*'
 
-coverage-c-%:
-	forge coverage --report lcov --mc $*
-	lcov --remove ./lcov.info -o ./lcov.info.pruned 'test/*'
-
-
 coverage-html:
 	make coverage
 	genhtml ./lcov.info.pruned -o report --branch-coverage --output-dir ./coverage
