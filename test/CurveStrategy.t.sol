@@ -12,13 +12,13 @@ contract CurveStrategyTest is BaseTest {
     //////////////////////////////////////////////////////
     function setUp() public {
         // Create a fork of mainnet, fixing block number for faster testing
-        forkId1 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_1);
-        forkId2 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_2);
-        forkId3 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_3);
+        forkId1 = FORK_BLOCK_NUMBER_1;
+        forkId2 = FORK_BLOCK_NUMBER_2;
+        forkId3 = FORK_BLOCK_NUMBER_3;
     }
 
     modifier useFork(uint256 forkId) {
-        vm.selectFork(forkId);
+        vm.rollFork(forkId);
         _setup();
         _;
     }

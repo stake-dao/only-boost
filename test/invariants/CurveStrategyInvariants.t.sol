@@ -37,40 +37,5 @@ contract CurveStrategyInvariantsTest is Test {
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
-    function setUp() public {
-        _labelTokens();
-        vm.mockCall(
-            address(0x78FA799DFf1eC4F2974a891A176d5a9b878868A9),
-            abi.encodeWithSignature("boosterConvexFrax()"),
-            abi.encode(address(boosterConvexFraxMock))
-        );/*
-        vm.mockCall(
-            address(0x78FA799DFf1eC4F2974a891A176d5a9b878868A9),
-            abi.encodeWithSignature("poolRegistryConvexFrax()"),
-            abi.encode(address(poolRegistryMock))
-        );
-        vm.mockCall(
-            address(0x8F2a8FbCCc162fc96Fe5dEff18960eB878Bb738B),
-            abi.encodeWithSignature("boosterConvexCurve()"),
-            abi.encode(address(boosterConvexCurveMock))
-        );*/
-        rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
-        curveStrategy = new CurveStrategy(address(this), rolesAuthority);
-        optimizor = curveStrategy.optimizor();
-        fallbackConvexFrax = optimizor.fallbackConvexFrax();
-        fallbackConvexCurve = optimizor.fallbackConvexCurve();
-        //stdstore.target(address(fallbackConvexFrax)).sig("boosterConvexFrax()").checked_write(address(0x111));
-    }
-
-    function test_Nothing() public {
-        assertTrue(true);
-        console.log(address(fallbackConvexFrax.boosterConvexFrax()));
-    }
-
-    function _labelTokens() internal {
-        vm.label(address(CRV), "CRV");
-        vm.label(address(CRV3), "CRV3");
-        vm.label(address(ALUSD_FRAXBP), "ALUSD_FRAXBP");
-        vm.label(address(STETH_ETH), "STETH_ETH");
-    }
+    function setUp() public {}
 }
