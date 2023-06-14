@@ -13,8 +13,9 @@ import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.so
 contract FallbackConvexFrax is BaseFallback {
     using SafeTransferLib for ERC20;
 
-    IBoosterConvexFrax public boosterConvexFrax; // Convex Frax booster
-    IPoolRegistryConvexFrax public poolRegistryConvexFrax; // ConvexFrax pool Registry
+    IBoosterConvexFrax public constant BOOSTER = IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa); // Convex Frax booster
+    IPoolRegistryConvexFrax public constant POOL_REGISTRY =
+        IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69); // ConvexFrax pool Registry
 
     uint256 public lockingIntervalSec = 7 days; // 7 days
 
@@ -27,9 +28,6 @@ contract FallbackConvexFrax is BaseFallback {
     constructor(address owner, Authority authority, address _curveStrategy)
         BaseFallback(owner, authority, _curveStrategy)
     {
-        boosterConvexFrax = IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa);
-        poolRegistryConvexFrax = IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69);
-
         setAllPidsOptimized();
     }
 
@@ -38,7 +36,7 @@ contract FallbackConvexFrax is BaseFallback {
     //////////////////////////////////////////////////////
     function setAllPidsOptimized() public override {
         // Cache the length of the pool registry
-        uint256 len = poolRegistryConvexFrax.poolLength();
+        uint256 len = POOL_REGISTRY.poolLength();
 
         // If the length is the same, no need to update
         if (lastPidsCount == len) return;
@@ -66,7 +64,7 @@ contract FallbackConvexFrax is BaseFallback {
     function isActive(address lpToken) external override returns (bool) {
         setAllPidsOptimized();
 
-        (,,,, uint8 _isActive) = poolRegistryConvexFrax.poolInfo(pids[stkTokens[lpToken]].pid);
+        (,,,, uint8 _isActive) = POOL_REGISTRY.poolInfo(pids[stkTokens[lpToken]].pid);
         return pids[stkTokens[lpToken]].isInitialized && _isActive == 1;
     }
 
@@ -75,7 +73,7 @@ contract FallbackConvexFrax is BaseFallback {
         uint256 pid = pids[stkTokens[lpToken]].pid;
 
         // Create personal vault if not exist
-        if (vaults[pid] == address(0)) vaults[pid] = boosterConvexFrax.createVault(pid);
+        if (vaults[pid] == address(0)) vaults[pid] = BOOSTER.createVault(pid);
 
         // Approve the amount
         ERC20(lpToken).safeApprove(vaults[pid], amount);
@@ -168,7 +166,7 @@ contract FallbackConvexFrax is BaseFallback {
 
     function balanceOf(uint256 pid) public view returns (uint256) {
         // Withdraw from ConvexFrax
-        (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pid);
+        (, address staking,,,) = POOL_REGISTRY.poolInfo(pid);
         // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
         // and the last one is emptyed. So we need to get the last one.
         uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(vaults[pid]);
@@ -184,7 +182,7 @@ contract FallbackConvexFrax is BaseFallback {
 
     function getLP(uint256 pid) public returns (address, address) {
         // Get the staking token address
-        (,, address stkToken,,) = poolRegistryConvexFrax.poolInfo(pid);
+        (,, address stkToken,,) = POOL_REGISTRY.poolInfo(pid);
 
         // Get the underlying curve lp token address
         (bool success, bytes memory data) = stkToken.call(abi.encodeWithSignature("curveToken()"));

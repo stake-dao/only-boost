@@ -10,7 +10,7 @@ import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 contract FallbackConvexCurve is BaseFallback {
     using SafeTransferLib for ERC20;
 
-    IBoosterConvexCurve public boosterConvexCurve; // ConvexCurve booster contract
+    IBoosterConvexCurve public constant BOOSTER = IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31); // ConvexCurve booster contract
 
     bool public claimOnWithdraw = true;
 
@@ -19,8 +19,6 @@ contract FallbackConvexCurve is BaseFallback {
     constructor(address owner, Authority authority, address _curveStrategy)
         BaseFallback(owner, authority, _curveStrategy)
     {
-        boosterConvexCurve = IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-
         setAllPidsOptimized();
     }
 
@@ -29,7 +27,7 @@ contract FallbackConvexCurve is BaseFallback {
     //////////////////////////////////////////////////////
     function setAllPidsOptimized() public override {
         // Cache the length of the pool registry
-        uint256 len = boosterConvexCurve.poolLength();
+        uint256 len = BOOSTER.poolLength();
 
         // If the length is the same, no need to update
         if (lastPidsCount == len) return;
@@ -45,7 +43,7 @@ contract FallbackConvexCurve is BaseFallback {
 
     function _setPid(uint256 index) internal override {
         // Get the lpToken address
-        (address lpToken,,,,,) = boosterConvexCurve.poolInfo(index);
+        (address lpToken,,,,,) = BOOSTER.poolInfo(index);
 
         // Map the lpToken to the pool infos
         pids[lpToken] = PidsInfo(index, true);
@@ -54,22 +52,22 @@ contract FallbackConvexCurve is BaseFallback {
     function isActive(address lpToken) external override returns (bool) {
         setAllPidsOptimized();
 
-        (,,,,, bool shutdown) = boosterConvexCurve.poolInfo(pids[lpToken].pid);
+        (,,,,, bool shutdown) = BOOSTER.poolInfo(pids[lpToken].pid);
         return pids[lpToken].isInitialized && !shutdown;
     }
 
     function deposit(address lpToken, uint256 amount) external override requiresAuth {
         // Approve the amount
-        ERC20(lpToken).safeApprove(address(boosterConvexCurve), amount);
+        ERC20(lpToken).safeApprove(address(BOOSTER), amount);
         // Deposit the amount
-        boosterConvexCurve.deposit(pids[lpToken].pid, amount, true);
+        BOOSTER.deposit(pids[lpToken].pid, amount, true);
 
         emit Deposited(lpToken, amount);
     }
 
     function withdraw(address lpToken, uint256 amount) external override requiresAuth {
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pids[lpToken].pid);
+        (,,, address crvRewards,,) = BOOSTER.poolInfo(pids[lpToken].pid);
         // Withdraw from ConvexCurve gauge
         IBaseRewardsPool(crvRewards).withdrawAndUnwrap(amount, claimOnWithdraw);
 
@@ -88,7 +86,7 @@ contract FallbackConvexCurve is BaseFallback {
         if (!pidInfo.isInitialized) return;
 
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pidInfo.pid);
+        (,,, address crvRewards,,) = BOOSTER.poolInfo(pidInfo.pid);
         // Withdraw from ConvexCurve gauge
         IBaseRewardsPool(crvRewards).getReward(address(this), rewardsTokens.length > 0 ? true : false);
 
@@ -106,7 +104,7 @@ contract FallbackConvexCurve is BaseFallback {
         if (!pidInfo.isInitialized) return (new address[](0));
 
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pidInfo.pid);
+        (,,, address crvRewards,,) = BOOSTER.poolInfo(pidInfo.pid);
         // Check if there is extra rewards
         uint256 extraRewardsLength = IBaseRewardsPool(crvRewards).extraRewardsLength();
 
@@ -129,7 +127,7 @@ contract FallbackConvexCurve is BaseFallback {
 
     function balanceOf(address lpToken) external view override returns (uint256) {
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = boosterConvexCurve.poolInfo(pids[lpToken].pid);
+        (,,, address crvRewards,,) = BOOSTER.poolInfo(pids[lpToken].pid);
         // Check current balance on convexCurve
         return ERC20(crvRewards).balanceOf(address(this));
     }

@@ -144,9 +144,9 @@ contract BaseTest is Test {
         curveStrategy.setOptimizor(address(optimizor));
         // Setup contracts
         locker = ILocker(LOCKER_STAKEDAO);
-        boosterConvexFrax = IBoosterConvexFrax(fallbackConvexFrax.boosterConvexFrax());
-        boosterConvexCurve = IBoosterConvexCurve(fallbackConvexCurve.boosterConvexCurve());
-        poolRegistryConvexFrax = IPoolRegistryConvexFrax(fallbackConvexFrax.poolRegistryConvexFrax());
+        boosterConvexFrax = IBoosterConvexFrax(fallbackConvexFrax.BOOSTER());
+        boosterConvexCurve = IBoosterConvexCurve(fallbackConvexCurve.BOOSTER());
+        poolRegistryConvexFrax = IPoolRegistryConvexFrax(fallbackConvexFrax.POOL_REGISTRY());
 
         _labelContract();
         // Add all curve gauges
