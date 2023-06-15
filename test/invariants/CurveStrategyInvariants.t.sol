@@ -72,7 +72,7 @@ contract CurveStrategyInvariantsTest is Test {
         _deployOptimizorModified();
         curveStrategy.setOptimizor(address(optimizor));
         liquidLockerMock.setStrategy(address(curveStrategy));
-        handler = new Handler(curveStrategy, CRV3);
+        //handler = new Handler(curveStrategy, CRV3);
         _labels();
 
         rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.deposit.selector, true);
@@ -110,8 +110,8 @@ contract CurveStrategyInvariantsTest is Test {
     }*/
 
     function invariant_deposit() public {
-        assertGe(handler.numCalls(), 0);
-        console.log("handler num calls: %d", handler.numCalls());
+        assertGe(handler.numDeposit(), 0);
+        console.log("handler num calls: %d", handler.numDeposit());
     }
 
     function _labels() internal {

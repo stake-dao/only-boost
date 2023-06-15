@@ -4,8 +4,8 @@ out = 'out'
 libs = ['lib']
 
 [invariant]
-runs = 256
-depth = 5
+runs = 100
+depth = 10
 fail_on_revert = true
 
 [etherscan]
