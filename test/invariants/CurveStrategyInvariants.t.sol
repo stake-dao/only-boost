@@ -17,52 +17,101 @@ import {EventsAndErrors} from "src/EventsAndErrors.sol";
 import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
+import {OptimizorMock} from "src/mocks/OptimizorMock.sol";
+import {LiquidLockerMock} from "src/mocks/LiquidLockerMock.sol";
 import {PoolRegistryMock} from "src/mocks/PoolRegistryMock.sol";
 import {BaseRewardPoolMock} from "src/mocks/BaseRewardPoolMock.sol";
 import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
 import {BoosterConvexFraxMock} from "src/mocks/BoosterConvexFraxMock.sol";
 import {BoosterConvexCurveMock} from "src/mocks/BoosterConvexCurveMock.sol";
 
+import {Handler} from "test/invariants/Handler.t.sol";
+
 contract CurveStrategyInvariantsTest is Test {
     using stdStorage for StdStorage;
 
     address public immutable STK_ALUSD_FRAXBP = makeAddr("STK_ALUSD_FRAXBP");
 
-    MockERC20 public immutable CRV = new MockERC20("Curve DAO Token", "CRV", 18);
-    MockERC20 public immutable CRV3 = new MockERC20("3 Pool", "CRV3", 18);
-    MockERC20 public immutable ALUSD_FRAXBP = new MockERC20("Alchemix USD FraxBasePool", "ALUSD_FRAXBP", 18);
-    MockERC20 public immutable STETH_ETH = new MockERC20("STETH ETH Pool", "STETH_ETH", 18);
+    MockERC20 public CRV;
+    MockERC20 public CRV3;
+    MockERC20 public ALUSD_FRAXBP;
+    MockERC20 public STETH_ETH;
 
-    PoolRegistryMock public poolRegistryMock = new PoolRegistryMock();
-    BoosterConvexFraxMock public boosterConvexFraxMock = new BoosterConvexFraxMock();
-    BoosterConvexCurveMock public boosterConvexCurveMock = new BoosterConvexCurveMock();
+    PoolRegistryMock public poolRegistryMock;
+    LiquidLockerMock public liquidLockerMock;
+    LiquidityGaugeMock public liquidityGaugeCRV3Mock;
+    BoosterConvexFraxMock public boosterConvexFraxMock;
+    BoosterConvexCurveMock public boosterConvexCurveMock;
 
-    Optimizor public optimizor;
+    OptimizorMock public optimizor;
     CurveStrategy public curveStrategy;
     RolesAuthority public rolesAuthority;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
-    function setUp() public {
-        vm.mockCall(STK_ALUSD_FRAXBP, abi.encodeWithSignature("curveToken()"), abi.encode(address(ALUSD_FRAXBP)));
-        rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
-        curveStrategy = new CurveStrategy(address(this), rolesAuthority);
-        _deployFallbacksModified();
-        optimizor = new Optimizor(
-            address(this), 
-            rolesAuthority, 
-            address(curveStrategy), 
-            address(fallbackConvexCurve), 
-            address(fallbackConvexFrax)
-        );
+    Handler public handler;
 
+    function setUp() public {
+        CRV = new MockERC20("Curve DAO Token", "CRV", 18);
+        CRV3 = new MockERC20("3 Pool", "CRV3", 18);
+        ALUSD_FRAXBP = new MockERC20("Alchemix USD FraxBasePool", "ALUSD_FRAXBP", 18);
+        STETH_ETH = new MockERC20("STETH ETH Pool", "STETH_ETH", 18);
+
+        poolRegistryMock = new PoolRegistryMock();
+        liquidLockerMock = new LiquidLockerMock(address(curveStrategy));
+        boosterConvexFraxMock = new BoosterConvexFraxMock();
+        boosterConvexCurveMock = new BoosterConvexCurveMock();
+        liquidityGaugeCRV3Mock = new LiquidityGaugeMock(MockERC20(address(CRV3)));
+
+        ////
+        vm.mockCall(STK_ALUSD_FRAXBP, abi.encodeWithSignature("curveToken()"), abi.encode(address(ALUSD_FRAXBP)));
+
+        rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
+        _deployCurveStrategyModified();
+        _deployFallbacksModified();
+        _deployOptimizorModified();
+        curveStrategy.setOptimizor(address(optimizor));
+        liquidLockerMock.setStrategy(address(curveStrategy));
+        handler = new Handler(curveStrategy, CRV3);
         _labels();
+
+        rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.deposit.selector, true);
+        rolesAuthority.setPublicCapability(address(optimizor), OptimizorMock.optimizeDeposit.selector, true);
+        rolesAuthority.setRoleCapability(1, address(fallbackConvexFrax), FallbackConvexFrax.deposit.selector, true);
+        rolesAuthority.setRoleCapability(2, address(fallbackConvexFrax), FallbackConvexFrax.withdraw.selector, true);
+        rolesAuthority.setRoleCapability(3, address(fallbackConvexFrax), FallbackConvexFrax.claimRewards.selector, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 1, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 2, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 3, true);
+
+        // Grant access to deposit/withdraw/claim function for fallback convex curve to curveStrategy
+        fallbackConvexCurve.setAuthority(rolesAuthority);
+        rolesAuthority.setRoleCapability(1, address(fallbackConvexCurve), FallbackConvexCurve.deposit.selector, true);
+        rolesAuthority.setRoleCapability(2, address(fallbackConvexCurve), FallbackConvexCurve.withdraw.selector, true);
+        rolesAuthority.setRoleCapability(
+            3, address(fallbackConvexCurve), FallbackConvexCurve.claimRewards.selector, true
+        );
+        rolesAuthority.setUserRole(address(curveStrategy), 1, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 2, true);
+        rolesAuthority.setUserRole(address(curveStrategy), 3, true);
+        curveStrategy.setGauge(address(CRV3), address(liquidityGaugeCRV3Mock));
+
+        targetContract(address(handler));
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = handler.deposit.selector;
+        targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
     }
 
+    /*
     function test_Nothing() public {
         assertTrue(true);
         console.log(address(fallbackConvexFrax.BOOSTER()));
         console.log(address(fallbackConvexFrax.POOL_REGISTRY()));
+    }*/
+
+    function invariant_deposit() public {
+        assertGe(handler.numCalls(), 0);
+        console.log("handler num calls: %d", handler.numCalls());
     }
 
     function _labels() internal {
@@ -107,6 +156,15 @@ contract CurveStrategyInvariantsTest is Test {
             )
         );
 
+        // Change CRV address
+        newBytesCode = bytes(
+            LibString.replace(
+                string(newBytesCode),
+                string(abi.encodePacked(0xD533a949740bb3306d119CC777fa900bA034cd52)),
+                string(abi.encodePacked(address(CRV)))
+            )
+        );
+
         // Deploy new contract using modified bytecode
         fallbackConvexCurve = FallbackConvexCurve(
             _deployBytecode(newBytesCode, abi.encode(address(this), rolesAuthority, address(curveStrategy)))
@@ -131,15 +189,79 @@ contract CurveStrategyInvariantsTest is Test {
             )
         );
 
+        // Change CRV address
+        newBytesCode = bytes(
+            LibString.replace(
+                string(newBytesCode),
+                string(abi.encodePacked(0xD533a949740bb3306d119CC777fa900bA034cd52)),
+                string(abi.encodePacked(address(CRV)))
+            )
+        );
+
         // Deploy new contract using modified bytecode
         fallbackConvexFrax = FallbackConvexFrax(
             _deployBytecode(newBytesCode, abi.encode(address(this), rolesAuthority, address(curveStrategy)))
         );
     }
 
+    function _deployOptimizorModified() internal {
+        // Change address of CRV
+        bytes memory newBytesCode = bytes(
+            LibString.replace(
+                string(abi.encodePacked(type(OptimizorMock).creationCode)),
+                string(abi.encodePacked(0xD533a949740bb3306d119CC777fa900bA034cd52)),
+                string(abi.encodePacked(address(CRV)))
+            )
+        );
+        // Change address of Liquid Locker
+        newBytesCode = bytes(
+            LibString.replace(
+                string(newBytesCode),
+                string(abi.encodePacked(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6)),
+                string(abi.encodePacked(address(liquidLockerMock)))
+            )
+        );
+
+        optimizor = OptimizorMock(
+            _deployBytecode(
+                newBytesCode,
+                abi.encode(
+                    address(this),
+                    rolesAuthority,
+                    address(curveStrategy),
+                    address(fallbackConvexCurve),
+                    address(fallbackConvexFrax)
+                )
+            )
+        );
+    }
+
+    function _deployCurveStrategyModified() internal {
+        // Change address of CRV
+        bytes memory newBytesCode = bytes(
+            LibString.replace(
+                string(abi.encodePacked(type(CurveStrategy).creationCode)),
+                string(abi.encodePacked(0xD533a949740bb3306d119CC777fa900bA034cd52)),
+                string(abi.encodePacked(address(CRV)))
+            )
+        );
+
+        // Change address of Liquid Locker
+        newBytesCode = bytes(
+            LibString.replace(
+                string(newBytesCode),
+                string(abi.encodePacked(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6)),
+                string(abi.encodePacked(address(liquidLockerMock)))
+            )
+        );
+
+        curveStrategy = CurveStrategy(_deployBytecode(newBytesCode, abi.encode(address(this), rolesAuthority)));
+    }
+
     function _initializeBoosterConvexCurve() internal {
         boosterConvexCurveMock.addPool(address(CRV3), address(0), address(0), address(new BaseRewardPoolMock()));
         boosterConvexCurveMock.addPool(address(STETH_ETH), address(0), address(0), address(new BaseRewardPoolMock()));
+        boosterConvexCurveMock.addPool(address(ALUSD_FRAXBP), address(0), address(0), address(new BaseRewardPoolMock()));
 
         poolRegistryMock.addPool(address(ALUSD_FRAXBP), STK_ALUSD_FRAXBP);
     }

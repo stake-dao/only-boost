@@ -3,6 +3,11 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 
+[invariant]
+runs = 256
+depth = 5
+fail_on_revert = true
+
 [etherscan]
 etherscan_api_key = { key = "${ETHERSCAN_API_KEY}", chain = "mainnet"}
 
