@@ -11,6 +11,8 @@ contract CurveStrategyInvariantsForkTest is BaseTest {
 
     Handler public handler;
 
+    uint256 public amountBefore;
+
     //////////////////////////////////////////////////////
     /// --- SETUP
     //////////////////////////////////////////////////////
@@ -35,6 +37,7 @@ contract CurveStrategyInvariantsForkTest is BaseTest {
 
         rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.deposit.selector, true);
         rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.withdraw.selector, true);
+        amountBefore = handler.balanceBeforeStakeDAO();
 
         // Setup contract
         _afterDeployment();
@@ -54,7 +57,15 @@ contract CurveStrategyInvariantsForkTest is BaseTest {
     /// --- TESTS
     //////////////////////////////////////////////////////
     function invariant_nothing() public {
-        console.log("Invariant nothing", handler.numDeposit());
-        console.log("Invariant nothing", handler.numWithdraw());
+        // Assertion n°1: CRV3 balance of strategy should be 0
+        assertEq(CRV3.balanceOf(address(curveStrategy)), 0, "Strategy should have no CRV3");
+        // Assertion n°2: CRV3 balance of fallbackConvexCurve should be 0
+
+        // Assertion n°3: 
+        assertEq(
+            handler.amountDeposited(),
+            handler.balanceFallbackConvexCurve() + handler.balanceStakeDAO() - amountBefore,
+            "Wrong balance of CRV3 in Strategy"
+        );
     }
 }

@@ -10,6 +10,10 @@ contract Handler is BaseTest {
     uint256 public numDeposit;
     uint256 public numWithdraw;
 
+    uint256 public amountDeposited;
+
+    uint256 public balanceBeforeStakeDAO;
+
     constructor(
         CurveStrategy _curveStrategy,
         FallbackConvexCurve _fallbackConvexCurve,
@@ -22,26 +26,39 @@ contract Handler is BaseTest {
         fallbackConvexFrax = _fallbackConvexFrax;
         optimizor = _optimizor;
         token = _token;
+        balanceBeforeStakeDAO = balanceStakeDAO();
     }
 
     function deposit(uint256 amount) external {
-        amount = bound(amount, 0, 10_000e18);
-        numDeposit += 1;
-        console.log("Deposit", amount);
+        amount = bound(amount, 0, 100_000e18);
         deal(address(token), address(this), amount);
+
         token.approve(address(curveStrategy), amount);
+
+        numDeposit += 1;
+        amountDeposited += amount;
+
         curveStrategy.deposit(address(token), amount);
     }
 
     function withdraw(uint256 amount) external {
-        uint256 balanceOfStakeDAO = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfStakeDAO = balanceStakeDAO() - balanceBeforeStakeDAO;
         uint256 balanceOfConvexCurve = fallbackConvexCurve.balanceOf(address(token));
-        uint256 balanceOfConvexFrax = optimizor.isConvexFraxKilled() ? 0 : fallbackConvexFrax.balanceOf(address(token));
-        uint256 maxToWithdraw = balanceOfStakeDAO + balanceOfConvexCurve + balanceOfConvexFrax;
+        uint256 maxToWithdraw = balanceOfStakeDAO + balanceOfConvexCurve;
         amount = bound(amount, 0, maxToWithdraw);
+        
         numWithdraw += 1;
-        console.log("Withdraw", amount);
+        amountDeposited -= amount;
+
         curveStrategy.withdraw(address(token), amount);
         token.transfer(msg.sender, amount);
+    }
+
+    function balanceStakeDAO() public view returns (uint256) {
+        return ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
+    }
+
+    function balanceFallbackConvexCurve() public view returns (uint256) {
+        return fallbackConvexCurve.balanceOf(address(CRV3));
     }
 }
