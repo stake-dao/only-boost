@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
@@ -26,7 +26,7 @@ contract Optimizor is Auth {
     address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2; // CRV Locker
     address public constant LOCKER_CVX = 0xD18140b4B819b895A3dba5442F959fA44994AF50; // CVX Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
-    address public constant LOCKER_STAKEDAO = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
+    address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
 
     uint256 public constant FEES_CONVEX = 17e16; // 17% Convex
     uint256 public constant FEES_STAKEDAO = 16e16; // 16% StakeDAO
@@ -72,7 +72,7 @@ contract Optimizor is Auth {
         fallbackConvexCurve = FallbackConvexCurve(_fallbackConvexCurve);
         curveStrategy = CurveStrategy(_curveStrategy);
 
-        fallbacks.push(LOCKER_STAKEDAO);
+        fallbacks.push(LOCKER);
         fallbacks.push(address(fallbackConvexCurve));
         fallbacks.push(address(fallbackConvexFrax));
     }
@@ -84,7 +84,7 @@ contract Optimizor is Auth {
     function optimization1(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
+        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
 
         // Liquidity Gauge
         uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
@@ -107,7 +107,7 @@ contract Optimizor is Auth {
     function optimization2(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
+        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
         uint256 veCRVTotal = ERC20(LOCKER_CRV).totalSupply();
 
         // Liquidity Gauge
@@ -136,7 +136,7 @@ contract Optimizor is Auth {
     function optimization3(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
+        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
 
         // Liquidity Gauge
         uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
@@ -186,7 +186,7 @@ contract Optimizor is Auth {
             }
 
             // Get the balance of the locker on the liquidity gauge
-            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER_STAKEDAO));
+            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
 
             // Stake DAO Curve
             amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
@@ -209,7 +209,7 @@ contract Optimizor is Auth {
                 lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
             // Get the balance of the locker on the liquidity gauge
-            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER_STAKEDAO));
+            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
 
             // Stake DAO Curve
             amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
@@ -238,7 +238,7 @@ contract Optimizor is Auth {
         returns (address[] memory, uint256[] memory)
     {
         // Cache the balance of all fallbacks
-        uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER);
         uint256 balanceOfConvexCurve = FallbackConvexCurve(fallbacks[1]).balanceOf(lpToken);
         uint256 balanceOfConvexFrax = isConvexFraxKilled ? 0 : FallbackConvexFrax(fallbacks[2]).balanceOf(lpToken);
 

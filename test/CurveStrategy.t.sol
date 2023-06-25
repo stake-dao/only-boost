@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import "test/BaseTest.t.sol";
 
@@ -156,7 +156,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", gauges[address(CRV3)], 0, data),
             abi.encode(false, 0x0)
         );
@@ -231,7 +231,7 @@ contract CurveStrategyTest is BaseTest {
         _depositTest(COIL_FRAXBP, partStakeDAOAfter, partConvexAfter, 0);
 
         // Use the total amount owned by the locker to be sure to withdraw all
-        uint256 balanceOfStakeDAO = ERC20(gauges[address(COIL_FRAXBP)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfStakeDAO = ERC20(gauges[address(COIL_FRAXBP)]).balanceOf(LOCKER);
 
         // === WITHDRAW PROCESS === //
         _withdrawTest(
@@ -245,7 +245,7 @@ contract CurveStrategyTest is BaseTest {
     function test_Withdraw_RevertWhen_WRONG_AMOUNT() public useFork(forkId1) {
         _deposit(CRV3, 100, 0);
 
-        uint256 balanceOfStakeDAO = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfStakeDAO = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER);
         vm.expectRevert(Optimizor.WRONG_AMOUNT.selector);
         curveStrategy.withdraw(address(CRV3), balanceOfStakeDAO + 1);
     }
@@ -260,7 +260,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", gauges[address(CRV3)], 0, data),
             abi.encode(false, 0x0)
         );
@@ -275,13 +275,13 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV3), 0, data),
             abi.encode(false, 0x0)
         );
 
         // Should revert because no gauge for CRV3
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(EventsAndErrors.TRANSFER_FROM_LOCKER_FAILED.selector);
         curveStrategy.withdraw(address(CRV3), 1);
     }
 
@@ -375,7 +375,7 @@ contract CurveStrategyTest is BaseTest {
         // Here 0 and Data are not specified because amount claimed is unknown.
         // But address(CRV3) is needed, otherwise it will revert on the "claim call"
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", curveStrategy.CRV_MINTER(), 0, data),
             abi.encode(false, 0x0)
         );
@@ -395,7 +395,7 @@ contract CurveStrategyTest is BaseTest {
         // Here 0 and Data are not specified because amount claimed is unknown.
         // But address(CRV3) is needed, otherwise it will revert on the "claim call"
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV)), //, 0, data),
             abi.encode(false, 0x0)
         );
@@ -415,7 +415,7 @@ contract CurveStrategyTest is BaseTest {
         // Here 0 and Data are not specified because amount claimed is unknown.
         // But address(STETH_ETH) is needed, otherwise it will revert on the first transfer
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(LDO)), //, 0, data),
             abi.encode(false, 0x0)
         );
@@ -454,7 +454,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", curveStrategy.CRV_FEE_D(), 0, data),
             abi.encode(false, 0x0)
         );
@@ -472,7 +472,7 @@ contract CurveStrategyTest is BaseTest {
         // Here 0 and Data are not specified because amount claimed is unknown.
         // But address(CRV3) is needed, otherwise it will revert on the "claim call"
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV3)), // 0, data),
             abi.encode(false, 0x0)
         );
@@ -486,7 +486,7 @@ contract CurveStrategyTest is BaseTest {
     function test_MigrateLP() public useFork(forkId1) {
         assertEq(CRV3.balanceOf(address(this)), 0, "0");
 
-        uint256 balanceGaugeBefore = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceGaugeBefore = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER);
         // === DEPOSIT PROCESS === //
         _deposit(CRV3, 100, 0);
 
@@ -504,13 +504,13 @@ contract CurveStrategyTest is BaseTest {
 
     function test_MigrateLP_RevertWhen_WITHDRAW_FAILED() public useFork(forkId1) {
         // Get balance of the gauge
-        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER));
         // data used on executed function by the LL
         bytes memory data = abi.encodeWithSignature("withdraw(uint256)", balanceGauge);
 
         // Mock the call to force the fail on withdraw from gauge from the LL
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", gauges[address(CRV3)], 0, data),
             abi.encode(false, 0x0)
         );
@@ -522,9 +522,9 @@ contract CurveStrategyTest is BaseTest {
 
     function test_MigrateLP_RevertWhen_CALL_FAILED() public useFork(forkId1) {
         // Get balance of the gauge
-        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER));
         // Get balance of the locker
-        uint256 balanceLocker = CRV3.balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceLocker = CRV3.balanceOf(address(LOCKER));
 
         // data used on executed function by the LL
         bytes memory data =
@@ -532,7 +532,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock the call to force the fail on transfer LP from the LL
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV3), 0, data),
             abi.encode(false, 0x0)
         );
@@ -579,7 +579,7 @@ contract CurveStrategyTest is BaseTest {
         assertGt(fallbackConvexFrax.balanceOf(address(ALUSD_FRAXBP)), 0, "0");
 
         uint256 balanceBeforeConvexCurve = fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP));
-        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER));
 
         // === KILL PROCESS === //
         optimizor.killConvexFrax();
@@ -590,7 +590,7 @@ contract CurveStrategyTest is BaseTest {
         //Assertion 2: Check ConvexCurve balance
         assertGt(fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP)), balanceBeforeConvexCurve, "2");
         //Assertion 3: Check StakeDAO balance
-        assertGt(ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER_STAKEDAO)), balanceBeforeStakeDAO, "3");
+        assertGt(ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER)), balanceBeforeStakeDAO, "3");
     }
 
     function test_KillConvexFrax_RevertWhen_NOT_PAUSED() public useFork(forkId1) {
@@ -820,9 +820,9 @@ contract CurveStrategyTest is BaseTest {
     /// --- FALLBACKS
     //////////////////////////////////////////////////////
     function test_setFeesReceiver() public useFork(forkId1) {
-        assertTrue(fallbackConvexFrax.feesReceiver() != address(0x1), "0");
+        assertTrue(fallbackConvexFrax.feeReceiver() != address(0x1), "0");
         fallbackConvexFrax.setFeesReceiver(address(0x1));
-        assertEq(fallbackConvexFrax.feesReceiver(), address(0x1), "1");
+        assertEq(fallbackConvexFrax.feeReceiver(), address(0x1), "1");
     }
 
     function test_RescueTokens() public useFork(forkId1) {

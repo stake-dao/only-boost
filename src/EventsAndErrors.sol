@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 contract EventsAndErrors {
     // --- Enums
@@ -36,10 +36,11 @@ contract EventsAndErrors {
 
     // --- Errors
     error AMOUNT_NULL();
-    error ADDRESS_NULL();
-    error CLAIM_FAILED();
     error MINT_FAILED();
     error CALL_FAILED();
-    error WITHDRAW_FAILED();
+    error ADDRESS_NULL();
+    error CLAIM_FAILED();
     error FEE_TOO_HIGH();
+    error WITHDRAW_FAILED();
+    error TRANSFER_FROM_LOCKER_FAILED();
 }

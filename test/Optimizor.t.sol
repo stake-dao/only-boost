@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import "test/BaseTest.t.sol";
 
@@ -45,7 +45,7 @@ contract OptimizorTest is BaseTest {
         ERC20 token = CRV3;
 
         // Get the balance of the locker in the gauge
-        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER);
 
         uint256 amountStakeDAO = optimizor.optimization1(gauges[address(token)], false) - lockerGaugeBalance;
         uint256 amountFallbackCurve = 5_000_000e18;
@@ -69,7 +69,7 @@ contract OptimizorTest is BaseTest {
         ERC20 token = ALUSD_FRAXBP;
 
         // Get the balance of the locker in the gauge
-        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER);
 
         uint256 amountStakeDAO = optimizor.optimization1(gauges[address(token)], true) - lockerGaugeBalance;
         uint256 amountFallbackCurve = 0;
