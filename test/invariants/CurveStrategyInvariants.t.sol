@@ -11,7 +11,6 @@ import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 import {Optimizor} from "src/Optimizor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
-import {EventsAndErrors} from "src/EventsAndErrors.sol";
 import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 

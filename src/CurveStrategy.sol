@@ -9,16 +9,29 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {Optimizor} from "src/Optimizor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
-import {EventsAndErrors} from "src/EventsAndErrors.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IAccumulator} from "src/interfaces/IAccumulator.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 
-contract CurveStrategy is EventsAndErrors, Auth {
+contract CurveStrategy is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
+
+    enum MANAGEFEE {
+        PERFFEE,
+        VESDTFEE,
+        ACCUMULATORFEE,
+        CLAIMERREWARD
+    }
+
+    struct Fees {
+        uint256 perfFee;
+        uint256 accumulatorFee;
+        uint256 veSDTFee;
+        uint256 claimerRewardFee;
+    }
 
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
@@ -54,6 +67,30 @@ contract CurveStrategy is EventsAndErrors, Auth {
     mapping(address => address) public multiGauges;
     mapping(address => uint256) public lGaugeType;
     mapping(address => bool) public vaults;
+
+    event FeeManaged(uint256 _manageFee, address _gauge, uint256 _fee);
+    event OptimizorSet(address _optimizor);
+    event VeSDTProxySet(address _veSDTProxy);
+    event AccumulatorSet(address _accumulator);
+    event GaugeSet(address _gauge, address _token);
+    event Crv3Claimed(uint256 amount, bool notified);
+    event VaultToggled(address _vault, bool _newState);
+    event RewardsReceiverSet(address _rewardsReceiver);
+    event GaugeTypeSet(address _gauge, uint256 _gaugeType);
+    event MultiGaugeSet(address _gauge, address _multiGauge);
+    event Claimed(address _gauge, address _token, uint256 _amount);
+    event Deposited(address _gauge, address _token, uint256 _amount);
+    event Withdrawn(address _gauge, address _token, uint256 _amount);
+
+    // --- Errors
+    error AMOUNT_NULL();
+    error MINT_FAILED();
+    error CALL_FAILED();
+    error ADDRESS_NULL();
+    error CLAIM_FAILED();
+    error FEE_TOO_HIGH();
+    error WITHDRAW_FAILED();
+    error TRANSFER_FROM_LOCKER_FAILED();
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -438,7 +475,7 @@ contract CurveStrategy is EventsAndErrors, Auth {
                 + feesInfos[gauge].claimerRewardFee > BASE_FEE
         ) revert FEE_TOO_HIGH();
 
-        emit FeeManaged(manageFee_, gauge, newFee);
+        emit FeeManaged(uint256(manageFee_), gauge, newFee);
     }
 
     //////////////////////////////////////////////////////

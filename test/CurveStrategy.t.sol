@@ -142,7 +142,7 @@ contract CurveStrategyTest is BaseTest {
         CVX.safeApprove(address(curveStrategy), 1);
 
         // Should revert because no gauge for CVX
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.deposit(address(CVX), 1);
     }
 
@@ -162,7 +162,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Should revert because no gauge for CRV3
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.deposit(address(CRV3), 1);
     }
 
@@ -251,7 +251,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Withdraw_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.withdraw(address(CVX), 1);
     }
 
@@ -266,7 +266,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Should revert because no gauge for CRV3
-        vm.expectRevert(EventsAndErrors.WITHDRAW_FAILED.selector);
+        vm.expectRevert(CurveStrategy.WITHDRAW_FAILED.selector);
         curveStrategy.withdraw(address(CRV3), 1);
     }
 
@@ -281,7 +281,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Should revert because no gauge for CRV3
-        vm.expectRevert(EventsAndErrors.TRANSFER_FROM_LOCKER_FAILED.selector);
+        vm.expectRevert(CurveStrategy.TRANSFER_FROM_LOCKER_FAILED.selector);
         curveStrategy.withdraw(address(CRV3), 1);
     }
 
@@ -356,12 +356,12 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Claim_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.claim(address(CVX));
     }
 
     function test_Claim_RevertWhen_ADDRESS_NULL_OnFallbacks() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.claimFallbacks(address(CVX));
     }
 
@@ -381,7 +381,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.MINT_FAILED.selector);
+        vm.expectRevert(CurveStrategy.MINT_FAILED.selector);
         curveStrategy.claim(address(CRV3));
     }
 
@@ -401,7 +401,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.claim(address(CRV3));
     }
 
@@ -421,7 +421,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.claim(address(STETH_ETH));
     }
 
@@ -445,7 +445,7 @@ contract CurveStrategyTest is BaseTest {
 
     function test_Claim3CRV_RevertWhen_AMOUNT_NULL() public useFork(forkId1) {
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.AMOUNT_NULL.selector);
+        vm.expectRevert(CurveStrategy.AMOUNT_NULL.selector);
         curveStrategy.claim3Crv(false);
     }
 
@@ -460,7 +460,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.CLAIM_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CLAIM_FAILED.selector);
         curveStrategy.claim3Crv(true);
     }
 
@@ -478,7 +478,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.claim3Crv(true);
     }
 
@@ -498,7 +498,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_MigrateLP_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.migrateLP(address(CVX));
     }
 
@@ -516,7 +516,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Assert Error
-        vm.expectRevert(EventsAndErrors.WITHDRAW_FAILED.selector);
+        vm.expectRevert(CurveStrategy.WITHDRAW_FAILED.selector);
         curveStrategy.migrateLP(address(CRV3));
     }
 
@@ -538,7 +538,7 @@ contract CurveStrategyTest is BaseTest {
         );
 
         // Assert Revert
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.migrateLP(address(CRV3));
     }
 
@@ -699,7 +699,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_ToggleVault_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.toggleVault(address(0));
     }
 
@@ -712,7 +712,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetGauge_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setGauge(address(0), address(0x2));
     }
 
@@ -725,7 +725,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetLGType_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setLGtype(address(0), 1);
     }
 
@@ -738,10 +738,10 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetMultiGauge_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setMultiGauge(address(0), address(0x2));
 
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setMultiGauge(address(0x2), address(0));
     }
 
@@ -754,7 +754,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetVeSDTProxyRevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setVeSDTProxy(address(0));
     }
 
@@ -767,7 +767,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetAccumulator_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setAccumulator(address(0));
     }
 
@@ -780,7 +780,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetRewardsReceiver_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setRewardsReceiver(address(0));
     }
 
@@ -793,18 +793,18 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetOptimizor_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setOptimizor(address(0));
     }
 
     function test_ManageFee_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
-        curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.PERFFEE, address(0), 10);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, address(0), 10);
     }
 
     function test_RevertWhen_FeeTooHigh_ManageFee() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.FEE_TOO_HIGH.selector);
-        curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.PERFFEE, gauges[address(ALUSD_FRAXBP)], 10001);
+        vm.expectRevert(CurveStrategy.FEE_TOO_HIGH.selector);
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, gauges[address(ALUSD_FRAXBP)], 10001);
     }
 
     // --- Execute
