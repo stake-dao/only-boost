@@ -648,7 +648,7 @@ contract CurveStrategyTest is BaseTest {
         // Get last optimization value
         (uint256 valueBefore, uint256 tsBefore) = optimizor.lastOptiMetapool(gauges[address(ALUSD_FRAXBP)]);
         // Calculate optimization
-        uint256 calculatedOpti = optimizor.optimization1(address(gauges[address(ALUSD_FRAXBP)]), true);
+        uint256 calculatedOpti = optimizor.optimalAmount(address(gauges[address(ALUSD_FRAXBP)]), true);
 
         // Call the optimize deposit
         optimizor.optimizeDeposit(address(ALUSD_FRAXBP), gauges[address(ALUSD_FRAXBP)], 1_000_000e18);
@@ -666,7 +666,7 @@ contract CurveStrategyTest is BaseTest {
         // Get last optimization value
         (valueBefore, tsBefore) = optimizor.lastOpti(gauges[address(CRV3)]);
         // Calculate optimization
-        calculatedOpti = optimizor.optimization1(address(gauges[address(CRV3)]), false);
+        calculatedOpti = optimizor.optimalAmount(address(gauges[address(CRV3)]), false);
 
         // Call the optimize deposit
         optimizor.optimizeDeposit(address(CRV3), gauges[address(CRV3)], 1_000_000e18);

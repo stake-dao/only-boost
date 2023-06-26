@@ -28,16 +28,16 @@ contract OptimizorTest is BaseTest {
     //////////////////////////////////////////////////////
     // --- Stake DAO Optimization
     function test_Optimization1() public view {
-        optimizor.optimization1(gauges[address(EUR3)], true);
+        optimizor.optimalAmount(gauges[address(EUR3)], true);
     }
 
-    function test_Optimization2() public view {
+    /*function test_Optimization2() public view {
         optimizor.optimization2(gauges[address(EUR3)], true);
     }
 
     function test_Optimization3() public view {
         optimizor.optimization3(gauges[address(EUR3)], true);
-    }
+    }*/
 
     /// --- Opitmitzation on deposit
     function test_OptimizationOnDeposit_StakeDAOAndConvexCurve() public {
@@ -47,7 +47,7 @@ contract OptimizorTest is BaseTest {
         // Get the balance of the locker in the gauge
         uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
 
-        uint256 amountStakeDAO = optimizor.optimization1(gauges[address(token)], false) - lockerGaugeBalance;
+        uint256 amountStakeDAO = optimizor.optimalAmount(gauges[address(token)], false) - lockerGaugeBalance;
         uint256 amountFallbackCurve = 5_000_000e18;
         uint256 amountFallbackFrax = 0;
         uint256 amountTotal = amountStakeDAO + amountFallbackCurve + amountFallbackFrax;
@@ -71,7 +71,7 @@ contract OptimizorTest is BaseTest {
         // Get the balance of the locker in the gauge
         uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
 
-        uint256 amountStakeDAO = optimizor.optimization1(gauges[address(token)], true) - lockerGaugeBalance;
+        uint256 amountStakeDAO = optimizor.optimalAmount(gauges[address(token)], true) - lockerGaugeBalance;
         uint256 amountFallbackCurve = 0;
         uint256 amountFallbackFrax = 5_000_000e18;
         uint256 amountTotal = amountStakeDAO + amountFallbackCurve + amountFallbackFrax;

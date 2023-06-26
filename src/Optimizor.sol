@@ -81,7 +81,7 @@ contract Optimizor is Auth {
     /// --- OPTIMIZATION FOR STAKEDAO
     //////////////////////////////////////////////////////
     // This function return the optimal amount of lps that must be held by the locker
-    function optimization1(address liquidityGauge, bool isMeta) public view returns (uint256) {
+    function optimalAmount(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
@@ -101,58 +101,6 @@ contract Optimizor is Auth {
 
         // Result
         return balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost));
-    }
-
-    // This function return the optimal amount of lps that must be held by the locker
-    function optimization2(address liquidityGauge, bool isMeta) public view returns (uint256) {
-        // veCRV
-        uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
-        uint256 veCRVTotal = ERC20(LOCKER_CRV).totalSupply();
-
-        // Liquidity Gauge
-        uint256 totalSupply = ERC20(liquidityGauge).totalSupply();
-        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
-
-        // CVX
-        uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
-
-        // Additional boost
-        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
-
-        // Additional boost for Convex FRAX
-        boost = isMeta ? boost + extraConvexFraxBoost : boost;
-
-        // Result
-        return 3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
-            / (
-                ((2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply)
-                    + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
-            );
-    }
-
-    // This function return the optimal amount of lps that must be held by the locker
-    function optimization3(address liquidityGauge, bool isMeta) public view returns (uint256) {
-        // veCRV
-        uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
-
-        // Liquidity Gauge
-        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
-
-        // CVX
-        uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
-
-        // Additional boost
-        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
-
-        // Additional boost for Convex FRAX
-        boost = isMeta ? boost + extraConvexFraxBoost : boost;
-
-        // Result
-        return balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost)) * 1e18;
     }
 
     //////////////////////////////////////////////////////
@@ -181,7 +129,7 @@ contract Optimizor is Auth {
             }
             // Else, calculate the optimal amount and cache it
             else {
-                opt = optimization1(liquidityGauge, true);
+                opt = optimalAmount(liquidityGauge, true);
                 lastOptiMetapool[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
 
@@ -205,7 +153,7 @@ contract Optimizor is Auth {
             }
             // Else, calculate the optimal amount and cache it
             else {
-                opt = optimization1(liquidityGauge, false);
+                opt = optimalAmount(liquidityGauge, false);
                 lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
             // Get the balance of the locker on the liquidity gauge
