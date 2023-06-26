@@ -60,15 +60,16 @@ contract CurveStrategy is Auth {
     bool public claimAll = true;
 
     // --- Mappings
-    mapping(address => address) public gauges; // lp token from curve -> curve gauge
 
     // Following mappings need to be initialized on the deployment to match with the previous contract
-    mapping(address => Fees) public feesInfos; // gauge -> fees
-    mapping(address => address) public multiGauges;
-    mapping(address => uint256) public lGaugeType;
     mapping(address => bool) public vaults;
+    mapping(address => address) public gauges; // lp token from curve -> curve gauge
+    mapping(address => uint256) public lGaugeType;
 
-    event FeeManaged(uint256 _manageFee, address _gauge, uint256 _fee);
+    mapping(address => Fees) public feesInfos; // gauge -> fees
+
+    mapping(address => address) public rewardDistributors; // Curve Gauge -> Stake DAO Reward Distributor
+
     event OptimizorSet(address _optimizor);
     event VeSDTProxySet(address _veSDTProxy);
     event AccumulatorSet(address _accumulator);
@@ -81,6 +82,7 @@ contract CurveStrategy is Auth {
     event Claimed(address _gauge, address _token, uint256 _amount);
     event Deposited(address _gauge, address _token, uint256 _amount);
     event Withdrawn(address _gauge, address _token, uint256 _amount);
+    event FeeManaged(uint256 _manageFee, address _gauge, uint256 _fee);
 
     // --- Errors
     error AMOUNT_NULL();
@@ -229,12 +231,12 @@ contract CurveStrategy is Auth {
 
         // Distribute CRV to fees recipients and gauges
         uint256 crvNetRewards = _sendFee(gauge, CRV, crvMinted);
-        ERC20(CRV).safeApprove(multiGauges[gauge], crvNetRewards);
-        ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(CRV, crvNetRewards);
+        ERC20(CRV).safeApprove(rewardDistributors[gauge], crvNetRewards);
+        ILiquidityGauge(rewardDistributors[gauge]).deposit_reward_token(CRV, crvNetRewards);
         emit Claimed(gauge, CRV, crvMinted);
 
         // Distribute SDT to the related gauge
-        ISdtDistributorV2(sdtDistributor).distribute(multiGauges[gauge]);
+        ISdtDistributorV2(sdtDistributor).distribute(rewardDistributors[gauge]);
 
         // Claim rewards only for lg type 0 and if there is at least one reward token added
         if (lGaugeType[gauge] == 0 && ILiquidityGauge(gauge).reward_tokens(0) != address(0)) {
@@ -291,8 +293,8 @@ contract CurveStrategy is Auth {
                     );
                     if (!success) revert CALL_FAILED();
                 }
-                ERC20(rewardToken).safeApprove(multiGauges[gauge], rewardsBalance);
-                ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(rewardToken, rewardsBalance);
+                ERC20(rewardToken).safeApprove(rewardDistributors[gauge], rewardsBalance);
+                ILiquidityGauge(rewardDistributors[gauge]).deposit_reward_token(rewardToken, rewardsBalance);
                 emit Claimed(gauge, rewardToken, rewardsBalance);
             }
         }
@@ -332,8 +334,8 @@ contract CurveStrategy is Auth {
                 // Skip if no reward obtained
                 if (rewardObtained == 0) continue;
                 // Approve and deposit the reward to the multi gauge
-                ERC20(rewardsTokens[j]).safeApprove(multiGauges[gauge], rewardObtained);
-                ILiquidityGauge(multiGauges[gauge]).deposit_reward_token(rewardsTokens[j], rewardObtained);
+                ERC20(rewardsTokens[j]).safeApprove(rewardDistributors[gauge], rewardObtained);
+                ILiquidityGauge(rewardDistributors[gauge]).deposit_reward_token(rewardsTokens[j], rewardObtained);
             }
         }
     }
@@ -426,7 +428,7 @@ contract CurveStrategy is Auth {
 
     function setMultiGauge(address gauge, address multiGauge) external requiresAuth {
         if (gauge == address(0) || multiGauge == address(0)) revert ADDRESS_NULL();
-        multiGauges[gauge] = multiGauge;
+        rewardDistributors[gauge] = multiGauge;
         emit MultiGaugeSet(gauge, multiGauge);
     }
 

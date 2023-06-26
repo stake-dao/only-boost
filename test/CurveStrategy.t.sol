@@ -730,11 +730,11 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetMultiGauge() public useFork(forkId1) {
-        assertEq(curveStrategy.multiGauges(address(0x1)), address(0), "0");
+        assertEq(curveStrategy.rewardDistributors(address(0x1)), address(0), "0");
 
         curveStrategy.setMultiGauge(address(0x1), address(0x2));
 
-        assertEq(curveStrategy.multiGauges(address(0x1)), address(0x2), "1");
+        assertEq(curveStrategy.rewardDistributors(address(0x1)), address(0x2), "1");
     }
 
     function test_SetMultiGauge_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
