@@ -588,7 +588,7 @@ contract BaseTest is Test {
             amountStakeDAO = REF_AMOUNT;
         } else if (amountStakeDAO == MAX) {
             // Calculate optimal amount
-            uint256 optimalAmount = optimizor.optimization1(
+            uint256 optimalAmount = optimizor.optimalAmount(
                 gauges[address(token)], isMetapool[address(token)] && !optimizor.isConvexFraxPaused()
             );
             assert(optimalAmount > 0);

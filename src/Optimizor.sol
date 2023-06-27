@@ -16,10 +16,10 @@ contract Optimizor is Auth {
         uint256 value;
         uint256 timestamp;
     }
+
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
-
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV Token
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B); // CVX Token
 
@@ -57,6 +57,7 @@ contract Optimizor is Auth {
     error NOT_PAUSED();
     error WRONG_AMOUNT();
     error ALREADY_PAUSED();
+    error ALREADY_KILLED();
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -81,7 +82,7 @@ contract Optimizor is Auth {
     /// --- OPTIMIZATION FOR STAKEDAO
     //////////////////////////////////////////////////////
     // This function return the optimal amount of lps that must be held by the locker
-    function optimization1(address liquidityGauge, bool isMeta) public view returns (uint256) {
+    function optimalAmount(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
@@ -101,58 +102,6 @@ contract Optimizor is Auth {
 
         // Result
         return balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost));
-    }
-
-    // This function return the optimal amount of lps that must be held by the locker
-    function optimization2(address liquidityGauge, bool isMeta) public view returns (uint256) {
-        // veCRV
-        uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
-        uint256 veCRVTotal = ERC20(LOCKER_CRV).totalSupply();
-
-        // Liquidity Gauge
-        uint256 totalSupply = ERC20(liquidityGauge).totalSupply();
-        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
-
-        // CVX
-        uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
-
-        // Additional boost
-        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
-
-        // Additional boost for Convex FRAX
-        boost = isMeta ? boost + extraConvexFraxBoost : boost;
-
-        // Result
-        return 3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
-            / (
-                ((2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply)
-                    + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
-            );
-    }
-
-    // This function return the optimal amount of lps that must be held by the locker
-    function optimization3(address liquidityGauge, bool isMeta) public view returns (uint256) {
-        // veCRV
-        uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
-
-        // Liquidity Gauge
-        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
-
-        // CVX
-        uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
-
-        // Additional boost
-        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
-
-        // Additional boost for Convex FRAX
-        boost = isMeta ? boost + extraConvexFraxBoost : boost;
-
-        // Result
-        return balanceConvex * veCRVStakeDAO / (veCRVConvex * (1e18 + boost)) * 1e18;
     }
 
     //////////////////////////////////////////////////////
@@ -181,7 +130,7 @@ contract Optimizor is Auth {
             }
             // Else, calculate the optimal amount and cache it
             else {
-                opt = optimization1(liquidityGauge, true);
+                opt = optimalAmount(liquidityGauge, true);
                 lastOptiMetapool[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
 
@@ -205,7 +154,7 @@ contract Optimizor is Auth {
             }
             // Else, calculate the optimal amount and cache it
             else {
-                opt = optimization1(liquidityGauge, false);
+                opt = optimalAmount(liquidityGauge, false);
                 lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
             // Get the balance of the locker on the liquidity gauge
@@ -313,30 +262,48 @@ contract Optimizor is Auth {
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
     function pauseConvexFraxDeposit() external requiresAuth {
+        // Revert if already paused
         if (isConvexFraxPaused) revert ALREADY_PAUSED();
 
+        // Pause
         isConvexFraxPaused = true;
+        // Set the timestamp
         convexFraxPausedTimestamp = block.timestamp;
     }
 
     function killConvexFrax() external requiresAuth {
+        // Revert if not paused
         if (!isConvexFraxPaused) revert NOT_PAUSED();
+        // Revert if already killed
+        if (isConvexFraxKilled) revert ALREADY_KILLED();
+        // Revert if not enough time has passed
         if ((convexFraxPausedTimestamp + fallbackConvexFrax.lockingIntervalSec()) > block.timestamp) {
             revert TOO_SOON();
         }
+
+        // Kill
         isConvexFraxKilled = true;
 
+        // Cache len
         uint256 len = fallbackConvexFrax.lastPidsCount();
 
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint256 i = 0; i < len;) {
+            // Check balanceOf on the fallback
             uint256 balance = fallbackConvexFrax.balanceOf(i);
+
             if (balance > 0) {
+                // Get LP token
                 (address lpToken,) = fallbackConvexFrax.getLP(i);
                 // Withdraw from convex frax
                 fallbackConvexFrax.withdraw(lpToken, balance);
 
                 // Follow optimized deposit logic
                 curveStrategy.depositForOptimizor(lpToken, balance);
+            }
+
+            // No need to check if overflow, because len is uint256
+            unchecked {
+                ++i;
             }
         }
     }
@@ -358,10 +325,12 @@ contract Optimizor is Auth {
     }
 
     function min(uint256 a, uint256 b) public pure returns (uint256) {
+        // Return min between a and b
         return (a < b) ? a : b;
     }
 
     function rescueToken(address token, address receiver, uint256 amount) external requiresAuth {
+        // Transfer `amount` of `token` to `to`
         ERC20(token).transfer(receiver, amount);
     }
 }
