@@ -51,9 +51,9 @@ contract BaseTest is Test {
 
     // --- Interfaces
     ILocker public locker;
-    IBoosterConvexFrax public boosterConvexFrax;
-    IBoosterConvexCurve public boosterConvexCurve;
-    IPoolRegistryConvexFrax public poolRegistryConvexFrax;
+    IBoosterConvexFrax public BOOSTER_CONVEX_FRAX;
+    IBoosterConvexCurve public BOOSTER_CONVEX_CURVE;
+    IPoolRegistryConvexFrax public POOL_REGISTRY_CONVEX_FRAX;
 
     //////////////////////////////////////////////////////
     /// --- CONSTANTS & IMMUABLES
@@ -143,9 +143,9 @@ contract BaseTest is Test {
         curveStrategy.setOptimizor(address(optimizor));
         // Setup contracts
         locker = ILocker(LOCKER);
-        boosterConvexFrax = IBoosterConvexFrax(fallbackConvexFrax.boosterConvexFrax());
-        boosterConvexCurve = IBoosterConvexCurve(fallbackConvexCurve.boosterConvexCurve());
-        poolRegistryConvexFrax = IPoolRegistryConvexFrax(fallbackConvexFrax.poolRegistryConvexFrax());
+        BOOSTER_CONVEX_FRAX = IBoosterConvexFrax(fallbackConvexFrax.BOOSTER_CONVEX_FRAX());
+        BOOSTER_CONVEX_CURVE = IBoosterConvexCurve(fallbackConvexCurve.BOOSTER_CONVEX_CURVE());
+        POOL_REGISTRY_CONVEX_FRAX = IPoolRegistryConvexFrax(fallbackConvexFrax.POOL_REGISTRY_CONVEX_FRAX());
 
         _labelContract();
         // Add all curve gauges
@@ -254,9 +254,9 @@ contract BaseTest is Test {
         vm.label(address(fallbackConvexFrax), "FallbackConvexFrax");
         vm.label(address(fallbackConvexCurve), "FallbackConvexCurve");
         vm.label(address(locker), "Locker");
-        vm.label(address(boosterConvexFrax), "BoosterConvexFrax");
-        vm.label(address(boosterConvexCurve), "BoosterConvexCurve");
-        vm.label(address(poolRegistryConvexFrax), "PoolRegistryConvexFrax");
+        vm.label(address(BOOSTER_CONVEX_FRAX), "BoosterConvexFrax");
+        vm.label(address(BOOSTER_CONVEX_CURVE), "BoosterConvexCurve");
+        vm.label(address(POOL_REGISTRY_CONVEX_FRAX), "PoolRegistryConvexFrax");
 
         // Mocks
         vm.label(address(accumulatorMock), "AccumulatorMock");
@@ -271,7 +271,7 @@ contract BaseTest is Test {
         // https://etherscan.io/tx/0xbcc25272dad48329ed963991f156b929b28ee171e4ad157e2d9b749f3d85eb7b
         // Add all the stuff for ConvexFrax
         vm.prank(0x947B7742C403f20e5FaCcDAc5E092C943E7D0277); // Convex Deployer
-        boosterConvexFrax.addPool(
+        BOOSTER_CONVEX_FRAX.addPool(
             0x7D54C53e6940E88a7ac1970490DAFbBF85D982f4,
             0x39cd4db6460d8B5961F73E997E86DdbB7Ca4D5F6,
             0xa5B6f8Ec4122c5Fe0dBc4Ead8Bfe66A412aE427C
@@ -372,8 +372,8 @@ contract BaseTest is Test {
         if (amountConvex != 0) {
             if (isMetapool[address(token)] && !optimizor.isConvexFraxPaused()) {
                 pidsInfoBefore = fallbackConvexFrax.getPid(address(token));
-                address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfoBefore.pid, address(fallbackConvexFrax));
-                (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfoBefore.pid);
+                address personalVault = POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfoBefore.pid, address(fallbackConvexFrax));
+                (, address staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pidsInfoBefore.pid);
 
                 // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
                 // and the last one is emptyed. So we need to get the last one.
@@ -381,7 +381,7 @@ contract BaseTest is Test {
                 if (lockCount > 0) infosBefore = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCount - 1];
             } else {
                 pidsInfoBefore = fallbackConvexCurve.getPid(address(token));
-                (,,, crvRewards,,) = boosterConvexCurve.poolInfo(pidsInfoBefore.pid);
+                (,,, crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidsInfoBefore.pid);
             }
         }
 
@@ -393,8 +393,8 @@ contract BaseTest is Test {
         if (amountConvex != 0) {
             if (isMetapool[address(token)] && !optimizor.isConvexFraxPaused()) {
                 pidsInfo = fallbackConvexFrax.getPid(address(token));
-                address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
-                (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
+                address personalVault = POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
+                (, address staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pidsInfo.pid);
 
                 // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
                 // and the last one is emptyed. So we need to get the last one.
@@ -402,7 +402,7 @@ contract BaseTest is Test {
                 if (lockCount > 0) infos = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCount - 1];
             } else {
                 pidsInfo = fallbackConvexCurve.getPid(address(token));
-                (,,, crvRewards,,) = boosterConvexCurve.poolInfo(pidsInfo.pid);
+                (,,, crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidsInfo.pid);
             }
         }
 
@@ -412,7 +412,7 @@ contract BaseTest is Test {
 
         if (isMetapool[address(token)] && amountConvex != 0 && !optimizor.isConvexFraxPaused()) {
             // Assertion 2: Check personal vault created
-            assertTrue(poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax)) != address(0), "2");
+            assertTrue(POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfo.pid, address(fallbackConvexFrax)) != address(0), "2");
             // Assertion 3: Check value for personal vault, such as liquidity, kek_id, timestamps, lock_multiplier
             assertEq(infos.liquidity, amountConvex + infosBefore.liquidity, "3");
             assertEq(infos.kek_id, fallbackConvexFrax.kekIds(fallbackConvexFrax.vaults(pidsInfo.pid)), "4"); // kek_id is the same as vault
@@ -441,8 +441,8 @@ contract BaseTest is Test {
         if (isMetapool[address(token)]) {
             // Get all needed infos for following assertions
             pidsInfo = fallbackConvexFrax.getPid(address(token));
-            personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
-            (, staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
+            personalVault = POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
+            (, staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pidsInfo.pid);
             lockCountBefore = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
             if (lockCountBefore > 0) {
                 infosBefore = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCountBefore - 1];

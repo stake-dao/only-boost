@@ -11,7 +11,7 @@ contract BaseFallback is Auth {
     using FixedPointMathLib for uint256;
 
     //////////////////////////////////////////////////////
-    /// --- STRUCT
+    /// --- STRUCTS
     //////////////////////////////////////////////////////
     // Struct to store pool ids from ConvexCurve or ConvexFrax
     struct PidsInfo {
@@ -36,14 +36,12 @@ contract BaseFallback is Auth {
 
     mapping(address => PidsInfo) public pids; // lpToken address --> pool ids from ConvexCurve or ConvexFrax
 
-
     //////////////////////////////////////////////////////
     /// --- EVENTS
     //////////////////////////////////////////////////////
     event Deposited(address token, uint256 amount);
     event Withdrawn(address token, uint256 amount);
     event ClaimedRewards(address lpToken, address rewardToken, uint256 amountClaimed);
-
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -74,7 +72,7 @@ contract BaseFallback is Auth {
         uint256 extraRewardsLength = rewardsTokens.length;
         // Transfer extra rewards to strategy if any
         if (extraRewardsLength > 0) {
-            for (uint8 i = 0; i < extraRewardsLength) {
+            for (uint8 i = 0; i < extraRewardsLength;) {
                 // Cache extra rewards token balance
                 _distributeRewardToken(lpToken, rewardsTokens[i]);
 
@@ -94,10 +92,9 @@ contract BaseFallback is Auth {
     function _distributeRewardToken(address lpToken, address token) internal {
         // Transfer CRV rewards to strategy and charge fees
         uint256 _tokenBalance = ERC20(token).balanceOf(address(this));
-        
+
         // If there is reward token to distribute
         if (_tokenBalance > 0) {
-
             // If there is a fee to be collected
             if (rewardFee > 0) {
                 // Calculate fee amount
@@ -121,7 +118,7 @@ contract BaseFallback is Auth {
 
     function setAllPidsOptimized() public virtual {}
 
-    function isActive(address lpToken) external virtual returns (bool) {}
+    function isActive(address lpToken) external view virtual returns (bool) {}
 
     function balanceOf(address lpToken) external view virtual returns (uint256) {}
 
