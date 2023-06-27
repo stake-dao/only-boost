@@ -124,6 +124,7 @@ contract CurveStrategyTest is BaseTest {
 
         _addCOIL_FRAXBPOnConvexFrax();
         isMetapool[address(COIL_FRAXBP)] = true;
+        fallbackConvexFrax.setAllPidsOptimized();
 
         // Second deposit into StakeDAO Locker and Convex Frax
         (uint256 partStakeDAOAfter, uint256 partConvexAfter) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
@@ -225,6 +226,7 @@ contract CurveStrategyTest is BaseTest {
         // Add the pool on ConvexFrax
         _addCOIL_FRAXBPOnConvexFrax();
         isMetapool[address(COIL_FRAXBP)] = true;
+        fallbackConvexFrax.setAllPidsOptimized();
 
         // Second deposit into StakeDAO Locker and Convex Frax
         (uint256 partStakeDAOAfter, uint256 partConvexAfter) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
