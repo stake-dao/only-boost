@@ -144,18 +144,26 @@ contract FallbackConvexFrax is BaseFallback {
         kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(amount, lockingIntervalSec);
     }
 
-    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override requiresAuth {
+    function claimRewards(address lpToken)
+        external
+        override
+        requiresAuth
+        returns (address[] memory, uint256[] memory)
+    {
+        // Cache rewardsTokens
+        address[] memory rewardsTokens = getRewardsTokens(lpToken);
+
         // Cache the pid
         PidsInfo memory pidInfo = pids[stkTokens[lpToken]];
 
         // Only claim if the pid is initialized
-        if (!pidInfo.isInitialized) return;
+        if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0));
 
         // Release all the locked curve lp
         IStakingProxyConvex(vaults[pidInfo.pid]).getReward(true);
 
         // Handle extra rewards split
-        _handleRewards(lpToken, rewardsTokens);
+        return (rewardsTokens, _handleRewards(lpToken, rewardsTokens));
     }
 
     //////////////////////////////////////////////////////

@@ -98,13 +98,20 @@ contract FallbackConvexCurve is BaseFallback {
         emit Withdrawn(lpToken, amount);
     }
 
-    function claimRewards(address lpToken, address[] calldata rewardsTokens) external override requiresAuth {
+    function claimRewards(address lpToken)
+        external
+        override
+        requiresAuth
+        returns (address[] memory, uint256[] memory)
+    {
         // Only callable by the strategy
 
+        // Cache rewardsTokens
+        address[] memory rewardsTokens = getRewardsTokens(lpToken);
         // Cache the pid
         PidsInfo memory pidInfo = pids[lpToken];
         // Only claim if the pid is initialized
-        if (!pidInfo.isInitialized) return;
+        if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0));
 
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidInfo.pid);
@@ -112,7 +119,7 @@ contract FallbackConvexCurve is BaseFallback {
         IBaseRewardsPool(crvRewards).getReward(address(this), rewardsTokens.length > 0 ? true : false);
 
         // Handle extra rewards split
-        _handleRewards(lpToken, rewardsTokens);
+        return (rewardsTokens, _handleRewards(lpToken, rewardsTokens));
     }
 
     //////////////////////////////////////////////////////

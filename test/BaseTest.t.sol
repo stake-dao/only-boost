@@ -372,7 +372,8 @@ contract BaseTest is Test {
         if (amountConvex != 0) {
             if (isMetapool[address(token)] && !optimizor.isConvexFraxPaused()) {
                 pidsInfoBefore = fallbackConvexFrax.getPid(address(token));
-                address personalVault = POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfoBefore.pid, address(fallbackConvexFrax));
+                address personalVault =
+                    POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfoBefore.pid, address(fallbackConvexFrax));
                 (, address staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pidsInfoBefore.pid);
 
                 // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created

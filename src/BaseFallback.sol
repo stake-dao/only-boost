@@ -61,12 +61,8 @@ contract BaseFallback is Auth {
         feeReceiver = _feesReceiver;
     }
 
-    function _handleRewards(address lpToken, address[] calldata rewardsTokens) internal {
-        // Transfer CRV rewards to strategy and charge fees
-        _distributeRewardToken(lpToken, address(CRV));
-
-        // Transfer CVX rewards to strategy and charge fees
-        _distributeRewardToken(lpToken, address(CVX));
+    function _handleRewards(address lpToken, address[] memory rewardsTokens) internal returns (uint256[] memory) {
+        uint256[] memory amountsRewards = new uint256[](rewardsTokens.length);
 
         // Cache extra rewards tokens length
         uint256 extraRewardsLength = rewardsTokens.length;
@@ -74,7 +70,7 @@ contract BaseFallback is Auth {
         if (extraRewardsLength > 0) {
             for (uint8 i = 0; i < extraRewardsLength;) {
                 // Cache extra rewards token balance
-                _distributeRewardToken(lpToken, rewardsTokens[i]);
+                amountsRewards[i] = _distributeRewardToken(lpToken, rewardsTokens[i]);
 
                 // No need to check for overflows
                 unchecked {
@@ -82,6 +78,8 @@ contract BaseFallback is Auth {
                 }
             }
         }
+
+        return amountsRewards;
     }
 
     function rescueERC20(address token, address to, uint256 amount) external requiresAuth {
@@ -89,7 +87,7 @@ contract BaseFallback is Auth {
         ERC20(token).safeTransfer(to, amount);
     }
 
-    function _distributeRewardToken(address lpToken, address token) internal {
+    function _distributeRewardToken(address lpToken, address token) internal returns (uint256) {
         // Transfer CRV rewards to strategy and charge fees
         uint256 _tokenBalance = ERC20(token).balanceOf(address(this));
 
@@ -109,6 +107,8 @@ contract BaseFallback is Auth {
         }
 
         emit ClaimedRewards(lpToken, token, _tokenBalance);
+
+        return _tokenBalance;
     }
 
     //////////////////////////////////////////////////////
@@ -126,7 +126,7 @@ contract BaseFallback is Auth {
 
     function withdraw(address lpToken, uint256 amount) external virtual {}
 
-    function claimRewards(address lpToken, address[] calldata) external virtual {}
+    function claimRewards(address lpToken) external virtual returns (address[] memory, uint256[] memory) {}
 
     function getRewardsTokens(address lpToken) public view virtual returns (address[] memory) {}
 

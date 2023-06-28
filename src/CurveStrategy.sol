@@ -314,28 +314,17 @@ contract CurveStrategy is Auth {
             // Skip the locker fallback
             if (fallbacks[i] == address(LOCKER)) continue;
 
-            // Get the rewards tokens list
-            address[] memory rewardsTokens = BaseFallback(fallbacks[i]).getRewardsTokens(token);
-            // Init the balances before array
-            uint256[] memory balancesBefore = new uint256[](rewardsTokens.length);
-
-            // Check balance before claim
-            for (uint8 j = 0; j < rewardsTokens.length; ++j) {
-                balancesBefore[j] = ERC20(rewardsTokens[j]).balanceOf(address(this));
-            }
-
             // Do the claim
-            BaseFallback(fallbacks[i]).claimRewards(token, rewardsTokens);
+            (address[] memory rewardsTokens, uint256[] memory amounts) = BaseFallback(fallbacks[i]).claimRewards(token);
 
+            uint256 len2 = rewardsTokens.length;
             // Check balance after claim
-            for (uint8 j; j < rewardsTokens.length; ++j) {
-                uint256 rewardObtained = ERC20(rewardsTokens[j]).balanceOf(address(this)) - balancesBefore[j];
-
+            for (uint8 j; j < len2; ++j) {
                 // Skip if no reward obtained
-                if (rewardObtained == 0) continue;
+                if (amounts[j] == 0) continue;
                 // Approve and deposit the reward to the multi gauge
-                ERC20(rewardsTokens[j]).safeApprove(rewardDistributors[gauge], rewardObtained);
-                ILiquidityGauge(rewardDistributors[gauge]).deposit_reward_token(rewardsTokens[j], rewardObtained);
+                ERC20(rewardsTokens[j]).safeApprove(rewardDistributors[gauge], amounts[j]);
+                ILiquidityGauge(rewardDistributors[gauge]).deposit_reward_token(rewardsTokens[j], amounts[j]);
             }
         }
     }
