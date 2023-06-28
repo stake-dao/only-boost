@@ -204,7 +204,7 @@ contract FallbackConvexFrax is BaseFallback {
         return pids[stkTokens[lpToken]];
     }
 
-    function balanceOf(address lpToken) external view override returns (uint256) {
+    function balanceOf(address lpToken) public view override returns (uint256) {
         // Cache the pid
         uint256 pid = pids[stkTokens[lpToken]].pid;
 

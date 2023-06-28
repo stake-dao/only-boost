@@ -120,7 +120,7 @@ contract BaseFallback is Auth {
 
     function isActive(address lpToken) external view virtual returns (bool) {}
 
-    function balanceOf(address lpToken) external view virtual returns (uint256) {}
+    function balanceOf(address lpToken) public view virtual returns (uint256) {}
 
     function deposit(address lpToken, uint256 amount) external virtual {}
 

@@ -111,7 +111,7 @@ contract FallbackConvexCurve is BaseFallback {
         // Cache the pid
         PidsInfo memory pidInfo = pids[lpToken];
         // Only claim if the pid is initialized
-        if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0));
+        if (!pidInfo.isInitialized || (balanceOf(lpToken) == 0)) return (new address[](0), new uint256[](0));
 
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidInfo.pid);
@@ -160,7 +160,7 @@ contract FallbackConvexCurve is BaseFallback {
         return pids[lpToken];
     }
 
-    function balanceOf(address lpToken) external view override returns (uint256) {
+    function balanceOf(address lpToken) public view override returns (uint256) {
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pids[lpToken].pid);
         // Check current balance on convexCurve
