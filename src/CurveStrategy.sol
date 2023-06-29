@@ -2,14 +2,17 @@
 
 pragma solidity 0.8.20;
 
+// --- Solmate Contracts
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
+// --- Core Contracts
 import {Optimizor} from "src/Optimizor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 
+// --- Interfaces
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IAccumulator} from "src/interfaces/IAccumulator.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
@@ -19,13 +22,10 @@ contract CurveStrategy is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    enum MANAGEFEE {
-        PERFFEE,
-        VESDTFEE,
-        ACCUMULATORFEE,
-        CLAIMERREWARD
-    }
-
+    //////////////////////////////////////////////////////
+    /// --- STRUCTS & ENUMS
+    //////////////////////////////////////////////////////
+    // --- Structs
     struct Fees {
         uint256 perfFee;
         uint256 accumulatorFee;
@@ -33,43 +33,57 @@ contract CurveStrategy is Auth {
         uint256 claimerRewardFee;
     }
 
+    // --- Enums
+    enum MANAGEFEE {
+        PERFFEE,
+        VESDTFEE,
+        ACCUMULATORFEE,
+        CLAIMERREWARD
+    }
+
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
-
+    // --- Interfaces
     ILocker public constant LOCKER = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6); // StakeDAO CRV Locker
+
+    // --- Addresses
     address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
     address public constant CRV_FEE_D = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc;
     address public constant CRV3 = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+
+    // --- Uints
     uint256 public constant BASE_FEE = 10000; // 100% fees
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
-
     // --- Contracts and Interfaces
     Optimizor public optimizor; // Optimizor contract
     IAccumulator public accumulator = IAccumulator(0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A); // Stake DAO CRV Accumulator
 
     // --- Addresses
-    address public rewardsReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
-    address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C;
-    address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E;
+    address public rewardsReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063; // Stake DAO Rewards Receiver
+    address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C; // Stake DAO SDT Distributor
+    address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E; // Stake DAO veSDT Proxy
 
-    bool public claimAll = true;
+    // --- Bools
+    bool public claimAll = true; // Flag for claiming rewards from fallbacks on `claim()`
 
     // --- Mappings
-
     // Following mappings need to be initialized on the deployment to match with the previous contract
-    mapping(address => bool) public vaults;
+    mapping(address => bool) public vaults; // vault addres -> is vault active
     mapping(address => address) public gauges; // lp token from curve -> curve gauge
-    mapping(address => uint256) public lGaugeType;
+    mapping(address => uint256) public lGaugeType; // liquidity gauge address -> gauge type (0,1,2,3)
 
     mapping(address => Fees) public feesInfos; // gauge -> fees
 
     mapping(address => address) public rewardDistributors; // Curve Gauge -> Stake DAO Reward Distributor
 
+    //////////////////////////////////////////////////////
+    /// --- EVENTS
+    //////////////////////////////////////////////////////
     event OptimizorSet(address _optimizor);
     event VeSDTProxySet(address _veSDTProxy);
     event AccumulatorSet(address _accumulator);
@@ -84,7 +98,9 @@ contract CurveStrategy is Auth {
     event Withdrawn(address _gauge, address _token, uint256 _amount);
     event FeeManaged(uint256 _manageFee, address _gauge, uint256 _fee);
 
-    // --- Errors
+    //////////////////////////////////////////////////////
+    /// --- ERRORS
+    //////////////////////////////////////////////////////
     error AMOUNT_NULL();
     error MINT_FAILED();
     error CALL_FAILED();

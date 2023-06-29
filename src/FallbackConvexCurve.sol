@@ -2,8 +2,10 @@
 
 pragma solidity 0.8.20;
 
+// --- Core Contracts
 import "./BaseFallback.sol";
 
+// --- Interfaces
 import {IBaseRewardsPool} from "src/interfaces/IBaseRewardsPool.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 
@@ -31,10 +33,7 @@ contract FallbackConvexCurve is BaseFallback {
     //////////////////////////////////////////////////////
     constructor(address owner, Authority authority, address _curveStrategy)
         BaseFallback(owner, authority, _curveStrategy)
-    {
-        // Set all the pid mapping
-        setAllPidsOptimized();
-    }
+    {}
 
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS

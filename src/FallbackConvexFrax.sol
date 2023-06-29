@@ -2,8 +2,10 @@
 
 pragma solidity 0.8.20;
 
+// --- Core Contracts
 import "./BaseFallback.sol";
 
+// --- Interfaces
 import {IFraxFarmERC20} from "src/interfaces/IFraxFarmERC20.sol";
 import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
@@ -16,6 +18,7 @@ contract FallbackConvexFrax is BaseFallback {
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
+    // --- Interfaces
     IBoosterConvexFrax public constant BOOSTER_CONVEX_FRAX =
         IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa); // Convex Frax booster
     IPoolRegistryConvexFrax public constant POOL_REGISTRY_CONVEX_FRAX =
@@ -24,14 +27,16 @@ contract FallbackConvexFrax is BaseFallback {
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
+    // --- Uints
     uint256 public lockingIntervalSec = 7 days; // 7 days
 
+    // --- Mappings
     mapping(address => address) public stkTokens; // lpToken address --> staking token contract address
     mapping(uint256 => address) public vaults; // pid from convex frax -> personal vault for convex frax
     mapping(address => bytes32) public kekIds; // personal vault on convex frax -> kekId
 
     //////////////////////////////////////////////////////
-    /// --- ERRORS
+    /// --- EVENTS
     //////////////////////////////////////////////////////
     event Redeposited(address lpToken, uint256 amount);
 
@@ -40,10 +45,7 @@ contract FallbackConvexFrax is BaseFallback {
     //////////////////////////////////////////////////////
     constructor(address owner, Authority authority, address _curveStrategy)
         BaseFallback(owner, authority, _curveStrategy)
-    {
-        // Set all the pid mapping
-        setAllPidsOptimized();
-    }
+    {}
 
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS

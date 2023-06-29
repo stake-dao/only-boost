@@ -2,16 +2,22 @@
 
 pragma solidity 0.8.20;
 
+// --- Solmate Contracts
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
 
+// --- Core Contracts
 import {CurveStrategy} from "src/CurveStrategy.sol";
 import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
+// --- Interfaces
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
 contract Optimizor is Auth {
+    //////////////////////////////////////////////////////
+    /// --- STRUCTS
+    //////////////////////////////////////////////////////
     struct CachedOptimization {
         uint256 value;
         uint256 timestamp;
@@ -20,39 +26,48 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
+    // --- ERC20
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV Token
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B); // CVX Token
 
+    // --- Addresses
     address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2; // CRV Locker
     address public constant LOCKER_CVX = 0xD18140b4B819b895A3dba5442F959fA44994AF50; // CVX Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
     address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
 
+    // --- Uints
     uint256 public constant FEES_CONVEX = 17e16; // 17% Convex
     uint256 public constant FEES_STAKEDAO = 16e16; // 16% StakeDAO
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
-    uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
-    uint256 public convexFraxPausedTimestamp; // Timestamp of the Convex FRAX pause
-    uint256 public cachePeriod = 7 days; //
-
-    // List of fallbacks
-    address[] public fallbacks;
-
-    bool public isConvexFraxPaused; // Pause Convex FRAX Deposit
-    bool public isConvexFraxKilled; // Kill Convex FRAX Deposit and Withdraw
-    bool public useLastOpti; // Use last optimization value
-
-    mapping(address => CachedOptimization) public lastOpti; // liquidityGauge => CachedOptimization
-    mapping(address => CachedOptimization) public lastOptiMetapool; // liquidityGauge => CachedOptimization
-
     // --- Contracts
     CurveStrategy public curveStrategy;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
+    // --- Addresses
+    address[] public fallbacks; // List of fallbacks
+
+    // --- Bools
+    bool public isConvexFraxPaused; // Pause Convex FRAX Deposit
+    bool public isConvexFraxKilled; // Kill Convex FRAX Deposit and Withdraw
+    bool public useLastOpti; // Use last optimization value
+
+    // --- Uints
+    uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
+    uint256 public convexFraxPausedTimestamp; // Timestamp of the Convex FRAX pause
+    uint256 public cachePeriod = 7 days; // Cache period for optimization
+
+    // --- Mappings
+    mapping(address => CachedOptimization) public lastOpti; // liquidityGauge => CachedOptimization
+    mapping(address => CachedOptimization) public lastOptiMetapool; // liquidityGauge => CachedOptimization
+
+    //////////////////////////////////////////////////////
+    /// --- ERRORS
+    //////////////////////////////////////////////////////
     error TOO_SOON();
     error NOT_PAUSED();
     error WRONG_AMOUNT();
