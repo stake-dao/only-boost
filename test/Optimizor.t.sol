@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import "test/BaseTest.t.sol";
 
@@ -13,31 +13,23 @@ contract OptimizorTest is BaseTest {
         // 17136745 : 27 April 2023 09:51:47 UTC
         // 17137000 : 27 April 2023 10:43:59 UTC
         // Create Fork
-        vm.selectFork(vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_1));
+        vm.rollFork(FORK_BLOCK_NUMBER_1);
 
         // Deploy Optimizor
-        optimizor = new Optimizor(address(this), Authority(address(0)), address(0), address(0), address(0));
+        fallbackConvexCurve = new FallbackConvexCurve(address(this), rolesAuthority, address(curveStrategy));
+        fallbackConvexFrax = new FallbackConvexFrax(address(this), rolesAuthority, address(curveStrategy));
+        optimizor =
+        new Optimizor(address(this), Authority(address(0)), address(0), address(fallbackConvexCurve), address(fallbackConvexFrax));
         // End for deployment
-
-        fallbackConvexFrax = optimizor.fallbackConvexFrax();
-        fallbackConvexCurve = optimizor.fallbackConvexCurve();
     }
 
     //////////////////////////////////////////////////////
     /// --- TESTS
     //////////////////////////////////////////////////////
     // --- Stake DAO Optimization
-    function test_Optimization1() public view {
+    function test_Optimization() public view {
         optimizor.optimalAmount(gauges[address(EUR3)], true);
     }
-
-    /*function test_Optimization2() public view {
-        optimizor.optimization2(gauges[address(EUR3)], true);
-    }
-
-    function test_Optimization3() public view {
-        optimizor.optimization3(gauges[address(EUR3)], true);
-    }*/
 
     /// --- Opitmitzation on deposit
     function test_OptimizationOnDeposit_StakeDAOAndConvexCurve() public {
@@ -45,7 +37,7 @@ contract OptimizorTest is BaseTest {
         ERC20 token = CRV3;
 
         // Get the balance of the locker in the gauge
-        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER);
 
         uint256 amountStakeDAO = optimizor.optimalAmount(gauges[address(token)], false) - lockerGaugeBalance;
         uint256 amountFallbackCurve = 5_000_000e18;
@@ -69,7 +61,7 @@ contract OptimizorTest is BaseTest {
         ERC20 token = ALUSD_FRAXBP;
 
         // Get the balance of the locker in the gauge
-        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER);
 
         uint256 amountStakeDAO = optimizor.optimalAmount(gauges[address(token)], true) - lockerGaugeBalance;
         uint256 amountFallbackCurve = 0;

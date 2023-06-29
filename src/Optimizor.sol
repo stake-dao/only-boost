@@ -1,62 +1,78 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
+// --- Solmate Contracts
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
 
+// --- Core Contracts
 import {CurveStrategy} from "src/CurveStrategy.sol";
 import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
+// --- Interfaces
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
 contract Optimizor is Auth {
+    //////////////////////////////////////////////////////
+    /// --- STRUCTS
+    //////////////////////////////////////////////////////
     struct CachedOptimization {
         uint256 value;
         uint256 timestamp;
     }
+
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
-
+    // --- ERC20
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV Token
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B); // CVX Token
 
+    // --- Addresses
     address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2; // CRV Locker
     address public constant LOCKER_CVX = 0xD18140b4B819b895A3dba5442F959fA44994AF50; // CVX Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
-    address public constant LOCKER_STAKEDAO = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
+    address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
 
+    // --- Uints
     uint256 public constant FEES_CONVEX = 17e16; // 17% Convex
     uint256 public constant FEES_STAKEDAO = 16e16; // 16% StakeDAO
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
-    uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
-    uint256 public convexFraxPausedTimestamp; // Timestamp of the Convex FRAX pause
-    uint256 public cachePeriod = 7 days; //
-
-    // List of fallbacks
-    address[] public fallbacks;
-
-    bool public isConvexFraxPaused; // Pause Convex FRAX Deposit
-    bool public isConvexFraxKilled; // Kill Convex FRAX Deposit and Withdraw
-    bool public useLastOpti; // Use last optimization value
-
-    mapping(address => CachedOptimization) public lastOpti; // liquidityGauge => CachedOptimization
-    mapping(address => CachedOptimization) public lastOptiMetapool; // liquidityGauge => CachedOptimization
-
     // --- Contracts
     CurveStrategy public curveStrategy;
     FallbackConvexFrax public fallbackConvexFrax;
     FallbackConvexCurve public fallbackConvexCurve;
 
+    // --- Addresses
+    address[] public fallbacks; // List of fallbacks
+
+    // --- Bools
+    bool public isConvexFraxPaused; // Pause Convex FRAX Deposit
+    bool public isConvexFraxKilled; // Kill Convex FRAX Deposit and Withdraw
+    bool public useLastOpti; // Use last optimization value
+
+    // --- Uints
+    uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
+    uint256 public convexFraxPausedTimestamp; // Timestamp of the Convex FRAX pause
+    uint256 public cachePeriod = 7 days; // Cache period for optimization
+
+    // --- Mappings
+    mapping(address => CachedOptimization) public lastOpti; // liquidityGauge => CachedOptimization
+    mapping(address => CachedOptimization) public lastOptiMetapool; // liquidityGauge => CachedOptimization
+
+    //////////////////////////////////////////////////////
+    /// --- ERRORS
+    //////////////////////////////////////////////////////
     error TOO_SOON();
     error NOT_PAUSED();
     error WRONG_AMOUNT();
     error ALREADY_PAUSED();
+    error ALREADY_KILLED();
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -72,7 +88,7 @@ contract Optimizor is Auth {
         fallbackConvexCurve = FallbackConvexCurve(_fallbackConvexCurve);
         curveStrategy = CurveStrategy(_curveStrategy);
 
-        fallbacks.push(LOCKER_STAKEDAO);
+        fallbacks.push(LOCKER);
         fallbacks.push(address(fallbackConvexCurve));
         fallbacks.push(address(fallbackConvexFrax));
     }
@@ -84,7 +100,7 @@ contract Optimizor is Auth {
     function optimalAmount(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER_STAKEDAO);
+        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
 
         // Liquidity Gauge
         uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
@@ -134,7 +150,7 @@ contract Optimizor is Auth {
             }
 
             // Get the balance of the locker on the liquidity gauge
-            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER_STAKEDAO));
+            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
 
             // Stake DAO Curve
             amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
@@ -157,7 +173,7 @@ contract Optimizor is Auth {
                 lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
             // Get the balance of the locker on the liquidity gauge
-            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER_STAKEDAO));
+            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
 
             // Stake DAO Curve
             amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
@@ -186,7 +202,7 @@ contract Optimizor is Auth {
         returns (address[] memory, uint256[] memory)
     {
         // Cache the balance of all fallbacks
-        uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER);
         uint256 balanceOfConvexCurve = FallbackConvexCurve(fallbacks[1]).balanceOf(lpToken);
         uint256 balanceOfConvexFrax = isConvexFraxKilled ? 0 : FallbackConvexFrax(fallbacks[2]).balanceOf(lpToken);
 
@@ -261,30 +277,48 @@ contract Optimizor is Auth {
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
     function pauseConvexFraxDeposit() external requiresAuth {
+        // Revert if already paused
         if (isConvexFraxPaused) revert ALREADY_PAUSED();
 
+        // Pause
         isConvexFraxPaused = true;
+        // Set the timestamp
         convexFraxPausedTimestamp = block.timestamp;
     }
 
     function killConvexFrax() external requiresAuth {
+        // Revert if not paused
         if (!isConvexFraxPaused) revert NOT_PAUSED();
+        // Revert if already killed
+        if (isConvexFraxKilled) revert ALREADY_KILLED();
+        // Revert if not enough time has passed
         if ((convexFraxPausedTimestamp + fallbackConvexFrax.lockingIntervalSec()) > block.timestamp) {
             revert TOO_SOON();
         }
+
+        // Kill
         isConvexFraxKilled = true;
 
+        // Cache len
         uint256 len = fallbackConvexFrax.lastPidsCount();
 
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint256 i = 0; i < len;) {
+            // Check balanceOf on the fallback
             uint256 balance = fallbackConvexFrax.balanceOf(i);
+
             if (balance > 0) {
+                // Get LP token
                 (address lpToken,) = fallbackConvexFrax.getLP(i);
                 // Withdraw from convex frax
                 fallbackConvexFrax.withdraw(lpToken, balance);
 
                 // Follow optimized deposit logic
                 curveStrategy.depositForOptimizor(lpToken, balance);
+            }
+
+            // No need to check if overflow, because len is uint256
+            unchecked {
+                ++i;
             }
         }
     }
@@ -306,10 +340,12 @@ contract Optimizor is Auth {
     }
 
     function min(uint256 a, uint256 b) public pure returns (uint256) {
+        // Return min between a and b
         return (a < b) ? a : b;
     }
 
     function rescueToken(address token, address receiver, uint256 amount) external requiresAuth {
+        // Transfer `amount` of `token` to `to`
         ERC20(token).transfer(receiver, amount);
     }
 }
