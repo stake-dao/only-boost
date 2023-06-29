@@ -3,6 +3,7 @@ out
 .env
 old
 lcov.info
+lcov.info.pruned
 coverage.txt
 coverage/
 .DS_Store

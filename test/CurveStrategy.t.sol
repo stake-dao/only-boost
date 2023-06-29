@@ -68,11 +68,21 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Deposit_AllOnStakeDAOBecauseOnlyChoice() public useFork(forkId1) {
-        // Create a fack fallback that return false for `isActive`
+        // Create a fake fallback that return false for `isActive`
         FallbackConvexCurveMock mock = new FallbackConvexCurveMock(address(curveStrategy));
         optimizor.setFallbackAddresses(address(mock), address(fallbackConvexFrax));
 
         _depositTest(CRV3, 5_000_000e18, 0, 0);
+    }
+
+    function test_Deposit_AllOnStakeDAOBecauseNoOptimizor() public useFork(forkId1) {
+        curveStrategy.setOptimizor(address(0));
+
+        // Test deposit not metapool
+        _depositTest(CRV3, 5_000_000e18, 0, 0);
+
+        // Test deposit metapool
+        _depositTest(ALUSD_FRAXBP, 5_000_000e18, 0, 0);
     }
 
     function test_Deposit_UsingConvexCurveFallback() public useFork(forkId1) {
@@ -175,6 +185,14 @@ contract CurveStrategyTest is BaseTest {
 
         // === WITHDRAW PROCESS === //
         _withdrawTest(CRV3, partStakeDAO, partConvex, 0);
+    }
+
+    function test_Withdraw_AllFromStakeDAOBecauseNoOptimizor() public useFork(forkId1) {
+        curveStrategy.setOptimizor(address(0));
+
+        _deposit(CRV3, 5_000_000e18, 0, 0);
+
+        _withdrawTest(CRV3, 5_000_000e18, 0, 0);
     }
 
     function test_Withdraw_UsingConvexCurveFallback() public useFork(forkId1) {
@@ -792,11 +810,6 @@ contract CurveStrategyTest is BaseTest {
         curveStrategy.setOptimizor(address(0x1));
 
         assertEq(address(curveStrategy.optimizor()), address(0x1), "1");
-    }
-
-    function test_SetOptimizor_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
-        curveStrategy.setOptimizor(address(0));
     }
 
     function test_ManageFee_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {

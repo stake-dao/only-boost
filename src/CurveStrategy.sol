@@ -138,9 +138,20 @@ contract CurveStrategy is Auth {
         // Revert if the gauge is not set
         if (gauge == address(0)) revert ADDRESS_NULL();
 
-        // Call the Optimizor contract
-        (address[] memory recipients, uint256[] memory optimizedAmounts) =
-            optimizor.optimizeDeposit(token, gauge, amount);
+        // Initiate the recipients and amounts arrays
+        address[] memory recipients;
+        uint256[] memory optimizedAmounts;
+
+        if (address(optimizor) != address(0)) {
+            // Call the Optimizor contract
+            (recipients, optimizedAmounts) = optimizor.optimizeDeposit(token, gauge, amount);
+        } else {
+            // Shortcut if no Optimizor contract, deposit all on Stake DAO
+            _depositIntoLiquidLocker(token, gauge, amount);
+
+            // No need to go futher on the function
+            return;
+        }
 
         // Loops on fallback to deposit lp tokens
         for (uint8 i; i < recipients.length; ++i) {
@@ -189,10 +200,22 @@ contract CurveStrategy is Auth {
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
-        // Call the Optimizor contract
-        (address[] memory recipients, uint256[] memory optimizedAmounts) =
-            optimizor.optimizeWithdraw(token, gauge, amount);
+        // Initiate the recipients and amounts arrays
+        address[] memory recipients;
+        uint256[] memory optimizedAmounts;
 
+        // Call the Optimizor contract
+        if (address(optimizor) != address(0)) {
+            (recipients, optimizedAmounts) = optimizor.optimizeWithdraw(token, gauge, amount);
+        } else {
+            // Shortcut if no Optimizor contract, withdraw all from Stake DAO
+            _withdrawFromLiquidLocker(token, gauge, amount);
+
+            // No need to go futher on the function
+            return;
+        }
+
+        // Cache length
         uint256 len = recipients.length;
         for (uint8 i; i < len; ++i) {
             // Skip if the optimized amount is 0
@@ -322,6 +345,7 @@ contract CurveStrategy is Auth {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         // Get fallbacks addresses
+        // If no optimizor setted, this will revert
         address[] memory fallbacks = optimizor.getFallbacks();
 
         // Cache the fallbacks length
@@ -456,7 +480,7 @@ contract CurveStrategy is Auth {
     }
 
     function setOptimizor(address newOptimizor) external requiresAuth {
-        if (newOptimizor == address(0)) revert ADDRESS_NULL();
+        // Optimizor can be set to address(0) to disable it
         optimizor = Optimizor(newOptimizor);
         emit OptimizorSet(newOptimizor);
     }
