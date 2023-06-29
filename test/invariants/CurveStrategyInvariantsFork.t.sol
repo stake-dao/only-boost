@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import "test/BaseTest.t.sol";
 
@@ -18,7 +18,7 @@ contract CurveStrategyInvariantsForkTest is BaseTest {
     //////////////////////////////////////////////////////
     function setUp() public {
         // Create a fork of mainnet, fixing block number for faster testing
-        vm.createSelectFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_1);
+        vm.rollFork(FORK_BLOCK_NUMBER_1);
 
         // Deployment contracts
         rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
@@ -61,7 +61,7 @@ contract CurveStrategyInvariantsForkTest is BaseTest {
         assertEq(CRV3.balanceOf(address(curveStrategy)), 0, "Strategy should have no CRV3");
         // Assertion n°2: CRV3 balance of fallbackConvexCurve should be 0
 
-        // Assertion n°3: 
+        // Assertion n°3:
         assertEq(
             handler.amountDeposited(),
             handler.balanceFallbackConvexCurve() + handler.balanceStakeDAO() - amountBefore,

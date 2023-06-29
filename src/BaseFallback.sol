@@ -54,7 +54,7 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     constructor(address owner, Authority _authority, address _curveStrategy) Auth(owner, _authority) {
         curveStrategy = _curveStrategy;
-        
+
         // Set all the pid mapping
         setAllPidsOptimized();
     }

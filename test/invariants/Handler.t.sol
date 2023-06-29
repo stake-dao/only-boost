@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import "test/BaseTest.t.sol";
 
@@ -46,7 +46,7 @@ contract Handler is BaseTest {
         uint256 balanceOfConvexCurve = fallbackConvexCurve.balanceOf(address(token));
         uint256 maxToWithdraw = balanceOfStakeDAO + balanceOfConvexCurve;
         amount = bound(amount, 0, maxToWithdraw);
-        
+
         numWithdraw += 1;
         amountDeposited -= amount;
 
@@ -55,7 +55,7 @@ contract Handler is BaseTest {
     }
 
     function balanceStakeDAO() public view returns (uint256) {
-        return ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
+        return ERC20(gauges[address(CRV3)]).balanceOf(LOCKER);
     }
 
     function balanceFallbackConvexCurve() public view returns (uint256) {
