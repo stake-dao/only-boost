@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
+
 pragma solidity 0.8.20;
 
+// --- Solmate Contracts
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
@@ -22,18 +24,22 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
+    // --- ERC20
     ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
     ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
-    uint256 public lastPidsCount; // Number of pools on ConvexCurve or ConvexFrax
-    uint256 public rewardFee; // Fees to be collected from the strategy, in WAD unit
-
+    // --- Addresses
     address public curveStrategy; // Address of Stake DAO curve strategy
     address public feeReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063; // Address to receive fees, MS Stake DAO
 
+    // --- Uints
+    uint256 public lastPidsCount; // Number of pools on ConvexCurve or ConvexFrax
+    uint256 public rewardFee; // Fees to be collected from the strategy, in WAD unit
+
+    // --- Mappings
     mapping(address => PidsInfo) public pids; // lpToken address --> pool ids from ConvexCurve or ConvexFrax
 
     //////////////////////////////////////////////////////
@@ -48,6 +54,9 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     constructor(address owner, Authority _authority, address _curveStrategy) Auth(owner, _authority) {
         curveStrategy = _curveStrategy;
+        
+        // Set all the pid mapping
+        setAllPidsOptimized();
     }
 
     //////////////////////////////////////////////////////
