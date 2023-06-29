@@ -18,6 +18,12 @@ import {IAccumulator} from "src/interfaces/IAccumulator.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 
+/**
+ * @title CurveStrategy
+ * @author Stake DAO
+ * @notice Strategy for Curve LP tokens
+ * @dev Inherits from Solmate `Auth` implementation
+ */
 contract CurveStrategy is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -48,10 +54,10 @@ contract CurveStrategy is Auth {
     ILocker public constant LOCKER = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6); // StakeDAO CRV Locker
 
     // --- Addresses
-    address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
-    address public constant CRV_FEE_D = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc;
-    address public constant CRV3 = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
-    address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0; // Curve CRV Minter
+    address public constant CRV_FEE_D = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc; // Curve Fee Distributor
+    address public constant CRV3 = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490; // LP 3CRV Address
+    address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52; // Curve Token Address
 
     // --- Uints
     uint256 public constant BASE_FEE = 10000; // 100% fees
@@ -118,6 +124,12 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- DEPOSIT
     //////////////////////////////////////////////////////
+    /**
+     * @notice Main gateway to deposit LP token into this strategy
+     * @dev Only callable by the `vault` or the governance
+     * @param token Address of LP token to deposit
+     * @param amount Amount of LP token to deposit
+     */
     function deposit(address token, uint256 amount) external requiresAuth {
         // Transfer the token to this contract
         ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -126,12 +138,24 @@ contract CurveStrategy is Auth {
         _deposit(token, amount);
     }
 
+    /**
+     * @notice Optimizor gateway to deposit LP token into this strategy
+     * @dev Only callable by the `optimizor` or the governance, should be used only when migration
+     * @param token Address of LP token to deposit
+     * @param amount Amount of LP token to deposit
+     */
     function depositForOptimizor(address token, uint256 amount) external requiresAuth {
         // Should be better named after
         // Do the deposit process
         _deposit(token, amount);
     }
 
+    /**
+     * @notice Internal gateway to deposit LP into this strategy
+     * @dev First check the optimal split, then send it to respective recipients
+     * @param token Address of LP token to deposit
+     * @param amount Amount of LP token to deposit
+     */
     function _deposit(address token, uint256 amount) internal {
         // Get the gauge address
         address gauge = gauges[token];
@@ -170,6 +194,12 @@ contract CurveStrategy is Auth {
         }
     }
 
+    /**
+     * @notice Internal gateway to deposit LP token using Stake DAO Liquid Locker
+     * @param token Address of LP token to deposit
+     * @param gauge Address of Liqudity gauge corresponding to LP token
+     * @param amount Amount of LP token to deposit
+     */
     function _depositIntoLiquidLocker(address token, address gauge, uint256 amount) internal {
         ERC20(token).safeTransfer(address(LOCKER), amount);
 
@@ -187,6 +217,12 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- WITHDRAW
     //////////////////////////////////////////////////////
+    /**
+     * @notice Main gateway to withdraw LP token from this strategy
+     * @dev Only callable by `vault` or governance
+     * @param token Address of LP token to withdraw
+     * @param amount Amount of LP token to withdraw
+     */
     function withdraw(address token, uint256 amount) external requiresAuth {
         // Do the withdraw process
         _withdraw(token, amount);
@@ -195,6 +231,12 @@ contract CurveStrategy is Auth {
         ERC20(token).safeTransfer(msg.sender, amount);
     }
 
+    /**
+     * @notice Internal gateway to withdraw LP token from this strategy
+     * @dev First check where to remove liquidity, then remove liquidity accordingly
+     * @param token Address of LP token to withdraw
+     * @param amount Amount of LP token to withdraw
+     */
     function _withdraw(address token, uint256 amount) internal {
         // Get the gauge address
         address gauge = gauges[token];
@@ -232,6 +274,12 @@ contract CurveStrategy is Auth {
         }
     }
 
+    /**
+     * @notice Internal gateway to withdraw LP token from Stake DAO Liquid Locker
+     * @param token Address of LP token to withdraw
+     * @param gauge Address of Liqudity gauge corresponding to LP token
+     * @param amount Amount of LP token to withdraw
+     */
     function _withdrawFromLiquidLocker(address token, address gauge, uint256 amount) internal {
         (bool success,) = LOCKER.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
         if (!success) revert WITHDRAW_FAILED();
@@ -246,6 +294,11 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- CLAIM
     //////////////////////////////////////////////////////
+    /**
+     * @notice Main gateway to claim all reward obtained from this strategy
+     * @notice Claim both reward from Liquid Locker position and fallback positions
+     * @param token Address of LP token to claim reward from
+     */
     function claim(address token) external requiresAuth {
         // Get the gauge address
         address gauge = gauges[token];
@@ -339,6 +392,10 @@ contract CurveStrategy is Auth {
         }
     }
 
+    /**
+     * @notice Claim rewards from all fallbacks
+     * @param token Address of LP token to claim reward from
+     */
     function claimFallbacks(address token) public requiresAuth {
         // Get the gauge address
         address gauge = gauges[token];
@@ -369,6 +426,10 @@ contract CurveStrategy is Auth {
         }
     }
 
+    /**
+     * @notice Claim 3crv from the curve fee Distributor and send it to the accumulator
+     * @param notify If true, notify the accumulator
+     */
     function claim3Crv(bool notify) external requiresAuth {
         // Claim 3crv from the curve fee Distributor, it will send 3crv to the crv locker
         (bool success,) = LOCKER.execute(CRV_FEE_D, 0, abi.encodeWithSignature("claim()"));
@@ -390,6 +451,13 @@ contract CurveStrategy is Auth {
         emit Crv3Claimed(amountToSend, notify);
     }
 
+    /**
+     * @notice Internal process to send fees from rewards
+     * @param gauge Address of Liqudity gauge corresponding to LP token
+     * @param rewardToken Address of reward token
+     * @param rewardsBalance Amount of reward token
+     * @return Amount of reward token remaining
+     */
     function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
         Fees memory fee = feesInfos[gauge];
         // calculate the amount for each fee recipient
@@ -406,6 +474,12 @@ contract CurveStrategy is Auth {
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
+    /**
+     * @notice Send `token` to the accumulator
+     * @dev Only callable by the governance
+     * @param token Address of token to send to the accumulator
+     * @param amount Amount of token to send to the accumulator
+     */
     function sendToAccumulator(address token, uint256 amount) external requiresAuth {
         ERC20(token).safeApprove(address(accumulator), amount);
         accumulator.depositToken(token, amount);
@@ -414,9 +488,12 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- MIGRATION
     //////////////////////////////////////////////////////
+    /**
+     * @notice Migrate LP token from the locker to the vault
+     * @dev Only callable by the governance
+     * @param lpToken Address of LP token to migrate
+     */
     function migrateLP(address lpToken) external requiresAuth {
-        // Only callable by the vault
-
         // Get gauge address
         address gauge = gauges[lpToken];
         if (gauge == address(0)) revert ADDRESS_NULL();
@@ -437,54 +514,95 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- SETTERS
     //////////////////////////////////////////////////////
+    /**
+     * @notice Toogle vault status
+     * @param vault Address of the vault to toggle
+     */
     function toggleVault(address vault) external requiresAuth {
         if (vault == address(0)) revert ADDRESS_NULL();
         vaults[vault] = !vaults[vault];
         emit VaultToggled(vault, vaults[vault]);
     }
 
+    /**
+     * @notice Set gauge address for a LP token
+     * @param token Address of LP token corresponding to `gauge`
+     * @param gauge Address of liquidity gauge corresponding to `token`
+     */
     function setGauge(address token, address gauge) external requiresAuth {
         if (token == address(0)) revert ADDRESS_NULL();
         gauges[token] = gauge;
         emit GaugeSet(gauge, token);
     }
 
+    /**
+     * @notice Set type for a Liquidity gauge
+     * @param gauge Address of Liquidity gauge
+     * @param gaugeType Type of Liquidity gauge
+     */
     function setLGtype(address gauge, uint256 gaugeType) external requiresAuth {
         if (gauge == address(0)) revert ADDRESS_NULL();
         lGaugeType[gauge] = gaugeType;
         emit GaugeTypeSet(gauge, gaugeType);
     }
 
+    /**
+     * @notice Set rewardDistributor for a Liquidity gauge
+     * @param gauge Address of Liquidity gauge
+     * @param multiGauge Address of rewardDistributor
+     */
     function setMultiGauge(address gauge, address multiGauge) external requiresAuth {
         if (gauge == address(0) || multiGauge == address(0)) revert ADDRESS_NULL();
         rewardDistributors[gauge] = multiGauge;
         emit MultiGaugeSet(gauge, multiGauge);
     }
 
+    /**
+     * @notice Set VeSDTFeeProxy new address
+     * @param newVeSDTProxy Address of new VeSDTFeeProxy
+     */
     function setVeSDTProxy(address newVeSDTProxy) external requiresAuth {
         if (newVeSDTProxy == address(0)) revert ADDRESS_NULL();
         veSDTFeeProxy = newVeSDTProxy;
         emit VeSDTProxySet(newVeSDTProxy);
     }
 
+    /**
+     * @notice Set Accumulator new address
+     * @param newAccumulator Address of new Accumulator
+     */
     function setAccumulator(address newAccumulator) external requiresAuth {
         if (newAccumulator == address(0)) revert ADDRESS_NULL();
         accumulator = IAccumulator(newAccumulator);
         emit AccumulatorSet(newAccumulator);
     }
 
+    /**
+     * @notice Set RewardsReceiver new address
+     * @param newRewardsReceiver Address of new RewardsReceiver
+     */
     function setRewardsReceiver(address newRewardsReceiver) external requiresAuth {
         if (newRewardsReceiver == address(0)) revert ADDRESS_NULL();
         rewardsReceiver = newRewardsReceiver;
         emit RewardsReceiverSet(newRewardsReceiver);
     }
 
+    /**
+     * @notice Set Optimizor new address
+     * @param newOptimizor Address of new Optimizor
+     */
     function setOptimizor(address newOptimizor) external requiresAuth {
         // Optimizor can be set to address(0) to disable it
         optimizor = Optimizor(newOptimizor);
         emit OptimizorSet(newOptimizor);
     }
 
+    /**
+     * @notice Set fees for a Liquidity gauge
+     * @param manageFee_ Enum for the fee to set
+     * @param gauge Address of Liquidity gauge
+     * @param newFee New fee to set
+     */
     function manageFee(MANAGEFEE manageFee_, address gauge, uint256 newFee) external requiresAuth {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
@@ -512,6 +630,15 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- EXECUTE
     //////////////////////////////////////////////////////
+    /**
+     * @notice Execute a function
+     * @dev Only callable by the owner
+     * @param to Address of the contract to execute
+     * @param value Value to send to the contract
+     * @param data Data to send to the contract
+     * @return success_ Boolean indicating if the execution was successful
+     * @return result_ Bytes containing the result of the execution
+     */
     function execute(address to, uint256 value, bytes calldata data)
         external
         requiresAuth
