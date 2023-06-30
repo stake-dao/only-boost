@@ -123,15 +123,14 @@ contract Optimizor is Auth {
     /// --- OPTIMIZATION FOR STRATEGIE DEPOSIT & WITHDRAW
     //////////////////////////////////////////////////////
     // This function return the amount that need to be deposited StakeDAO locker and on each fallback
-    function optimizeDeposit(address lpToken, address liquidityGauge, uint256 amount)
+    function optimizeDeposit(address token, address liquidityGauge, uint256 amount)
         public
         requiresAuth
         returns (address[] memory, uint256[] memory)
     {
         // Check if the lp token has pool on ConvexCurve or ConvexFrax
-        //(bool statusCurve, bool statusFrax) = convexMapper.isActiveOnCurveOrFrax(lpToken);
-        bool statusCurve = fallbackConvexCurve.isActive(lpToken);
-        bool statusFrax = fallbackConvexFrax.isActive(lpToken);
+        bool statusCurve = fallbackConvexCurve.isActive(token);
+        bool statusFrax = fallbackConvexFrax.isActive(token);
 
         uint256[] memory amounts = new uint256[](3);
 
@@ -195,7 +194,7 @@ contract Optimizor is Auth {
         return (fallbacks, amounts);
     }
 
-    function optimizeWithdraw(address lpToken, address liquidityGauge, uint256 amount)
+    function optimizeWithdraw(address token, address liquidityGauge, uint256 amount)
         public
         view
         requiresAuth
@@ -203,8 +202,8 @@ contract Optimizor is Auth {
     {
         // Cache the balance of all fallbacks
         uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER);
-        uint256 balanceOfConvexCurve = FallbackConvexCurve(fallbacks[1]).balanceOf(lpToken);
-        uint256 balanceOfConvexFrax = isConvexFraxKilled ? 0 : FallbackConvexFrax(fallbacks[2]).balanceOf(lpToken);
+        uint256 balanceOfConvexCurve = FallbackConvexCurve(fallbacks[1]).balanceOf(token);
+        uint256 balanceOfConvexFrax = isConvexFraxKilled ? 0 : FallbackConvexFrax(fallbacks[2]).balanceOf(token);
 
         // Initialize the result
         uint256[] memory amounts = new uint256[](3);
@@ -308,12 +307,12 @@ contract Optimizor is Auth {
 
             if (balance > 0) {
                 // Get LP token
-                (address lpToken,) = fallbackConvexFrax.getLP(i);
+                (address token,) = fallbackConvexFrax.getLP(i);
                 // Withdraw from convex frax
-                fallbackConvexFrax.withdraw(lpToken, balance);
+                fallbackConvexFrax.withdraw(token, balance);
 
                 // Follow optimized deposit logic
-                curveStrategy.depositForOptimizor(lpToken, balance);
+                curveStrategy.depositForOptimizor(token, balance);
             }
 
             // No need to check if overflow, because len is uint256

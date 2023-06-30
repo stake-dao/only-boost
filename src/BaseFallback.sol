@@ -46,7 +46,7 @@ contract BaseFallback is Auth {
     uint256 public rewardFee; // Fees to be collected from the strategy, in WAD unit
 
     // --- Mappings
-    mapping(address => PidsInfo) public pids; // lpToken address --> pool ids from ConvexCurve or ConvexFrax
+    mapping(address => PidsInfo) public pids; // LP token address --> pool ids from ConvexCurve or ConvexFrax
 
     //////////////////////////////////////////////////////
     /// --- EVENTS
@@ -156,17 +156,17 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     function setAllPidsOptimized() public virtual {}
 
-    function isActive(address lpToken) external view virtual returns (bool) {}
+    function isActive(address token) external view virtual returns (bool) {}
 
-    function balanceOf(address lpToken) public view virtual returns (uint256) {}
+    function balanceOf(address token) public view virtual returns (uint256) {}
 
-    function deposit(address lpToken, uint256 amount) external virtual {}
+    function deposit(address token, uint256 amount) external virtual {}
 
-    function withdraw(address lpToken, uint256 amount) external virtual {}
+    function withdraw(address token, uint256 amount) external virtual {}
 
-    function claimRewards(address lpToken) external virtual returns (address[] memory, uint256[] memory) {}
+    function claimRewards(address token) external virtual returns (address[] memory, uint256[] memory) {}
 
-    function getRewardsTokens(address lpToken) public view virtual returns (address[] memory) {}
+    function getRewardsTokens(address token) public view virtual returns (address[] memory) {}
 
-    function getPid(address lpToken) external view virtual returns (PidsInfo memory) {}
+    function getPid(address token) external view virtual returns (PidsInfo memory) {}
 }

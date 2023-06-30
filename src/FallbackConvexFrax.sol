@@ -37,14 +37,14 @@ contract FallbackConvexFrax is BaseFallback {
     uint256 public lockingIntervalSec = 7 days; // 7 days
 
     // --- Mappings
-    mapping(address => address) public stkTokens; // lpToken address --> staking token contract address
+    mapping(address => address) public stkTokens; // LP token address --> staking token contract address
     mapping(uint256 => address) public vaults; // pid from convex frax -> personal vault for convex frax
     mapping(address => bytes32) public kekIds; // personal vault on convex frax -> kekId
 
     //////////////////////////////////////////////////////
     /// --- EVENTS
     //////////////////////////////////////////////////////
-    event Redeposited(address lpToken, uint256 amount);
+    event Redeposited(address token, uint256 amount);
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -69,11 +69,11 @@ contract FallbackConvexFrax is BaseFallback {
         // If the length is smaller, update pids mapping
         for (uint256 i = lastPidsCount; i < len;) {
             // Get curve LP and stkToken from ConvexFrax for the corresponding index
-            (address lpToken, address stkToken) = getLP(i);
+            (address token, address stkToken) = getLP(i);
 
-            if (lpToken != address(0)) {
+            if (token != address(0)) {
                 // Map the stkToken address from ConvexFrax to the curve lp token
-                stkTokens[lpToken] = stkToken;
+                stkTokens[token] = stkToken;
                 // Map the pool infos to stkToken address from ConvexFrax
                 // Note: this is different from the ConvexFrax fallback contract, where pid are linked to curve lp token directly
                 pids[stkToken] = PidsInfo(i, true);
@@ -91,32 +91,32 @@ contract FallbackConvexFrax is BaseFallback {
 
     /**
      * @notice Check if the pid corresponding to LP token is active and initialized internally
-     * @param lpToken Address of the LP token
+     * @param token Address of the LP token
      * @return Flag if the pool is active and initialized internally
      */
-    function isActive(address lpToken) external view override returns (bool) {
+    function isActive(address token) external view override returns (bool) {
         // Check if the pid is active
-        (,,,, uint8 _isActive) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pids[stkTokens[lpToken]].pid);
+        (,,,, uint8 _isActive) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pids[stkTokens[token]].pid);
 
         // Return if the pid is active and initialized
-        return pids[stkTokens[lpToken]].isInitialized && _isActive == 1;
+        return pids[stkTokens[token]].isInitialized && _isActive == 1;
     }
 
     /**
      * @notice Main gateway to deposit LP token into ConvexFrax
      * @dev Only callable by the strategy
-     * @param lpToken Address of LP token to deposit
+     * @param token Address of LP token to deposit
      * @param amount Amount of LP token to deposit
      */
-    function deposit(address lpToken, uint256 amount) external override requiresAuth {
+    function deposit(address token, uint256 amount) external override requiresAuth {
         // Cache the pid
-        uint256 pid = pids[stkTokens[lpToken]].pid;
+        uint256 pid = pids[stkTokens[token]].pid;
 
         // Create personal vault if not exist
         if (vaults[pid] == address(0)) vaults[pid] = BOOSTER_CONVEX_FRAX.createVault(pid);
 
         // Approve the amount
-        ERC20(lpToken).safeApprove(vaults[pid], amount);
+        ERC20(token).safeApprove(vaults[pid], amount);
 
         if (kekIds[vaults[pid]] == bytes32(0)) {
             // If no kekId, stake locked curve lp
@@ -126,18 +126,18 @@ contract FallbackConvexFrax is BaseFallback {
             IStakingProxyConvex(vaults[pid]).lockAdditionalCurveLp(kekIds[vaults[pid]], amount);
         }
 
-        emit Deposited(lpToken, amount);
+        emit Deposited(token, amount);
     }
 
     /**
      * @notice Main gateway to withdraw LP token from ConvexFrax
      * @dev Only callable by the strategy
-     * @param lpToken Address of LP token to withdraw
+     * @param token Address of LP token to withdraw
      * @param amount Amount of LP token to withdraw
      */
-    function withdraw(address lpToken, uint256 amount) external override requiresAuth {
+    function withdraw(address token, uint256 amount) external override requiresAuth {
         // Cache the pid
-        uint256 pid = pids[stkTokens[lpToken]].pid;
+        uint256 pid = pids[stkTokens[token]].pid;
 
         // Release all the locked curve lp
         IStakingProxyConvex(vaults[pid]).withdrawLockedAndUnwrap(kekIds[vaults[pid]]);
@@ -145,21 +145,21 @@ contract FallbackConvexFrax is BaseFallback {
         delete kekIds[vaults[pid]];
 
         // Transfer the curve lp back to user
-        ERC20(lpToken).safeTransfer(address(curveStrategy), amount);
+        ERC20(token).safeTransfer(address(curveStrategy), amount);
 
-        emit Withdrawn(lpToken, amount);
+        emit Withdrawn(token, amount);
 
         // If there is remaining curve lp, stake it back
-        uint256 remaining = ERC20(lpToken).balanceOf(address(this));
+        uint256 remaining = ERC20(token).balanceOf(address(this));
 
         if (remaining == 0) return;
 
         // Safe approve lp token to personal vault
-        ERC20(lpToken).safeApprove(vaults[pid], remaining);
+        ERC20(token).safeApprove(vaults[pid], remaining);
         // Stake back the remaining curve lp
         _stakeLockedCurveLp(pid, remaining);
 
-        emit Redeposited(lpToken, remaining);
+        emit Redeposited(token, remaining);
     }
 
     function _stakeLockedCurveLp(uint256 pid, uint256 amount) internal {
@@ -170,21 +170,21 @@ contract FallbackConvexFrax is BaseFallback {
     /**
      * @notice Main gateway to claim rewards from ConvexFrax
      * @dev Only callable by the strategy
-     * @param lpToken Address of LP token to claim reward from
+     * @param token Address of LP token to claim reward from
      * @return Array of rewards tokens address
      * @return Array of rewards tokens amount
      */
-    function claimRewards(address lpToken)
+    function claimRewards(address token)
         external
         override
         requiresAuth
         returns (address[] memory, uint256[] memory)
     {
         // Cache rewardsTokens
-        address[] memory rewardsTokens = getRewardsTokens(lpToken);
+        address[] memory rewardsTokens = getRewardsTokens(token);
 
         // Cache the pid
-        PidsInfo memory pidInfo = pids[stkTokens[lpToken]];
+        PidsInfo memory pidInfo = pids[stkTokens[token]];
 
         // Only claim if the pid is initialized
         if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0));
@@ -200,13 +200,13 @@ contract FallbackConvexFrax is BaseFallback {
     /// --- VIEW FUNCTIONS
     //////////////////////////////////////////////////////
     /**
-     * @notice Get all the rewards tokens from pid corresponding to `lpToken`
-     * @param lpToken Address of LP token to get rewards tokens
+     * @notice Get all the rewards tokens from pid corresponding to `token`
+     * @param token Address of LP token to get rewards tokens
      * @return Array of rewards tokens address
      */
-    function getRewardsTokens(address lpToken) public view override returns (address[] memory) {
+    function getRewardsTokens(address token) public view override returns (address[] memory) {
         // Cache the pid
-        PidsInfo memory pidInfo = pids[stkTokens[lpToken]];
+        PidsInfo memory pidInfo = pids[stkTokens[token]];
 
         // Only claim if the pid is initialized
         if (!pidInfo.isInitialized) return (new address[](0));
@@ -236,23 +236,23 @@ contract FallbackConvexFrax is BaseFallback {
 
     /**
      * @notice Get the pid corresponding to LP token
-     * @param lpToken Address of LP token to get pid
+     * @param token Address of LP token to get pid
      * @return Pid info struct
      */
-    function getPid(address lpToken) external view override returns (PidsInfo memory) {
-        // Return the pid corresponding to the stkToken, corresponding to the lpToken
-        return pids[stkTokens[lpToken]];
+    function getPid(address token) external view override returns (PidsInfo memory) {
+        // Return the pid corresponding to the stkToken, corresponding to the LP token
+        return pids[stkTokens[token]];
     }
 
     /**
      * @notice Get the liquid balance of the LP token on ConvexFrax
      * @dev Because LP are locked for a certain period of time, this represent the liquid balance
-     * @param lpToken Address of LP token to get balance
+     * @param token Address of LP token to get balance
      * @return Liquid Balance of the LP token on ConvexFrax
      */
-    function balanceOf(address lpToken) public view override returns (uint256) {
+    function balanceOf(address token) public view override returns (uint256) {
         // Cache the pid
-        uint256 pid = pids[stkTokens[lpToken]].pid;
+        uint256 pid = pids[stkTokens[token]].pid;
 
         return balanceOf(pid);
     }
@@ -283,7 +283,7 @@ contract FallbackConvexFrax is BaseFallback {
     /**
      * @notice Get the LP token and stkToken address from corresponding pid
      * @param pid Pid of the pool
-     * @return Address of lpToken
+     * @return Address of LP token
      * @return Address of the stkToken
      */
     function getLP(uint256 pid) public returns (address, address) {

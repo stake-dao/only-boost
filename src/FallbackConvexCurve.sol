@@ -56,11 +56,11 @@ contract FallbackConvexCurve is BaseFallback {
 
         // If the length is smaller, update pids mapping
         for (uint256 i = lastPidsCount; i < len;) {
-            // Get the lpToken address
-            (address lpToken,,,,,) = BOOSTER_CONVEX_CURVE.poolInfo(i);
+            // Get the LP token address
+            (address token,,,,,) = BOOSTER_CONVEX_CURVE.poolInfo(i);
 
-            // Map the lpToken to the pool infos
-            pids[lpToken] = PidsInfo(i, true);
+            // Map the LP token to the pool infos
+            pids[token] = PidsInfo(i, true);
 
             // No need to check for overflow, since i can't be bigger than 2**256 - 1
             unchecked {
@@ -74,69 +74,64 @@ contract FallbackConvexCurve is BaseFallback {
 
     /**
      * @notice Check if the pid corresponding to LP token is active and initialized internally
-     * @param lpToken Address of the LP token
+     * @param token Address of the LP token
      * @return Flag if the pool is active and initialized internally
      */
-    function isActive(address lpToken) external view override returns (bool) {
+    function isActive(address token) external view override returns (bool) {
         // Check if the pool is initialized and not shutdown
-        (,,,,, bool shutdown) = BOOSTER_CONVEX_CURVE.poolInfo(pids[lpToken].pid);
+        (,,,,, bool shutdown) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);
 
         // Return if the pool is initialized and not shutdown
-        return pids[lpToken].isInitialized && !shutdown;
+        return pids[token].isInitialized && !shutdown;
     }
 
     /**
      * @notice Main gateway to deposit LP token into ConvexCurve
      * @dev Only callable by the strategy
-     * @param lpToken Address of LP token to deposit
+     * @param token Address of LP token to deposit
      * @param amount Amount of LP token to deposit
      */
-    function deposit(address lpToken, uint256 amount) external override requiresAuth {
+    function deposit(address token, uint256 amount) external override requiresAuth {
         // Approve the amount
-        ERC20(lpToken).safeApprove(address(BOOSTER_CONVEX_CURVE), amount);
+        ERC20(token).safeApprove(address(BOOSTER_CONVEX_CURVE), amount);
         // Deposit the amount into pid from ConvexCurve and stake it into gauge (true)
-        BOOSTER_CONVEX_CURVE.deposit(pids[lpToken].pid, amount, true);
+        BOOSTER_CONVEX_CURVE.deposit(pids[token].pid, amount, true);
 
-        emit Deposited(lpToken, amount);
+        emit Deposited(token, amount);
     }
 
     /**
      * @notice Main gateway to withdraw LP token from ConvexCurve
      * @dev Only callable by the strategy
-     * @param lpToken Address of LP token to withdraw
+     * @param token Address of LP token to withdraw
      * @param amount Amount of LP token to withdraw
      */
-    function withdraw(address lpToken, uint256 amount) external override requiresAuth {
+    function withdraw(address token, uint256 amount) external override requiresAuth {
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pids[lpToken].pid);
+        (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);
         // Withdraw from ConvexCurve gauge and claim rewards if toggle is on
         IBaseRewardsPool(crvRewards).withdrawAndUnwrap(amount, claimOnWithdraw);
 
         // Transfer the amount
-        ERC20(lpToken).safeTransfer(curveStrategy, amount);
+        ERC20(token).safeTransfer(curveStrategy, amount);
 
-        emit Withdrawn(lpToken, amount);
+        emit Withdrawn(token, amount);
     }
 
     /**
      * @notice Main gateway to claim rewards from ConvexCurve
      * @dev Only callable by the strategy
-     * @param lpToken Address of LP token to claim reward from
+     * @param token Address of LP token to claim reward from
      * @return Array of rewards tokens address
      * @return Array of rewards tokens amount
      */
-    function claimRewards(address lpToken)
-        external
-        override
-        requiresAuth
-        returns (address[] memory, uint256[] memory)
-    {
+    function claimRewards(address token) external override requiresAuth returns (address[] memory, uint256[] memory) {
         // Cache rewardsTokens
-        address[] memory rewardsTokens = getRewardsTokens(lpToken);
+        address[] memory rewardsTokens = getRewardsTokens(token);
         // Cache the pid
-        PidsInfo memory pidInfo = pids[lpToken];
+        PidsInfo memory pidInfo = pids[token];
         // Only claim if the pid is initialized
-        if (!pidInfo.isInitialized || (balanceOf(lpToken) == 0)) return (new address[](0), new uint256[](0));
+        if (!pidInfo.isInitialized || (balanceOf(token) == 0)) return (new address[](0), new uint256[](0));
 
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidInfo.pid);
@@ -151,13 +146,13 @@ contract FallbackConvexCurve is BaseFallback {
     /// --- VIEW FUNCTIONS
     //////////////////////////////////////////////////////
     /**
-     * @notice Get all the rewards tokens from pid corresponding to `lpToken`
-     * @param lpToken Address of LP token to get rewards tokens
+     * @notice Get all the rewards tokens from pid corresponding to `token`
+     * @param token Address of LP token to get rewards tokens
      * @return Array of rewards tokens address
      */
-    function getRewardsTokens(address lpToken) public view override returns (address[] memory) {
+    function getRewardsTokens(address token) public view override returns (address[] memory) {
         // Cache the pid
-        PidsInfo memory pidInfo = pids[lpToken];
+        PidsInfo memory pidInfo = pids[token];
         // Only claim if the pid is initialized
         if (!pidInfo.isInitialized) return (new address[](0));
 
@@ -188,21 +183,21 @@ contract FallbackConvexCurve is BaseFallback {
 
     /**
      * @notice Get the pid corresponding to LP token
-     * @param lpToken Address of LP token to get pid
+     * @param token Address of LP token to get pid
      * @return Pid info struct
      */
-    function getPid(address lpToken) external view override returns (PidsInfo memory) {
-        return pids[lpToken];
+    function getPid(address token) external view override returns (PidsInfo memory) {
+        return pids[token];
     }
 
     /**
      * @notice Get the balance of the LP token on ConvexCurve
-     * @param lpToken Address of LP token to get balance
+     * @param token Address of LP token to get balance
      * @return Balance of the LP token on ConvexCurve
      */
-    function balanceOf(address lpToken) public view override returns (uint256) {
+    function balanceOf(address token) public view override returns (uint256) {
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pids[lpToken].pid);
+        (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);
         // Check current balance on convexCurve
         return ERC20(crvRewards).balanceOf(address(this));
     }

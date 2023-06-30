@@ -491,11 +491,11 @@ contract CurveStrategy is Auth {
     /**
      * @notice Migrate LP token from the locker to the vault
      * @dev Only callable by the governance
-     * @param lpToken Address of LP token to migrate
+     * @param token Address of LP token to migrate
      */
-    function migrateLP(address lpToken) external requiresAuth {
+    function migrateLP(address token) external requiresAuth {
         // Get gauge address
-        address gauge = gauges[lpToken];
+        address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         // Get the amount of LP token staked in the gauge by the locker
@@ -506,8 +506,7 @@ contract CurveStrategy is Auth {
         if (!success) revert WITHDRAW_FAILED();
 
         // Locker transfer the LP token to the vault
-        (success,) =
-            LOCKER.execute(lpToken, 0, abi.encodeWithSignature("transfer(address,uint256)", msg.sender, amount));
+        (success,) = LOCKER.execute(token, 0, abi.encodeWithSignature("transfer(address,uint256)", msg.sender, amount));
         if (!success) revert CALL_FAILED();
     }
 
