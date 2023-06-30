@@ -119,8 +119,8 @@ contract FallbackConvexFrax is BaseFallback {
         ERC20(token).safeApprove(vaults[pid], amount);
 
         if (kekIds[vaults[pid]] == bytes32(0)) {
-            // If no kekId, stake locked curve lp
-            _stakeLockedCurveLp(pid, amount);
+            // Stake locked curve lp on personal vault and update kekId mapping for the corresponding vault
+            kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(amount, lockingIntervalSec);
         } else {
             // Else lock additional curve lp
             IStakingProxyConvex(vaults[pid]).lockAdditionalCurveLp(kekIds[vaults[pid]], amount);
@@ -157,14 +157,9 @@ contract FallbackConvexFrax is BaseFallback {
         // Safe approve lp token to personal vault
         ERC20(token).safeApprove(vaults[pid], remaining);
         // Stake back the remaining curve lp
-        _stakeLockedCurveLp(pid, remaining);
+        kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(amount, lockingIntervalSec);
 
         emit Redeposited(token, remaining);
-    }
-
-    function _stakeLockedCurveLp(uint256 pid, uint256 amount) internal {
-        // Stake locked curve lp on personal vault and update kekId mapping for the corresponding vault
-        kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(amount, lockingIntervalSec);
     }
 
     /**
