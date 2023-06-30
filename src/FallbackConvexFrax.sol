@@ -59,7 +59,7 @@ contract FallbackConvexFrax is BaseFallback {
     /**
      * @notice Update mapping of pool ids from ConvexFrax to LP token address
      */
-    function setAllPidsOptimized() public override {
+    function setAllPidsOptimized() public override requiresAuth {
         // Cache the length of the pool registry
         uint256 len = POOL_REGISTRY_CONVEX_FRAX.poolLength();
 
@@ -174,12 +174,7 @@ contract FallbackConvexFrax is BaseFallback {
      * @return Array of rewards tokens address
      * @return Array of rewards tokens amount
      */
-    function claimRewards(address token)
-        external
-        override
-        requiresAuth
-        returns (address[] memory, uint256[] memory)
-    {
+    function claimRewards(address token) external override requiresAuth returns (address[] memory, uint256[] memory) {
         // Cache rewardsTokens
         address[] memory rewardsTokens = getRewardsTokens(token);
 
