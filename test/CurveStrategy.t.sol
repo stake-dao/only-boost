@@ -31,10 +31,10 @@ contract CurveStrategyTest is BaseTest {
         fallbackConvexFrax = new FallbackConvexFrax(address(this), rolesAuthority, address(curveStrategy));
         optimizor =
         new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve), address(fallbackConvexFrax));
-        liquidityGaugeMockCRV3 = new LiquidityGaugeMock();
-        liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock();
-        liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock();
-        liquidityGaugeMockALUSD_FRAXBP = new LiquidityGaugeMock();
+        liquidityGaugeMockCRV3 = new LiquidityGaugeMock(CRV3);
+        liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock(CNC_ETH);
+        liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock(STETH_ETH);
+        liquidityGaugeMockALUSD_FRAXBP = new LiquidityGaugeMock(ALUSD_FRAXBP);
         accumulatorMock = new AccumulatorMock();
         // End deployment contracts
 
