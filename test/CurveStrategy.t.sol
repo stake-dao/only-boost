@@ -68,9 +68,10 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Deposit_AllOnStakeDAOBecauseOnlyChoice() public useFork(forkId1) {
-        // Create a fake fallback that return false for `isActive`
-        FallbackConvexCurveMock mock = new FallbackConvexCurveMock(address(curveStrategy));
-        optimizor.setFallbackAddresses(address(mock), address(fallbackConvexFrax));
+        // Mock call on fallback that return false for `isActive`
+        vm.mockCall(
+            address(fallbackConvexCurve), abi.encodeWithSignature("isActive(address)", address(CRV3)), abi.encode(false)
+        );
 
         _depositTest(CRV3, 5_000_000e18, 0, 0);
     }

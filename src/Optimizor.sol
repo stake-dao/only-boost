@@ -365,14 +365,6 @@ contract Optimizor is Auth {
         }
     }
 
-    // ONLY USED FOR TEST, SHOULD BE REMOVED IN PROD !!!
-    function setFallbackAddresses(address addr1, address addr2) public {
-        fallbackConvexCurve = FallbackConvexCurve(addr1);
-        fallbackConvexFrax = FallbackConvexFrax(addr2);
-        fallbacks[1] = addr1;
-        fallbacks[2] = addr2;
-    }
-
     /**
      * @notice Get the fallback addresses
      */
