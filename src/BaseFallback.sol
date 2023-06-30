@@ -8,6 +8,12 @@ import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
+/**
+ * @title BaseFallback
+ * @author Stake DAO
+ * @notice Base contract for fallback implementation for Stake DAO Strategies
+ * @dev Inherit from Solmate `Auth` implementation
+ */
 contract BaseFallback is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -18,7 +24,7 @@ contract BaseFallback is Auth {
     // Struct to store pool ids from ConvexCurve or ConvexFrax
     struct PidsInfo {
         uint256 pid; // Pool id from ConvexCurve or ConvexFrax
-        bool isInitialized; // Flag to check if pool is initialized
+        bool isInitialized; // Flag to check if pool is initialized internally
     }
 
     //////////////////////////////////////////////////////
@@ -47,7 +53,7 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     event Deposited(address token, uint256 amount);
     event Withdrawn(address token, uint256 amount);
-    event ClaimedRewards(address lpToken, address rewardToken, uint256 amountClaimed);
+    event ClaimedRewards(address rewardToken, uint256 amountClaimed);
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -62,15 +68,39 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS
     //////////////////////////////////////////////////////
+    /**
+     * @notice Set fees on rewards new value
+     * @param _feesOnRewards Value of new fees on rewards, in WAD unit
+     */
     function setFeesOnRewards(uint256 _feesOnRewards) external requiresAuth {
         rewardFee = _feesOnRewards;
     }
 
+    /**
+     * @notice Set fees receiver new address
+     * @param _feesReceiver Address of new fees receiver
+     */
     function setFeesReceiver(address _feesReceiver) external requiresAuth {
         feeReceiver = _feesReceiver;
     }
 
-    function _handleRewards(address lpToken, address[] memory rewardsTokens) internal returns (uint256[] memory) {
+    /**
+     * @notice Rescue lost ERC20 tokens from contract
+     * @param token Addresss of token to rescue
+     * @param to Address to send rescued tokens to
+     * @param amount Amount of token to rescue
+     */
+    function rescueERC20(address token, address to, uint256 amount) external requiresAuth {
+        // Transfer `amount` of `token` to `to`
+        ERC20(token).safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Internal process to handle rewards
+     * @param rewardsTokens Array of address containing rewards tokens to handle
+     * @return Array of uint256 containing amounts of rewards tokens remaining after fees
+     */
+    function _handleRewards(address[] memory rewardsTokens) internal returns (uint256[] memory) {
         uint256[] memory amountsRewards = new uint256[](rewardsTokens.length);
 
         // Cache extra rewards tokens length
@@ -79,7 +109,7 @@ contract BaseFallback is Auth {
         if (extraRewardsLength > 0) {
             for (uint8 i = 0; i < extraRewardsLength;) {
                 // Cache extra rewards token balance
-                amountsRewards[i] = _distributeRewardToken(lpToken, rewardsTokens[i]);
+                amountsRewards[i] = _distributeRewardToken(rewardsTokens[i]);
 
                 // No need to check for overflows
                 unchecked {
@@ -91,12 +121,13 @@ contract BaseFallback is Auth {
         return amountsRewards;
     }
 
-    function rescueERC20(address token, address to, uint256 amount) external requiresAuth {
-        // Transfer `amount` of `token` to `to`
-        ERC20(token).safeTransfer(to, amount);
-    }
-
-    function _distributeRewardToken(address lpToken, address token) internal returns (uint256) {
+    /**
+     * @notice Internal process to distribute rewards
+     * @dev Distribute rewards to strategy and charge fees
+     * @param token Address of token to distribute
+     * @return Amount of token distributed
+     */
+    function _distributeRewardToken(address token) internal returns (uint256) {
         // Transfer CRV rewards to strategy and charge fees
         uint256 _tokenBalance = ERC20(token).balanceOf(address(this));
 
@@ -115,7 +146,7 @@ contract BaseFallback is Auth {
             ERC20(token).safeTransfer(curveStrategy, _tokenBalance);
         }
 
-        emit ClaimedRewards(lpToken, token, _tokenBalance);
+        emit ClaimedRewards(token, _tokenBalance);
 
         return _tokenBalance;
     }
