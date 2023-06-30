@@ -80,17 +80,11 @@ contract OptimizorTest is BaseTest {
         assertEq(results[2], amountFallbackFrax, "5");
     }
 
-    function test_Min() public {
-        // Only coverage purpose
-        assertEq(optimizor.min(1, 2), 1);
-        assertEq(optimizor.min(2, 1), 1);
-    }
-
     function test_RescueToken() public {
         deal(address(CRV), address(optimizor), 100);
 
         assertEq(CRV.balanceOf(address(this)), 0);
-        optimizor.rescueToken(address(CRV), address(this), 100);
+        optimizor.rescueERC20(address(CRV), address(this), 100);
         assertEq(CRV.balanceOf(address(this)), 100);
     }
 }

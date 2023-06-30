@@ -5,6 +5,7 @@ pragma solidity 0.8.20;
 // --- Solmate Contracts
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 // --- Core Contracts
 import {CurveStrategy} from "src/CurveStrategy.sol";
@@ -14,7 +15,15 @@ import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 // --- Interfaces
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
+/**
+ * @title Optimizor
+ * @author Stake DAO
+ * @notice External module for Stake DAO Strategy to optimize the deposit and withdraw between LiquidLockers and Fallbacks
+ * @dev Inherits from Solmate `Auth` implementation
+ */
 contract Optimizor is Auth {
+    using SafeTransferLib for ERC20;
+
     //////////////////////////////////////////////////////
     /// --- STRUCTS
     //////////////////////////////////////////////////////
@@ -96,7 +105,12 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- OPTIMIZATION FOR STAKEDAO
     //////////////////////////////////////////////////////
-    // This function return the optimal amount of lps that must be held by the locker
+    /**
+     * @notice Return the optimal amount of LP token that must be held by Stake DAO Liquidity Locker
+     * @param liquidityGauge Addres of the liquidity gauge
+     * @param isMeta if the underlying pool is a metapool
+     * @return Optimal amount of LP token
+     */
     function optimalAmount(address liquidityGauge, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
@@ -122,7 +136,15 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- OPTIMIZATION FOR STRATEGIE DEPOSIT & WITHDRAW
     //////////////////////////////////////////////////////
-    // This function return the amount that need to be deposited StakeDAO locker and on each fallback
+    /**
+     * @notice Return the amount that need to be deposited StakeDAO Liquid Locker and on each fallback
+     * @dev This is not a view due to the cache system
+     * @param token Address of LP token to deposit
+     * @param liquidityGauge Address of Liquidity Gauge corresponding to LP token
+     * @param amount Amount of LP token to deposit
+     * @return Array of addresses to deposit in, Stake DAO LiquidLocker always first
+     * @return Array of amounts to deposit in
+     */
     function optimizeDeposit(address token, address liquidityGauge, uint256 amount)
         public
         requiresAuth
@@ -194,6 +216,14 @@ contract Optimizor is Auth {
         return (fallbacks, amounts);
     }
 
+    /**
+     * @notice Return the amount that need to be withdrawn from StakeDAO Liquid Locker and from each fallback
+     * @param token Address of LP token to withdraw
+     * @param liquidityGauge Address of Liquidity Gauge corresponding to LP token
+     * @param amount Amount of LP token to withdraw
+     * @return Array of addresses to withdraw from, Stake DAO LiquidLocker always first
+     * @return Array of amounts to withdraw from
+     */
     function optimizeWithdraw(address token, address liquidityGauge, uint256 amount)
         public
         view
@@ -264,10 +294,17 @@ contract Optimizor is Auth {
         return (fallbacks, amounts);
     }
 
+    /**
+     * @notice Toggle the flag for using the last optimization
+     */
     function toggleUseLastOptimization() external requiresAuth {
         useLastOpti = !useLastOpti;
     }
 
+    /**
+     * @notice Set the cache period
+     * @param newCachePeriod New cache period
+     */
     function setCachePeriod(uint256 newCachePeriod) external requiresAuth {
         cachePeriod = newCachePeriod;
     }
@@ -275,6 +312,9 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
+    /**
+     * @notice Pause the deposit on Convex Frax
+     */
     function pauseConvexFraxDeposit() external requiresAuth {
         // Revert if already paused
         if (isConvexFraxPaused) revert ALREADY_PAUSED();
@@ -285,6 +325,9 @@ contract Optimizor is Auth {
         convexFraxPausedTimestamp = block.timestamp;
     }
 
+    /**
+     * @notice Kill the deposit on Convex Frax
+     */
     function killConvexFrax() external requiresAuth {
         // Revert if not paused
         if (!isConvexFraxPaused) revert NOT_PAUSED();
@@ -330,21 +373,38 @@ contract Optimizor is Auth {
         fallbacks[2] = addr2;
     }
 
+    /**
+     * @notice Get the fallback addresses
+     */
     function getFallbacks() external view returns (address[] memory) {
         return fallbacks;
     }
 
+    /**
+     * @notice Get the number of fallbacks
+     */
     function fallbacksLength() external view returns (uint256) {
         return fallbacks.length;
     }
 
-    function min(uint256 a, uint256 b) public pure returns (uint256) {
-        // Return min between a and b
-        return (a < b) ? a : b;
+    /**
+     * @notice Rescue lost ERC20 tokens from contract
+     * @param token Addresss of token to rescue
+     * @param to Address to send rescued tokens to
+     * @param amount Amount of token to rescue
+     */
+    function rescueERC20(address token, address to, uint256 amount) external requiresAuth {
+        // Transfer `amount` of `token` to `to`
+        ERC20(token).safeTransfer(to, amount);
     }
 
-    function rescueToken(address token, address receiver, uint256 amount) external requiresAuth {
-        // Transfer `amount` of `token` to `to`
-        ERC20(token).transfer(receiver, amount);
+    /**
+     * @notice Get minimum between two uint256
+     * @param a First uint256
+     * @param b Second uint256
+     * @return The minimum between a and b
+     */
+    function min(uint256 a, uint256 b) private pure returns (uint256) {
+        return (a < b) ? a : b;
     }
 }
