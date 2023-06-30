@@ -56,8 +56,11 @@ contract FallbackConvexCurve is BaseFallback {
 
         // If the length is smaller, update pids mapping
         for (uint256 i = lastPidsCount; i < len;) {
-            // Set pid
-            _setPid(i);
+            // Get the lpToken address
+            (address lpToken,,,,,) = BOOSTER_CONVEX_CURVE.poolInfo(i);
+
+            // Map the lpToken to the pool infos
+            pids[lpToken] = PidsInfo(i, true);
 
             // No need to check for overflow, since i can't be bigger than 2**256 - 1
             unchecked {
@@ -67,19 +70,6 @@ contract FallbackConvexCurve is BaseFallback {
 
         // Update the last length
         lastPidsCount = len;
-    }
-
-    /**
-     * @notice Internal process for setting the pid to the mapping
-     * @dev This function is only called by `setAllPidsOptimized`
-     * @param index Index of the pool in the registry
-     */
-    function _setPid(uint256 index) internal override {
-        // Get the lpToken address
-        (address lpToken,,,,,) = BOOSTER_CONVEX_CURVE.poolInfo(index);
-
-        // Map the lpToken to the pool infos
-        pids[lpToken] = PidsInfo(index, true);
     }
 
     /**

@@ -68,8 +68,16 @@ contract FallbackConvexFrax is BaseFallback {
 
         // If the length is smaller, update pids mapping
         for (uint256 i = lastPidsCount; i < len;) {
-            // Set pid
-            _setPid(i);
+            // Get curve LP and stkToken from ConvexFrax for the corresponding index
+            (address lpToken, address stkToken) = getLP(i);
+
+            if (lpToken != address(0)) {
+                // Map the stkToken address from ConvexFrax to the curve lp token
+                stkTokens[lpToken] = stkToken;
+                // Map the pool infos to stkToken address from ConvexFrax
+                // Note: this is different from the ConvexFrax fallback contract, where pid are linked to curve lp token directly
+                pids[stkToken] = PidsInfo(i, true);
+            }
 
             // No need to check for overflow, since i can't be bigger than 2**256 - 1
             unchecked {
@@ -79,24 +87,6 @@ contract FallbackConvexFrax is BaseFallback {
 
         // Update the last length
         lastPidsCount = len;
-    }
-
-    /**
-     * @notice Internal process for setting the pid to the mapping
-     * @dev This function is only called by `setAllPidsOptimized`
-     * @param index Index of the pool in the registry
-     */
-    function _setPid(uint256 index) internal override {
-        // Get curve LP and stkToken from ConvexFrax for the corresponding index
-        (address lpToken, address stkToken) = getLP(index);
-
-        if (lpToken != address(0)) {
-            // Map the stkToken address from ConvexFrax to the curve lp token
-            stkTokens[lpToken] = stkToken;
-            // Map the pool infos to stkToken address from ConvexFrax
-            // Note: this is different from the ConvexFrax fallback contract, where pid are linked to curve lp token directly
-            pids[stkToken] = PidsInfo(index, true);
-        }
     }
 
     /**

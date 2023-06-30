@@ -154,8 +154,6 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     /// --- VIRTUAL FUNCTIONS
     //////////////////////////////////////////////////////
-    function _setPid(uint256 index) internal virtual {}
-
     function setAllPidsOptimized() public virtual {}
 
     function isActive(address lpToken) external view virtual returns (bool) {}
