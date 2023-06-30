@@ -254,20 +254,41 @@ contract FallbackConvexFrax is BaseFallback {
      * @return Liquid Balance of the LP token on ConvexFrax
      */
     function balanceOf(uint256 pid) public view returns (uint256) {
-        // Withdraw from ConvexFrax
+        IFraxUnifiedFarm.LockedStake memory infos = _getInfos(pid);
+
+        // If the lock is not expired, then return 0, as only the liquid balance is needed
+        return block.timestamp >= infos.ending_timestamp ? infos.liquidity : 0;
+    }
+
+    /**
+     * @notice Get the locked balance of the LP token on ConvexFrax
+     * @dev Because LP are locked for a certain period of time, this represent the locked balance
+     * @param pid Pid to get the balanceOf
+     * @return Liquid Balance of the LP token on ConvexFrax
+     */
+    function balanceOfLocked(uint256 pid) public view returns (uint256) {
+        IFraxUnifiedFarm.LockedStake memory infos = _getInfos(pid);
+
+        // If the lock is not expired, then return locked balance
+        return block.timestamp >= infos.ending_timestamp ? 0 : infos.liquidity;
+    }
+
+    /**
+     * @notice Get the Locked Stake infos
+     * @param pid Pid to get the infos
+     * @return infos LockedStake struct
+     */
+    function _getInfos(uint256 pid) internal view returns (IFraxUnifiedFarm.LockedStake memory infos) {
         (, address staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pid);
         // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
         // and the last one is emptyed. So we need to get the last one.
         uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(vaults[pid]);
 
         // If no lockedStakes, return 0
-        if (lockCount == 0) return 0;
+        if (lockCount == 0) return infos;
 
         // Cache lockedStakes infos
-        IFraxUnifiedFarm.LockedStake memory infos = IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
-
-        // If the lock is not expired, then return 0, as only the liquid balance is needed
-        return block.timestamp >= infos.ending_timestamp ? infos.liquidity : 0;
+        infos = IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
     }
 
     /**
