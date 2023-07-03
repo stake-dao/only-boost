@@ -674,8 +674,11 @@ contract CurveStrategyTest is BaseTest {
         // --- Test for Metapool
         // Get last optimization value
         (uint256 valueBefore, uint256 tsBefore) = optimizor.lastOptiMetapool(gauges[address(ALUSD_FRAXBP)]);
+
+        // Get veCRVStakeDAO balance
+        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
         // Calculate optimization
-        uint256 calculatedOpti = optimizor.optimalAmount(address(gauges[address(ALUSD_FRAXBP)]), true);
+        uint256 calculatedOpti = optimizor.optimalAmount(address(gauges[address(ALUSD_FRAXBP)]), veCRVStakeDAO, true);
 
         // Call the optimize deposit
         optimizor.optimizeDeposit(address(ALUSD_FRAXBP), gauges[address(ALUSD_FRAXBP)], 1_000_000e18);
@@ -692,8 +695,10 @@ contract CurveStrategyTest is BaseTest {
         // --- Test for non Metapool
         // Get last optimization value
         (valueBefore, tsBefore) = optimizor.lastOpti(gauges[address(CRV3)]);
+        // Get veCRVStakeDAO balance
+        veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
         // Calculate optimization
-        calculatedOpti = optimizor.optimalAmount(address(gauges[address(CRV3)]), false);
+        calculatedOpti = optimizor.optimalAmount(address(gauges[address(CRV3)]), veCRVStakeDAO, false);
 
         // Call the optimize deposit
         optimizor.optimizeDeposit(address(CRV3), gauges[address(CRV3)], 1_000_000e18);

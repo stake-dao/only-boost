@@ -115,10 +115,9 @@ contract Optimizor is Auth {
      * @param isMeta if the underlying pool is a metapool
      * @return Optimal amount of LP token
      */
-    function optimalAmount(address liquidityGauge, bool isMeta) public view returns (uint256) {
+    function optimalAmount(address liquidityGauge, uint256 veCRVStakeDAO, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
-        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
 
         // Liquidity Gauge
         uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
@@ -225,7 +224,7 @@ contract Optimizor is Auth {
             opt = isMeta ? lastOptiMetapool[liquidityGauge].value : lastOpti[liquidityGauge].value;
         } else {
             // Calculate optimal amount
-            opt = optimalAmount(liquidityGauge, isMeta);
+            opt = optimalAmount(liquidityGauge, veCRVBalance, isMeta);
 
             // Cache veCRV balance of Stake DAO, no need if already the same
             if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;

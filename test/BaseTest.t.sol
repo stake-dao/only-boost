@@ -374,7 +374,7 @@ contract BaseTest is Test {
         // Liquid Locker lock less CRV than needed to bypass threshold
         uint256 amountToBypassThreshold =
             ERC20(LOCKER_CRV).balanceOf(LOCKER).mulWadDown(optimizor.veCRVDifferenceThreshold());
-        
+
         deal(address(CRV), address(this), amountToBypassThreshold / 2);
         CRV.safeTransfer(address(LOCKER), amountToBypassThreshold / 2);
         vm.prank(ILocker(LOCKER).governance());
@@ -393,7 +393,7 @@ contract BaseTest is Test {
 
         // Actualize CRV to lock to bypass threshold
         amountToBypassThreshold = ERC20(LOCKER_CRV).balanceOf(LOCKER).mulWadDown(optimizor.veCRVDifferenceThreshold());
-        
+
         // Liquid Locker lock enough CRV to bypass threshold
         deal(address(CRV), address(this), amountToBypassThreshold);
         CRV.safeTransfer(address(LOCKER), amountToBypassThreshold);
@@ -643,9 +643,10 @@ contract BaseTest is Test {
         if (amountStakeDAO == 1) {
             amountStakeDAO = REF_AMOUNT;
         } else if (amountStakeDAO == MAX) {
+            uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
             // Calculate optimal amount
             uint256 optimalAmount = optimizor.optimalAmount(
-                gauges[address(token)], isMetapool[address(token)] && !optimizor.isConvexFraxPaused()
+                gauges[address(token)], veCRVStakeDAO, isMetapool[address(token)] && !optimizor.isConvexFraxPaused()
             );
             assert(optimalAmount > 0);
 
