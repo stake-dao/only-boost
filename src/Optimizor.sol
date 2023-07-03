@@ -6,6 +6,7 @@ pragma solidity 0.8.20;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 // --- Core Contracts
 import {CurveStrategy} from "src/CurveStrategy.sol";
@@ -23,6 +24,7 @@ import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
  */
 contract Optimizor is Auth {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     //////////////////////////////////////////////////////
     /// --- STRUCTS
@@ -69,6 +71,8 @@ contract Optimizor is Auth {
     uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
     uint256 public convexFraxPausedTimestamp; // Timestamp of the Convex FRAX pause
     uint256 public cachePeriod = 7 days; // Cache period for optimization
+    uint256 public cacheVeCRVLockerBalance; // Cached veCRV value for Stake DAO Liquidity Locker
+    uint256 public veCRVDifferenceThreshold = 5e16; // 10% difference threshold for veCRV
 
     // --- Mappings
     mapping(address => CachedOptimization) public lastOpti; // liquidityGauge => CachedOptimization
@@ -156,19 +160,13 @@ contract Optimizor is Auth {
 
         uint256[] memory amounts = new uint256[](3);
 
+        // Cache Stake DAO Liquid Locker veCRV balance
+        uint256 veCRVLocker = ERC20(LOCKER_CRV).balanceOf(LOCKER);
+
         // If Metapool and available on Convex Frax
         if (statusFrax && !isConvexFraxPaused) {
             // Get the optimal amount of lps that must be held by the locker
-            uint256 opt;
-            // If optimize calculation is activated and the last optimization is not too old, use the cached value
-            if (useLastOpti && lastOptiMetapool[liquidityGauge].timestamp + cachePeriod > block.timestamp) {
-                opt = lastOptiMetapool[liquidityGauge].value;
-            }
-            // Else, calculate the optimal amount and cache it
-            else {
-                opt = optimalAmount(liquidityGauge, true);
-                lastOptiMetapool[liquidityGauge] = CachedOptimization(opt, block.timestamp);
-            }
+            uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker, true);
 
             // Get the balance of the locker on the liquidity gauge
             uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
@@ -183,16 +181,8 @@ contract Optimizor is Auth {
         // If available on Convex Curve
         else if (statusCurve) {
             // Get the optimal amount of lps that must be held by the locker
-            uint256 opt;
-            // If optimize calculation is activated and the last optimization is not too old, use the cached value
-            if (useLastOpti && lastOpti[liquidityGauge].timestamp + cachePeriod > block.timestamp) {
-                opt = lastOpti[liquidityGauge].value;
-            }
-            // Else, calculate the optimal amount and cache it
-            else {
-                opt = optimalAmount(liquidityGauge, false);
-                lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
-            }
+            uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker, false);
+
             // Get the balance of the locker on the liquidity gauge
             uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
 
@@ -214,6 +204,41 @@ contract Optimizor is Auth {
         }
 
         return (fallbacks, amounts);
+    }
+
+    function _getOptimalAmount(address liquidityGauge, uint256 veCRVBalance, bool isMeta)
+        internal
+        returns (uint256 opt)
+    {
+        if (
+            // 1. Optimize calculation is activated
+            useLastOpti
+            // 2. The cached optimal amount is not too old
+            && (
+                (isMeta ? lastOptiMetapool[liquidityGauge].timestamp : lastOpti[liquidityGauge].timestamp) + cachePeriod
+                    > block.timestamp
+            )
+            // 3. The cached veCRV balance of Stake DAO is below the acceptability threshold
+            && absDiff(cacheVeCRVLockerBalance, veCRVBalance) < veCRVBalance.mulWadDown(veCRVDifferenceThreshold)
+        ) {
+            // Use cached optimal amount
+            opt = isMeta ? lastOptiMetapool[liquidityGauge].value : lastOpti[liquidityGauge].value;
+        } else {
+            // Calculate optimal amount
+            opt = optimalAmount(liquidityGauge, isMeta);
+
+            // Cache veCRV balance of Stake DAO, no need if already the same
+            if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;
+
+            // Cache optimal amount and timestamp
+            if (isMeta) {
+                // Update the cache for Metapool
+                lastOptiMetapool[liquidityGauge] = CachedOptimization(opt, block.timestamp);
+            } else {
+                // Update the cache for Classic Pool
+                lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
+            }
+        }
     }
 
     /**
@@ -398,5 +423,9 @@ contract Optimizor is Auth {
      */
     function min(uint256 a, uint256 b) private pure returns (uint256) {
         return (a < b) ? a : b;
+    }
+
+    function absDiff(uint256 a, uint256 b) private pure returns (uint256) {
+        return (a > b) ? a - b : b - a;
     }
 }
