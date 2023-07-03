@@ -7,8 +7,9 @@ import "forge-std/Test.sol";
 // --- Libraries
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Authority} from "solmate/auth/Auth.sol";
-import {RolesAuthority} from "solmate/auth/authorities/RolesAuthority.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {RolesAuthority} from "solmate/auth/authorities/RolesAuthority.sol";
 
 // --- Contracts
 import {Optimizor} from "src/Optimizor.sol";
@@ -30,6 +31,7 @@ import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.so
 
 contract BaseTest is Test {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     //////////////////////////////////////////////////////
     /// --- CONTRACTS & MOCKS & INTERFACES
@@ -83,6 +85,7 @@ contract BaseTest is Test {
     // --- Lockers address
     address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
+    address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2; // CRV Locker
 
     // --- Users address
     address public immutable ALICE = makeAddr("Alice");
@@ -357,6 +360,59 @@ contract BaseTest is Test {
             assertTrue(valuesBefore[1] != valuesAfter[1], "4.2");
             assertTrue(valuesBefore[2] == valuesAfter[2], "5.2");
         }
+    }
+
+    function _optimizedDepositReturnedValueAfterCRVLock(ERC20 token) internal {
+        // Toggle using last optimization
+        optimizor.toggleUseLastOptimization();
+
+        // Call the optimize deposit
+        (, uint256[] memory valuesBefore) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+        uint256 crvLockBefore = optimizor.cacheVeCRVLockerBalance();
+
+        // Liquid Locker lock less CRV than needed to bypass threshold
+        uint256 amountToBypassThreshold =
+            ERC20(LOCKER_CRV).balanceOf(LOCKER).mulWadDown(optimizor.veCRVDifferenceThreshold());
+        
+        deal(address(CRV), address(this), amountToBypassThreshold / 2);
+        CRV.safeTransfer(address(LOCKER), amountToBypassThreshold / 2);
+        vm.prank(ILocker(LOCKER).governance());
+        ILocker(LOCKER).increaseAmount(amountToBypassThreshold / 2);
+
+        // Call the optimize deposit
+        (, uint256[] memory valuesAfter) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+        uint256 crvLockAfter = optimizor.cacheVeCRVLockerBalance();
+
+        // Because not enough CRV locked, we should have the same values
+        assertEq(valuesBefore[0], valuesAfter[0], "0");
+        assertEq(valuesBefore[1], valuesAfter[1], "1");
+        assertEq(valuesBefore[2], valuesAfter[2], "2");
+        assertEq(crvLockBefore, crvLockAfter, "3");
+
+        // Actualize CRV to lock to bypass threshold
+        amountToBypassThreshold = ERC20(LOCKER_CRV).balanceOf(LOCKER).mulWadDown(optimizor.veCRVDifferenceThreshold());
+        
+        // Liquid Locker lock enough CRV to bypass threshold
+        deal(address(CRV), address(this), amountToBypassThreshold);
+        CRV.safeTransfer(address(LOCKER), amountToBypassThreshold);
+        vm.prank(ILocker(LOCKER).governance());
+        ILocker(LOCKER).increaseAmount(amountToBypassThreshold);
+
+        // Call the optimize deposit
+        (, valuesAfter) = optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+        crvLockAfter = optimizor.cacheVeCRVLockerBalance();
+
+        if (isMetapool[address(token)]) {
+            assertEq(valuesBefore[1], valuesAfter[1], "4.1");
+            assertNotEq(valuesBefore[2], valuesAfter[2], "5.1");
+        } else {
+            assertNotEq(valuesBefore[1], valuesAfter[1], "4.2");
+            assertEq(valuesBefore[2], valuesAfter[2], "5.2");
+        }
+        assertTrue(valuesBefore[0] != valuesAfter[0], "6");
+        assertNotEq(crvLockBefore, crvLockAfter, "7");
     }
 
     // --- Assertions

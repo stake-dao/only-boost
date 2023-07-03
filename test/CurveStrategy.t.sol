@@ -716,6 +716,14 @@ contract CurveStrategyTest is BaseTest {
         _optimizedDepositReturnedValueAfter4And7Days(CRV3);
     }
 
+    function test_OptimizedDepositReturnedValueAfterCRVLockMetapool() public useFork(forkId1) {
+        _optimizedDepositReturnedValueAfterCRVLock(ALUSD_FRAXBP);
+    }
+
+    function test_OptimizedDepositReturnedValueAfterCRVLockNotMetapool() public useFork(forkId1) {
+        _optimizedDepositReturnedValueAfterCRVLock(CRV3);
+    }
+
     // --- Setters
     function test_ToggleVault() public useFork(forkId1) {
         assertEq(curveStrategy.vaults(address(0x1)), false, "0");

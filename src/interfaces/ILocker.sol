@@ -10,4 +10,6 @@ interface ILocker {
     function setStrategy(address) external;
 
     function execute(address, uint256, bytes calldata) external returns (bool, bytes memory);
+
+    function increaseAmount(uint256 _value) external;
 }
