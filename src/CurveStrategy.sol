@@ -18,12 +18,10 @@ import {IAccumulator} from "src/interfaces/IAccumulator.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 
-/**
- * @title CurveStrategy
- * @author Stake DAO
- * @notice Strategy for Curve LP tokens
- * @dev Inherits from Solmate `Auth` implementation
- */
+/// @title CurveStrategy
+/// @author Stake DAO
+/// @notice Strategy for Curve LP tokens
+/// @dev Inherits from Solmate `Auth` implementatio
 contract CurveStrategy is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -31,7 +29,13 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- STRUCTS & ENUMS
     //////////////////////////////////////////////////////
+
     // --- Structs
+    /// @notice Struct to store fees
+    /// @param perfFee Fee collected as performance fee
+    /// @param accumulatorFee Fee collected for accumulator
+    /// @param veSDTFee Fee collected for veSDT holders
+    /// @param claimerRewardFee Fee collected for reward claimer
     struct Fees {
         uint256 perfFee;
         uint256 accumulatorFee;
@@ -40,6 +44,11 @@ contract CurveStrategy is Auth {
     }
 
     // --- Enums
+    /// @notice Enum to store fee types
+    /// @param PERFFEE Performance fee
+    /// @param VESDTFEE veSDT fee
+    /// @param ACCUMULATORFEE Accumulator fee
+    /// @param CLAIMERREWARD Claimer reward fee
     enum MANAGEFEE {
         PERFFEE,
         VESDTFEE,
@@ -50,86 +59,181 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
+
     // --- Interfaces
-    ILocker public constant LOCKER = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6); // StakeDAO CRV Locker
+    /// @notice Interface for Stake DAO CRV Locker
+    ILocker public constant LOCKER = ILocker(0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6);
 
     // --- Addresses
-    address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0; // Curve CRV Minter
-    address public constant CRV_FEE_D = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc; // Curve Fee Distributor
-    address public constant CRV3 = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490; // LP 3CRV Address
-    address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52; // Curve Token Address
+    /// @notice Curve DAO CRV Minter
+    address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
+
+    /// @notice Curve DAO CRV Fee Distributor
+    address public constant CRV_FEE_D = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc;
+
+    /// @notice Curve DAO 3Pool LP Token
+    address public constant CRV3 = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
+
+    /// @notice Curve DAO ERC20 CRV Token
+    address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
     // --- Uints
-    uint256 public constant BASE_FEE = 10000; // 100% fees
+    /// @notice Base for fees calculation, represents 100% in base fee
+    uint256 public constant BASE_FEE = 10000;
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
+
     // --- Contracts and Interfaces
-    Optimizor public optimizor; // Optimizor contract
-    IAccumulator public accumulator = IAccumulator(0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A); // Stake DAO CRV Accumulator
+    /// @notice Optimizor contract
+    Optimizor public optimizor;
+
+    /// @notice Interface for Stake DAO CRV Accumulator
+    IAccumulator public accumulator = IAccumulator(0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A);
 
     // --- Addresses
-    address public rewardsReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063; // Stake DAO Rewards Receiver
-    address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C; // Stake DAO SDT Distributor
-    address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E; // Stake DAO veSDT Proxy
+    /// @notice Stake DAO Rewards Receiver
+    address public rewardsReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
+
+    /// @notice Stake DAO SDT Distributor
+    address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C;
+
+    /// @notice Stake DAO veSDT Proxy
+    address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E;
 
     // --- Bools
-    bool public claimAll = true; // Flag for claiming rewards from fallbacks on `claim()`
+    /// @notice Flag for claiming rewards from fallbacks on `claim()`
+    bool public claimAll = true;
 
     // --- Mappings
-    // Following mappings need to be initialized on the deployment to match with the previous contract
-    mapping(address => bool) public vaults; // vault addres -> is vault active
-    mapping(address => address) public gauges; // lp token from curve -> curve gauge
-    mapping(address => uint256) public lGaugeType; // liquidity gauge address -> gauge type (0,1,2,3)
+    // Following mappings need to be initialized on the deployment to match with the previous strategy contract
+    /// @notice Map vaults address -> is vault active
+    mapping(address => bool) public vaults;
 
-    mapping(address => Fees) public feesInfos; // gauge -> fees
+    /// @notice Map LP token from curve -> curve gauge
+    mapping(address => address) public gauges;
 
-    mapping(address => address) public rewardDistributors; // Curve Gauge -> Stake DAO Reward Distributor
+    /// @notice Map liquidity gauge address -> gauge type (0,1,2,3)
+    mapping(address => uint256) public lGaugeType;
+
+    /// @notice Map Stake DAO liquidity gauge -> Fees struct
+    mapping(address => Fees) public feesInfos;
+
+    /// @notice Map Curve liquidity gauge -> Stake DAO Reward Distributor
+    mapping(address => address) public rewardDistributors;
 
     //////////////////////////////////////////////////////
     /// --- EVENTS
-    //////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////$
+
+    /// @notice Emitted when a new Optimizor contract is set
+    /// @param _optimizor Address of the new Optimizor contract
     event OptimizorSet(address _optimizor);
+
+    /// @notice Emitted when a new veSDT Proxy contract is set
+    /// @param _veSDTProxy Address of the new veSDT Proxy contract
     event VeSDTProxySet(address _veSDTProxy);
+
+    /// @notice Emitted when a new Stake DAO CRV Accumulator is set
+    /// @param _accumulator Address of the new Stake DAO CRV Accumulator
     event AccumulatorSet(address _accumulator);
+
+    /// @notice Emitted when a new Curve liquidity gauge is set
+    /// @param _gauge Address of the new Curve liquidity gauge
+    /// @param _token Address of the LP token
     event GaugeSet(address _gauge, address _token);
+
+    /// @notice Emitted when CRV3 is claimed
+    /// @param amount Amount of CRV3 claimed
+    /// @param notified Flag for notifying Stake DAO CRV Accumulator
     event Crv3Claimed(uint256 amount, bool notified);
+
+    /// @notice Emitted when a Stake DAO vault is toggled
+    /// @param _vault Address of the Stake DAO vault
+    /// @param _newState New state of the vault
     event VaultToggled(address _vault, bool _newState);
+
+    /// @notice Emitted when a reward receiver is set
+    /// @param _rewardsReceiver Address of the new rewards receiver
     event RewardsReceiverSet(address _rewardsReceiver);
+
+    /// @notice Emitted when a liquidity gauge type is set
+    /// @param _gauge Address of the liquidity gauge
+    /// @param _gaugeType Type of the liquidity gauge
     event GaugeTypeSet(address _gauge, uint256 _gaugeType);
+
+    /// @notice Emitted when a Stake DAO liquidity gauge is set
+    /// @param _gauge Address of the Curve DAO liquidity gauge
+    /// @param _multiGauge Address of the Stake DAO reward distributor
     event MultiGaugeSet(address _gauge, address _multiGauge);
+
+    /// @notice Emitted when a rewards are claimed
+    /// @param _gauge Address of the Curve DAO liquidity gauge
+    /// @param _token Address of the LP token
+    /// @param _amount Amount of rewards claimed
     event Claimed(address _gauge, address _token, uint256 _amount);
+
+    /// @notice Emitted when a token is deposited
+    /// @param _gauge Address of the Curve DAO liquidity gauge
+    /// @param _token Address of the LP token
+    /// @param _amount Amount of tokens deposited
     event Deposited(address _gauge, address _token, uint256 _amount);
+
+    /// @notice Emitted when a token is withdrawn
+    /// @param _gauge Address of the Curve DAO liquidity gauge
+    /// @param _token Address of the LP token
+    /// @param _amount Amount of tokens withdrawn
     event Withdrawn(address _gauge, address _token, uint256 _amount);
+
+    /// @notice Emitted when fee are updated
+    /// @param _manageFee New management fee
+    /// @param _gauge Address of the Curve DAO liquidity gauge
+    /// @param _fee New performance fee
     event FeeManaged(uint256 _manageFee, address _gauge, uint256 _fee);
 
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
+
+    /// @notice Error emitted when input amount is null
     error AMOUNT_NULL();
+
+    /// @notice Error emitted when amount minted is null
     error MINT_FAILED();
+
+    /// @notice Error emitted when external call failed
     error CALL_FAILED();
+
+    /// @notice Error emitted when input address is null
     error ADDRESS_NULL();
+
+    /// @notice Error emitted when external claim failed
     error CLAIM_FAILED();
+
+    /// @notice Error emitted when sum of fees is above 100%
     error FEE_TOO_HIGH();
+
+    /// @notice Error emitted when withdraw from locker failed
     error WITHDRAW_FAILED();
+
+    /// @notice Error emitted when transfer from locker failed
     error TRANSFER_FROM_LOCKER_FAILED();
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
+
     constructor(address owner, Authority authority) Auth(owner, authority) {}
 
     //////////////////////////////////////////////////////
     /// --- DEPOSIT
     //////////////////////////////////////////////////////
-    /**
-     * @notice Main gateway to deposit LP token into this strategy
-     * @dev Only callable by the `vault` or the governance
-     * @param token Address of LP token to deposit
-     * @param amount Amount of LP token to deposit
-     */
+
+    /// @notice Main gateway to deposit LP token into this strategy
+    /// @dev Only callable by the `vault` or the governance
+    /// @param token Address of LP token to deposit
+    /// @param amount Amount of LP token to deposit
     function deposit(address token, uint256 amount) external requiresAuth {
         // Transfer the token to this contract
         ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -138,24 +242,20 @@ contract CurveStrategy is Auth {
         _deposit(token, amount);
     }
 
-    /**
-     * @notice Optimizor gateway to deposit LP token into this strategy
-     * @dev Only callable by the `optimizor` or the governance, should be used only when migration
-     * @param token Address of LP token to deposit
-     * @param amount Amount of LP token to deposit
-     */
+    /// @notice Optimizor gateway to deposit LP token into this strategy
+    /// @dev Only callable by the `optimizor` or the governance, should be used only when migration
+    /// @param token Address of LP token to deposit
+    /// @param amount Amount of LP token to deposit
     function depositForOptimizor(address token, uint256 amount) external requiresAuth {
         // Should be better named after
         // Do the deposit process
         _deposit(token, amount);
     }
 
-    /**
-     * @notice Internal gateway to deposit LP into this strategy
-     * @dev First check the optimal split, then send it to respective recipients
-     * @param token Address of LP token to deposit
-     * @param amount Amount of LP token to deposit
-     */
+    /// @notice Internal gateway to deposit LP into this strategy
+    /// @dev First check the optimal split, then send it to respective recipients
+    /// @param token Address of LP token to deposit
+    /// @param amount Amount of LP token to deposit
     function _deposit(address token, uint256 amount) internal {
         // Get the gauge address
         address gauge = gauges[token];
@@ -194,12 +294,10 @@ contract CurveStrategy is Auth {
         }
     }
 
-    /**
-     * @notice Internal gateway to deposit LP token using Stake DAO Liquid Locker
-     * @param token Address of LP token to deposit
-     * @param gauge Address of Liqudity gauge corresponding to LP token
-     * @param amount Amount of LP token to deposit
-     */
+    /// @notice Internal gateway to deposit LP token using Stake DAO Liquid Locker
+    /// @param token Address of LP token to deposit
+    /// @param gauge Address of Liqudity gauge corresponding to LP token
+    /// @param amount Amount of LP token to deposit
     function _depositIntoLiquidLocker(address token, address gauge, uint256 amount) internal {
         ERC20(token).safeTransfer(address(LOCKER), amount);
 
@@ -217,12 +315,11 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- WITHDRAW
     //////////////////////////////////////////////////////
-    /**
-     * @notice Main gateway to withdraw LP token from this strategy
-     * @dev Only callable by `vault` or governance
-     * @param token Address of LP token to withdraw
-     * @param amount Amount of LP token to withdraw
-     */
+
+    /// @notice Main gateway to withdraw LP token from this strategy
+    /// @dev Only callable by `vault` or governance
+    /// @param token Address of LP token to withdraw
+    /// @param amount Amount of LP token to withdraw
     function withdraw(address token, uint256 amount) external requiresAuth {
         // Do the withdraw process
         _withdraw(token, amount);
@@ -231,12 +328,10 @@ contract CurveStrategy is Auth {
         ERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    /**
-     * @notice Internal gateway to withdraw LP token from this strategy
-     * @dev First check where to remove liquidity, then remove liquidity accordingly
-     * @param token Address of LP token to withdraw
-     * @param amount Amount of LP token to withdraw
-     */
+    /// @notice Internal gateway to withdraw LP token from this strategy
+    /// @dev First check where to remove liquidity, then remove liquidity accordingly
+    /// @param token Address of LP token to withdraw
+    /// @param amount Amount of LP token to withdraw
     function _withdraw(address token, uint256 amount) internal {
         // Get the gauge address
         address gauge = gauges[token];
@@ -274,12 +369,10 @@ contract CurveStrategy is Auth {
         }
     }
 
-    /**
-     * @notice Internal gateway to withdraw LP token from Stake DAO Liquid Locker
-     * @param token Address of LP token to withdraw
-     * @param gauge Address of Liqudity gauge corresponding to LP token
-     * @param amount Amount of LP token to withdraw
-     */
+    /// @notice Internal gateway to withdraw LP token from Stake DAO Liquid Locker
+    /// @param token Address of LP token to withdraw
+    /// @param gauge Address of Liqudity gauge corresponding to LP token
+    /// @param amount Amount of LP token to withdraw
     function _withdrawFromLiquidLocker(address token, address gauge, uint256 amount) internal {
         (bool success,) = LOCKER.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
         if (!success) revert WITHDRAW_FAILED();
@@ -294,11 +387,10 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- CLAIM
     //////////////////////////////////////////////////////
-    /**
-     * @notice Main gateway to claim all reward obtained from this strategy
-     * @notice Claim both reward from Liquid Locker position and fallback positions
-     * @param token Address of LP token to claim reward from
-     */
+
+    /// @notice Main gateway to claim all reward obtained from this strategy
+    /// @notice Claim both reward from Liquid Locker position and fallback positions
+    /// @param token Address of LP token to claim reward from
     function claim(address token) external requiresAuth {
         // Get the gauge address
         address gauge = gauges[token];
@@ -392,10 +484,8 @@ contract CurveStrategy is Auth {
         }
     }
 
-    /**
-     * @notice Claim rewards from all fallbacks
-     * @param token Address of LP token to claim reward from
-     */
+    /// @notice Claim rewards from all fallbacks
+    /// @param token Address of LP token to claim reward from
     function claimFallbacks(address token) public requiresAuth {
         // Get the gauge address
         address gauge = gauges[token];
@@ -426,10 +516,8 @@ contract CurveStrategy is Auth {
         }
     }
 
-    /**
-     * @notice Claim 3crv from the curve fee Distributor and send it to the accumulator
-     * @param notify If true, notify the accumulator
-     */
+    /// @notice Claim 3crv from the curve fee Distributor and send it to the accumulator
+    /// @param notify If true, notify the accumulator
     function claim3Crv(bool notify) external requiresAuth {
         // Claim 3crv from the curve fee Distributor, it will send 3crv to the crv locker
         (bool success,) = LOCKER.execute(CRV_FEE_D, 0, abi.encodeWithSignature("claim()"));
@@ -451,13 +539,11 @@ contract CurveStrategy is Auth {
         emit Crv3Claimed(amountToSend, notify);
     }
 
-    /**
-     * @notice Internal process to send fees from rewards
-     * @param gauge Address of Liqudity gauge corresponding to LP token
-     * @param rewardToken Address of reward token
-     * @param rewardsBalance Amount of reward token
-     * @return Amount of reward token remaining
-     */
+    /// @notice Internal process to send fees from rewards
+    /// @param gauge Address of Liqudity gauge corresponding to LP token
+    /// @param rewardToken Address of reward token
+    /// @param rewardsBalance Amount of reward token
+    /// @return Amount of reward token remaining
     function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
         Fees memory fee = feesInfos[gauge];
         // calculate the amount for each fee recipient
@@ -474,12 +560,10 @@ contract CurveStrategy is Auth {
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
-    /**
-     * @notice Send `token` to the accumulator
-     * @dev Only callable by the governance
-     * @param token Address of token to send to the accumulator
-     * @param amount Amount of token to send to the accumulator
-     */
+    /// @notice Send `token` to the accumulator
+    /// @dev Only callable by the governance
+    /// @param token Address of token to send to the accumulator
+    /// @param amount Amount of token to send to the accumulator
     function sendToAccumulator(address token, uint256 amount) external requiresAuth {
         ERC20(token).safeApprove(address(accumulator), amount);
         accumulator.depositToken(token, amount);
@@ -488,11 +572,10 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- MIGRATION
     //////////////////////////////////////////////////////
-    /**
-     * @notice Migrate LP token from the locker to the vault
-     * @dev Only callable by the governance
-     * @param token Address of LP token to migrate
-     */
+
+    /// @notice Migrate LP token from the locker to the vault
+    /// @dev Only callable by the governance
+    /// @param token Address of LP token to migrate
     function migrateLP(address token) external requiresAuth {
         // Get gauge address
         address gauge = gauges[token];
@@ -513,95 +596,78 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- SETTERS
     //////////////////////////////////////////////////////
-    /**
-     * @notice Toogle vault status
-     * @param vault Address of the vault to toggle
-     */
+
+    /// @notice Toogle vault status
+    /// @param vault Address of the vault to toggle
     function toggleVault(address vault) external requiresAuth {
         if (vault == address(0)) revert ADDRESS_NULL();
         vaults[vault] = !vaults[vault];
         emit VaultToggled(vault, vaults[vault]);
     }
 
-    /**
-     * @notice Set gauge address for a LP token
-     * @param token Address of LP token corresponding to `gauge`
-     * @param gauge Address of liquidity gauge corresponding to `token`
-     */
+    /// @notice Set gauge address for a LP token
+    /// @param token Address of LP token corresponding to `gauge`
+    /// @param gauge Address of liquidity gauge corresponding to `token`
     function setGauge(address token, address gauge) external requiresAuth {
         if (token == address(0)) revert ADDRESS_NULL();
         gauges[token] = gauge;
         emit GaugeSet(gauge, token);
     }
 
-    /**
-     * @notice Set type for a Liquidity gauge
-     * @param gauge Address of Liquidity gauge
-     * @param gaugeType Type of Liquidity gauge
-     */
+    /// @notice Set type for a Liquidity gauge
+    /// @param gauge Address of Liquidity gauge
+    /// @param gaugeType Type of Liquidity gauge
     function setLGtype(address gauge, uint256 gaugeType) external requiresAuth {
         if (gauge == address(0)) revert ADDRESS_NULL();
         lGaugeType[gauge] = gaugeType;
         emit GaugeTypeSet(gauge, gaugeType);
     }
 
-    /**
-     * @notice Set rewardDistributor for a Liquidity gauge
-     * @param gauge Address of Liquidity gauge
-     * @param multiGauge Address of rewardDistributor
-     */
+    /// @notice Set rewardDistributor for a Liquidity gauge
+    /// @param gauge Address of Liquidity gauge
+    /// @param multiGauge Address of rewardDistributor
     function setMultiGauge(address gauge, address multiGauge) external requiresAuth {
         if (gauge == address(0) || multiGauge == address(0)) revert ADDRESS_NULL();
         rewardDistributors[gauge] = multiGauge;
         emit MultiGaugeSet(gauge, multiGauge);
     }
 
-    /**
-     * @notice Set VeSDTFeeProxy new address
-     * @param newVeSDTProxy Address of new VeSDTFeeProxy
-     */
+    /// @notice Set VeSDTFeeProxy new address
+    /// @param newVeSDTProxy Address of new VeSDTFeeProxy
     function setVeSDTProxy(address newVeSDTProxy) external requiresAuth {
         if (newVeSDTProxy == address(0)) revert ADDRESS_NULL();
         veSDTFeeProxy = newVeSDTProxy;
         emit VeSDTProxySet(newVeSDTProxy);
     }
 
-    /**
-     * @notice Set Accumulator new address
-     * @param newAccumulator Address of new Accumulator
-     */
+    /// @notice Set Accumulator new address
+    /// @param newAccumulator Address of new Accumulator
     function setAccumulator(address newAccumulator) external requiresAuth {
         if (newAccumulator == address(0)) revert ADDRESS_NULL();
         accumulator = IAccumulator(newAccumulator);
         emit AccumulatorSet(newAccumulator);
     }
 
-    /**
-     * @notice Set RewardsReceiver new address
-     * @param newRewardsReceiver Address of new RewardsReceiver
-     */
+    /// @notice Set RewardsReceiver new address
+    /// @param newRewardsReceiver Address of new RewardsReceiver
     function setRewardsReceiver(address newRewardsReceiver) external requiresAuth {
         if (newRewardsReceiver == address(0)) revert ADDRESS_NULL();
         rewardsReceiver = newRewardsReceiver;
         emit RewardsReceiverSet(newRewardsReceiver);
     }
 
-    /**
-     * @notice Set Optimizor new address
-     * @param newOptimizor Address of new Optimizor
-     */
+    /// @notice Set Optimizor new address
+    /// @param newOptimizor Address of new Optimizor
     function setOptimizor(address newOptimizor) external requiresAuth {
         // Optimizor can be set to address(0) to disable it
         optimizor = Optimizor(newOptimizor);
         emit OptimizorSet(newOptimizor);
     }
 
-    /**
-     * @notice Set fees for a Liquidity gauge
-     * @param manageFee_ Enum for the fee to set
-     * @param gauge Address of Liquidity gauge
-     * @param newFee New fee to set
-     */
+    /// @notice Set fees for a Liquidity gauge
+    /// @param manageFee_ Enum for the fee to set
+    /// @param gauge Address of Liquidity gauge
+    /// @param newFee New fee to set
     function manageFee(MANAGEFEE manageFee_, address gauge, uint256 newFee) external requiresAuth {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
@@ -629,15 +695,14 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
     /// --- EXECUTE
     //////////////////////////////////////////////////////
-    /**
-     * @notice Execute a function
-     * @dev Only callable by the owner
-     * @param to Address of the contract to execute
-     * @param value Value to send to the contract
-     * @param data Data to send to the contract
-     * @return success_ Boolean indicating if the execution was successful
-     * @return result_ Bytes containing the result of the execution
-     */
+
+    /// @notice Execute a function
+    /// @dev Only callable by the owner
+    /// @param to Address of the contract to execute
+    /// @param value Value to send to the contract
+    /// @param data Data to send to the contract
+    /// @return success_ Boolean indicating if the execution was successful
+    /// @return result_ Bytes containing the result of the execution
     function execute(address to, uint256 value, bytes calldata data)
         external
         requiresAuth

@@ -9,34 +9,38 @@ import "./BaseFallback.sol";
 import {IBaseRewardsPool} from "src/interfaces/IBaseRewardsPool.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 
-/**
- * @title FallbackConvexCurve
- * @author Stake DAO
- * @notice Manage LP deposit/withdraw/claim into ConvexCurve
- * @dev Inherit from `BaseFallback` implementation
- */
+/// @title FallbackConvexCurve
+/// @author Stake DAO
+/// @notice Manage LP deposit/withdraw/claim into ConvexCurve
+/// @dev Inherit from `BaseFallback` implementation
 contract FallbackConvexCurve is BaseFallback {
     using SafeTransferLib for ERC20;
 
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
+
+    /// @notice Interface for ConvexCurve booster contract
     IBoosterConvexCurve public constant BOOSTER_CONVEX_CURVE =
-        IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31); // ConvexCurve booster contract
+        IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
-    bool public claimOnWithdraw; // Flag to check if rewards should be claimed on withdraw
+
+    /// @notice Flag to check if rewards should be claimed on withdraw
+    bool public claimOnWithdraw;
 
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
+    /// @notice Error emitted when deposit fails
     error DEPOSIT_FAIL();
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
+
     constructor(address owner, Authority authority, address _curveStrategy)
         BaseFallback(owner, authority, _curveStrategy)
     {}
@@ -44,9 +48,8 @@ contract FallbackConvexCurve is BaseFallback {
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS
     //////////////////////////////////////////////////////
-    /**
-     * @notice Update mapping of pool ids from ConvexCurve to LP token address
-     */
+
+    /// @notice Update mapping of pool ids from ConvexCurve to LP token address
     function setAllPidsOptimized() public override requiresAuth {
         // Cache the length of the pool registry
         uint256 len = BOOSTER_CONVEX_CURVE.poolLength();
@@ -72,11 +75,9 @@ contract FallbackConvexCurve is BaseFallback {
         lastPidsCount = len;
     }
 
-    /**
-     * @notice Check if the pid corresponding to LP token is active and initialized internally
-     * @param token Address of the LP token
-     * @return Flag if the pool is active and initialized internally
-     */
+    /// @notice Check if the pid corresponding to LP token is active and initialized internally
+    /// @param token Address of the LP token
+    /// @return Flag if the pool is active and initialized internally
     function isActive(address token) external view override returns (bool) {
         // Check if the pool is initialized and not shutdown
         (,,,,, bool shutdown) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);
@@ -85,12 +86,10 @@ contract FallbackConvexCurve is BaseFallback {
         return pids[token].isInitialized && !shutdown;
     }
 
-    /**
-     * @notice Main gateway to deposit LP token into ConvexCurve
-     * @dev Only callable by the strategy
-     * @param token Address of LP token to deposit
-     * @param amount Amount of LP token to deposit
-     */
+    /// @notice Main gateway to deposit LP token into ConvexCurve
+    /// @dev Only callable by the strategy
+    /// @param token Address of LP token to deposit
+    /// @param amount Amount of LP token to deposit
     function deposit(address token, uint256 amount) external override requiresAuth {
         // Approve the amount
         ERC20(token).safeApprove(address(BOOSTER_CONVEX_CURVE), amount);
@@ -100,12 +99,10 @@ contract FallbackConvexCurve is BaseFallback {
         emit Deposited(token, amount);
     }
 
-    /**
-     * @notice Main gateway to withdraw LP token from ConvexCurve
-     * @dev Only callable by the strategy
-     * @param token Address of LP token to withdraw
-     * @param amount Amount of LP token to withdraw
-     */
+    /// @notice Main gateway to withdraw LP token from ConvexCurve
+    /// @dev Only callable by the strategy
+    /// @param token Address of LP token to withdraw
+    /// @param amount Amount of LP token to withdraw
     function withdraw(address token, uint256 amount) external override requiresAuth {
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);
@@ -118,13 +115,11 @@ contract FallbackConvexCurve is BaseFallback {
         emit Withdrawn(token, amount);
     }
 
-    /**
-     * @notice Main gateway to claim rewards from ConvexCurve
-     * @dev Only callable by the strategy
-     * @param token Address of LP token to claim reward from
-     * @return Array of rewards tokens address
-     * @return Array of rewards tokens amount
-     */
+    /// @notice Main gateway to claim rewards from ConvexCurve
+    /// @dev Only callable by the strategy
+    /// @param token Address of LP token to claim reward from
+    /// @return Array of rewards tokens address
+    /// @return Array of rewards tokens amount
     function claimRewards(address token) external override requiresAuth returns (address[] memory, uint256[] memory) {
         // Cache rewardsTokens
         address[] memory rewardsTokens = getRewardsTokens(token);
@@ -145,11 +140,10 @@ contract FallbackConvexCurve is BaseFallback {
     //////////////////////////////////////////////////////
     /// --- VIEW FUNCTIONS
     //////////////////////////////////////////////////////
-    /**
-     * @notice Get all the rewards tokens from pid corresponding to `token`
-     * @param token Address of LP token to get rewards tokens
-     * @return Array of rewards tokens address
-     */
+
+    /// @notice Get all the rewards tokens from pid corresponding to `token`
+    /// @param token Address of LP token to get rewards tokens
+    /// @return Array of rewards tokens address
     function getRewardsTokens(address token) public view override returns (address[] memory) {
         // Cache the pid
         PidsInfo memory pidInfo = pids[token];
@@ -181,20 +175,16 @@ contract FallbackConvexCurve is BaseFallback {
         return tokens;
     }
 
-    /**
-     * @notice Get the pid corresponding to LP token
-     * @param token Address of LP token to get pid
-     * @return Pid info struct
-     */
+    /// @notice Get the pid corresponding to LP token
+    /// @param token Address of LP token to get pid
+    /// @return Pid info struct
     function getPid(address token) external view override returns (PidsInfo memory) {
         return pids[token];
     }
 
-    /**
-     * @notice Get the balance of the LP token on ConvexCurve
-     * @param token Address of LP token to get balance
-     * @return Balance of the LP token on ConvexCurve
-     */
+    /// @notice Get the balance of the LP token on ConvexCurve
+    /// @param token Address of LP token to get balance
+    /// @return Balance of the LP token on ConvexCurve
     function balanceOf(address token) public view override returns (uint256) {
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);

@@ -12,38 +12,51 @@ import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
 import {IStakingProxyConvex} from "src/interfaces/IStakingProxyConvex.sol";
 import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
 
-/**
- * @title FallbackConvexFrax
- * @author Stake DAO
- * @notice Manage LP deposit/withdraw/claim into ConvexFrax
- * @dev Inherit from `BaseFallback` implementation
- */
+/// @title FallbackConvexFrax
+/// @author Stake DAO
+/// @notice Manage LP deposit/withdraw/claim into ConvexFrax
+/// @dev Inherit from `BaseFallback` implementation
 contract FallbackConvexFrax is BaseFallback {
     using SafeTransferLib for ERC20;
 
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
+
     // --- Interfaces
+    /// @notice Interface for Convex Frax booster contract
     IBoosterConvexFrax public constant BOOSTER_CONVEX_FRAX =
-        IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa); // Convex Frax booster
+        IBoosterConvexFrax(0x569f5B842B5006eC17Be02B8b94510BA8e79FbCa);
+
+    /// @notice Interface for Convex Frax pool registry contract
     IPoolRegistryConvexFrax public constant POOL_REGISTRY_CONVEX_FRAX =
-        IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69); // ConvexFrax pool Registry
+        IPoolRegistryConvexFrax(0x41a5881c17185383e19Df6FA4EC158a6F4851A69);
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
+
     // --- Uints
-    uint256 public lockingIntervalSec = 7 days; // 7 days
+    /// @notice Duration in seconds for locking period
+    uint256 public lockingIntervalSec = 7 days;
 
     // --- Mappings
-    mapping(address => address) public stkTokens; // LP token address --> staking token contract address
-    mapping(uint256 => address) public vaults; // pid from convex frax -> personal vault for convex frax
-    mapping(address => bytes32) public kekIds; // personal vault on convex frax -> kekId
+    /// @notice Map LP token address --> staking token contract address
+    mapping(address => address) public stkTokens;
+
+    /// @notice Map pid from convex frax -> personal vault for convex frax
+    mapping(uint256 => address) public vaults;
+
+    /// @notice Map personal vault on convex frax -> kekId
+    mapping(address => bytes32) public kekIds;
 
     //////////////////////////////////////////////////////
     /// --- EVENTS
     //////////////////////////////////////////////////////
+
+    /// @notice Emitted when tokens are fully withdrawn from personal vault, and partially deposited back into personal vault
+    /// @param token Address of the LP token
+    /// @param amount Amount of LP tokens deposited
     event Redeposited(address token, uint256 amount);
 
     //////////////////////////////////////////////////////
@@ -56,9 +69,8 @@ contract FallbackConvexFrax is BaseFallback {
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS
     //////////////////////////////////////////////////////
-    /**
-     * @notice Update mapping of pool ids from ConvexFrax to LP token address
-     */
+
+    /// @notice Update mapping of pool ids from ConvexFrax to LP token address
     function setAllPidsOptimized() public override requiresAuth {
         // Cache the length of the pool registry
         uint256 len = POOL_REGISTRY_CONVEX_FRAX.poolLength();
@@ -89,11 +101,9 @@ contract FallbackConvexFrax is BaseFallback {
         lastPidsCount = len;
     }
 
-    /**
-     * @notice Check if the pid corresponding to LP token is active and initialized internally
-     * @param token Address of the LP token
-     * @return Flag if the pool is active and initialized internally
-     */
+    /// @notice Check if the pid corresponding to LP token is active and initialized internally
+    /// @param token Address of the LP token
+    /// @return Flag if the pool is active and initialized internally
     function isActive(address token) external view override returns (bool) {
         // Check if the pid is active
         (,,,, uint8 _isActive) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pids[stkTokens[token]].pid);
@@ -102,12 +112,10 @@ contract FallbackConvexFrax is BaseFallback {
         return pids[stkTokens[token]].isInitialized && _isActive == 1;
     }
 
-    /**
-     * @notice Main gateway to deposit LP token into ConvexFrax
-     * @dev Only callable by the strategy
-     * @param token Address of LP token to deposit
-     * @param amount Amount of LP token to deposit
-     */
+    /// @notice Main gateway to deposit LP token into ConvexFrax
+    /// @dev Only callable by the strategy
+    /// @param token Address of LP token to deposit
+    /// @param amount Amount of LP token to deposit
     function deposit(address token, uint256 amount) external override requiresAuth {
         // Cache the pid
         uint256 pid = pids[stkTokens[token]].pid;
@@ -129,12 +137,10 @@ contract FallbackConvexFrax is BaseFallback {
         emit Deposited(token, amount);
     }
 
-    /**
-     * @notice Main gateway to withdraw LP token from ConvexFrax
-     * @dev Only callable by the strategy
-     * @param token Address of LP token to withdraw
-     * @param amount Amount of LP token to withdraw
-     */
+    /// @notice Main gateway to withdraw LP token from ConvexFrax
+    /// @dev Only callable by the strategy
+    /// @param token Address of LP token to withdraw
+    /// @param amount Amount of LP token to withdraw
     function withdraw(address token, uint256 amount) external override requiresAuth {
         // Cache the pid
         uint256 pid = pids[stkTokens[token]].pid;
@@ -162,13 +168,11 @@ contract FallbackConvexFrax is BaseFallback {
         emit Redeposited(token, remaining);
     }
 
-    /**
-     * @notice Main gateway to claim rewards from ConvexFrax
-     * @dev Only callable by the strategy
-     * @param token Address of LP token to claim reward from
-     * @return Array of rewards tokens address
-     * @return Array of rewards tokens amount
-     */
+    /// @notice Main gateway to claim rewards from ConvexFrax
+    /// @dev Only callable by the strategy
+    /// @param token Address of LP token to claim reward from
+    /// @return Array of rewards tokens address
+    /// @return Array of rewards tokens amount
     function claimRewards(address token) external override requiresAuth returns (address[] memory, uint256[] memory) {
         // Cache rewardsTokens
         address[] memory rewardsTokens = getRewardsTokens(token);
@@ -189,11 +193,10 @@ contract FallbackConvexFrax is BaseFallback {
     //////////////////////////////////////////////////////
     /// --- VIEW FUNCTIONS
     //////////////////////////////////////////////////////
-    /**
-     * @notice Get all the rewards tokens from pid corresponding to `token`
-     * @param token Address of LP token to get rewards tokens
-     * @return Array of rewards tokens address
-     */
+
+    /// @notice Get all the rewards tokens from pid corresponding to `token`
+    /// @param token Address of LP token to get rewards tokens
+    /// @return Array of rewards tokens address
     function getRewardsTokens(address token) public view override returns (address[] memory) {
         // Cache the pid
         PidsInfo memory pidInfo = pids[stkTokens[token]];
@@ -224,22 +227,18 @@ contract FallbackConvexFrax is BaseFallback {
         return tokens;
     }
 
-    /**
-     * @notice Get the pid corresponding to LP token
-     * @param token Address of LP token to get pid
-     * @return Pid info struct
-     */
+    /// @notice Get the pid corresponding to LP token
+    /// @param token Address of LP token to get pid
+    /// @return Pid info struct
     function getPid(address token) external view override returns (PidsInfo memory) {
         // Return the pid corresponding to the stkToken, corresponding to the LP token
         return pids[stkTokens[token]];
     }
 
-    /**
-     * @notice Get the liquid balance of the LP token on ConvexFrax
-     * @dev Because LP are locked for a certain period of time, this represent the liquid balance
-     * @param token Address of LP token to get balance
-     * @return Liquid Balance of the LP token on ConvexFrax
-     */
+    /// @notice Get the liquid balance of the LP token on ConvexFrax
+    /// @dev Because LP are locked for a certain period of time, this represent the liquid balance
+    /// @param token Address of LP token to get balance
+    /// @return Liquid Balance of the LP token on ConvexFrax
     function balanceOf(address token) public view override returns (uint256) {
         // Cache the pid
         uint256 pid = pids[stkTokens[token]].pid;
@@ -247,12 +246,10 @@ contract FallbackConvexFrax is BaseFallback {
         return balanceOf(pid);
     }
 
-    /**
-     * @notice Get the liquid balance of the LP token on ConvexFrax
-     * @dev Because LP are locked for a certain period of time, this represent the liquid balance
-     * @param pid Pid to get the balanceOf
-     * @return Liquid Balance of the LP token on ConvexFrax
-     */
+    /// @notice Get the liquid balance of the LP token on ConvexFrax
+    /// @dev Because LP are locked for a certain period of time, this represent the liquid balance
+    /// @param pid Pid to get the balanceOf
+    /// @return Liquid Balance of the LP token on ConvexFrax
     function balanceOf(uint256 pid) public view returns (uint256) {
         IFraxUnifiedFarm.LockedStake memory infos = _getInfos(pid);
 
@@ -260,12 +257,10 @@ contract FallbackConvexFrax is BaseFallback {
         return block.timestamp >= infos.ending_timestamp ? infos.liquidity : 0;
     }
 
-    /**
-     * @notice Get the locked balance of the LP token on ConvexFrax
-     * @dev Because LP are locked for a certain period of time, this represent the locked balance
-     * @param pid Pid to get the balanceOf
-     * @return Liquid Balance of the LP token on ConvexFrax
-     */
+    /// @notice Get the locked balance of the LP token on ConvexFrax
+    /// @dev Because LP are locked for a certain period of time, this represent the locked balance
+    /// @param pid Pid to get the balanceOf
+    /// @return Liquid Balance of the LP token on ConvexFrax
     function balanceOfLocked(uint256 pid) public view returns (uint256) {
         IFraxUnifiedFarm.LockedStake memory infos = _getInfos(pid);
 
@@ -273,11 +268,9 @@ contract FallbackConvexFrax is BaseFallback {
         return block.timestamp >= infos.ending_timestamp ? 0 : infos.liquidity;
     }
 
-    /**
-     * @notice Get the Locked Stake infos
-     * @param pid Pid to get the infos
-     * @return infos LockedStake struct
-     */
+    /// @notice Get the Locked Stake infos
+    /// @param pid Pid to get the infos
+    /// @return infos LockedStake struct
     function _getInfos(uint256 pid) internal view returns (IFraxUnifiedFarm.LockedStake memory infos) {
         (, address staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pid);
         // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
@@ -291,12 +284,10 @@ contract FallbackConvexFrax is BaseFallback {
         infos = IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
     }
 
-    /**
-     * @notice Get the LP token and stkToken address from corresponding pid
-     * @param pid Pid of the pool
-     * @return Address of LP token
-     * @return Address of the stkToken
-     */
+    /// @notice Get the LP token and stkToken address from corresponding pid
+    /// @param pid Pid of the pool
+    /// @return Address of LP token
+    /// @return Address of the stkToken
     function getLP(uint256 pid) public returns (address, address) {
         // Get the staking token address
         (,, address stkToken,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pid);

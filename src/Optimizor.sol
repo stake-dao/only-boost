@@ -16,12 +16,10 @@ import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 // --- Interfaces
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 
-/**
- * @title Optimizor
- * @author Stake DAO
- * @notice External module for Stake DAO Strategy to optimize the deposit and withdraw between LiquidLockers and Fallbacks
- * @dev Inherits from Solmate `Auth` implementation
- */
+/// @title Optimizor
+/// @author Stake DAO
+/// @notice External module for Stake DAO Strategy to optimize the deposit and withdraw between LiquidLockers and Fallbacks
+/// @dev Inherits from Solmate `Auth` implementatio
 contract Optimizor is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -29,6 +27,10 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- STRUCTS
     //////////////////////////////////////////////////////
+
+    /// @notice Struct to store cached optimization values and timestamp
+    /// @param value Cached optimization value
+    /// @param timestamp Timestamp of the cached optimization
     struct CachedOptimization {
         uint256 value;
         uint256 timestamp;
@@ -37,54 +39,101 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
+
     // --- ERC20
-    ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV Token
-    ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B); // CVX Token
+    /// @notice Curve DAO ERC20 CRV Token
+    ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+
+    /// @notice Convex ERC20 CVX Token
+    ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
     // --- Addresses
-    address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2; // CRV Locker
-    address public constant LOCKER_CVX = 0xD18140b4B819b895A3dba5442F959fA44994AF50; // CVX Locker
-    address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
-    address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
+    /// @notice Curve DAO CRV Vote-escrow contract
+    address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
+
+    /// @notice Convex CVX Vote-escrow contract
+    address public constant LOCKER_CVX = 0xD18140b4B819b895A3dba5442F959fA44994AF50;
+
+    /// @notice Convex CRV Locker
+    address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80;
+
+    /// @notice StakeDAO CRV Locker
+    address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6;
 
     // --- Uints
-    uint256 public constant FEES_CONVEX = 17e16; // 17% Convex
-    uint256 public constant FEES_STAKEDAO = 16e16; // 16% StakeDAO
+    /// @notice Fees on Convex
+    uint256 public constant FEES_CONVEX = 17e16;
+
+    /// @notice Fees on StakeDAO
+    uint256 public constant FEES_STAKEDAO = 16e16;
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
     //////////////////////////////////////////////////////
+
     // --- Contracts
+    /// @notice Stake DAO Curve Strategy
     CurveStrategy public curveStrategy;
+
+    /// @notice Stake DAO Fallback Convex Frax
     FallbackConvexFrax public fallbackConvexFrax;
+
+    /// @notice Stake DAO Fallback Convex Curve
     FallbackConvexCurve public fallbackConvexCurve;
 
     // --- Addresses
-    address[] public fallbacks; // List of fallbacks
+    /// @notice List of fallbacks
+    address[] public fallbacks;
 
     // --- Bools
-    bool public isConvexFraxPaused; // Pause Convex FRAX Deposit
-    bool public isConvexFraxKilled; // Kill Convex FRAX Deposit and Withdraw
-    bool public useLastOpti; // Use last optimization value
+    /// @notice Pause Convex Frax Deposit
+    bool public isConvexFraxPaused;
+
+    /// @notice Kill Convex Frax Deposit and Withdraw
+    bool public isConvexFraxKilled;
+
+    /// @notice Use last optimization value
+    bool public useLastOpti;
 
     // --- Uints
-    uint256 public extraConvexFraxBoost = 1e16; // 1% extra boost for Convex FRAX
-    uint256 public convexFraxPausedTimestamp; // Timestamp of the Convex FRAX pause
-    uint256 public cachePeriod = 7 days; // Cache period for optimization
-    uint256 public cacheVeCRVLockerBalance; // Cached veCRV value for Stake DAO Liquidity Locker
-    uint256 public veCRVDifferenceThreshold = 5e16; // 10% difference threshold for veCRV
+    /// @notice Extra boost for Convex Frax, 1e16 = 1%
+    uint256 public extraConvexFraxBoost = 1e16;
+
+    /// @notice 10% difference threshold for veCRV, 5e16 = 5%
+    uint256 public veCRVDifferenceThreshold = 5e16;
+
+    /// @notice Cached veCRV value for Stake DAO Liquidity Locker
+    uint256 public cacheVeCRVLockerBalance;
+
+    /// @notice Cache period for optimization
+    uint256 public cachePeriod = 7 days;
+
+    /// @notice Timestamp of the Convex Frax pause
+    uint256 public convexFraxPausedTimestamp;
 
     // --- Mappings
-    mapping(address => CachedOptimization) public lastOpti; // liquidityGauge => CachedOptimization
-    mapping(address => CachedOptimization) public lastOptiMetapool; // liquidityGauge => CachedOptimization
+    /// @notice Map liquidityGauge => CachedOptimization
+    mapping(address => CachedOptimization) public lastOpti;
+
+    /// @notice Map liquidityGauge for Metapool => CachedOptimization
+    mapping(address => CachedOptimization) public lastOptiMetapool;
 
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
+    /// @notice Error emitted when not enough time has passed
     error TOO_SOON();
+
+    /// @notice Error emitted when trying to kill Convex Frax but not paused
     error NOT_PAUSED();
+
+    /// @notice Error emitted when amount is wrong
     error WRONG_AMOUNT();
+
+    /// @notice Error emitted when trying to pause Convex Frax but already paused
     error ALREADY_PAUSED();
+
+    /// @notice Error emitted when trying to kill Convex Frax but already killed
     error ALREADY_KILLED();
 
     //////////////////////////////////////////////////////
@@ -109,12 +158,11 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- OPTIMIZATION FOR STAKEDAO
     //////////////////////////////////////////////////////
-    /**
-     * @notice Return the optimal amount of LP token that must be held by Stake DAO Liquidity Locker
-     * @param liquidityGauge Addres of the liquidity gauge
-     * @param isMeta if the underlying pool is a metapool
-     * @return Optimal amount of LP token
-     */
+
+    /// @notice Return the optimal amount of LP token that must be held by Stake DAO Liquidity Locker
+    /// @param liquidityGauge Addres of the liquidity gauge
+    /// @param isMeta if the underlying pool is a metapool
+    /// @return Optimal amount of LP token
     function optimalAmount(address liquidityGauge, uint256 veCRVStakeDAO, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
@@ -139,15 +187,14 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- OPTIMIZATION FOR STRATEGIE DEPOSIT & WITHDRAW
     //////////////////////////////////////////////////////
-    /**
-     * @notice Return the amount that need to be deposited StakeDAO Liquid Locker and on each fallback
-     * @dev This is not a view due to the cache system
-     * @param token Address of LP token to deposit
-     * @param liquidityGauge Address of Liquidity Gauge corresponding to LP token
-     * @param amount Amount of LP token to deposit
-     * @return Array of addresses to deposit in, Stake DAO LiquidLocker always first
-     * @return Array of amounts to deposit in
-     */
+
+    /// @notice Return the amount that need to be deposited StakeDAO Liquid Locker and on each fallback
+    /// @dev This is not a view due to the cache system
+    /// @param token Address of LP token to deposit
+    /// @param liquidityGauge Address of Liquidity Gauge corresponding to LP token
+    /// @param amount Amount of LP token to deposit
+    /// @return Array of addresses to deposit in, Stake DAO LiquidLocker always first
+    /// @return Array of amounts to deposit in
     function optimizeDeposit(address token, address liquidityGauge, uint256 amount)
         public
         requiresAuth
@@ -205,6 +252,11 @@ contract Optimizor is Auth {
         return (fallbacks, amounts);
     }
 
+    /// @notice Calcul the optimal amount of lps that must be held by the locker or use the cached value
+    /// @param liquidityGauge Address of the liquidity gauge
+    /// @param veCRVBalance Amount of veCRV hold by Stake DAO Liquid Locker
+    /// @param isMeta If the underlying pool is a metapool
+    /// @return opt Optimal amount of LP token that must be held by the locker
     function _getOptimalAmount(address liquidityGauge, uint256 veCRVBalance, bool isMeta)
         internal
         returns (uint256 opt)
@@ -240,14 +292,12 @@ contract Optimizor is Auth {
         }
     }
 
-    /**
-     * @notice Return the amount that need to be withdrawn from StakeDAO Liquid Locker and from each fallback
-     * @param token Address of LP token to withdraw
-     * @param liquidityGauge Address of Liquidity Gauge corresponding to LP token
-     * @param amount Amount of LP token to withdraw
-     * @return Array of addresses to withdraw from, Stake DAO LiquidLocker always first
-     * @return Array of amounts to withdraw from
-     */
+    /// @notice Return the amount that need to be withdrawn from StakeDAO Liquid Locker and from each fallback
+    /// @param token Address of LP token to withdraw
+    /// @param liquidityGauge Address of Liquidity Gauge corresponding to LP token
+    /// @param amount Amount of LP token to withdraw
+    /// @return Array of addresses to withdraw from, Stake DAO LiquidLocker always first
+    /// @return Array of amounts to withdraw from
     function optimizeWithdraw(address token, address liquidityGauge, uint256 amount)
         public
         view
@@ -318,27 +368,24 @@ contract Optimizor is Auth {
         return (fallbacks, amounts);
     }
 
-    /**
-     * @notice Toggle the flag for using the last optimization
-     */
+    /// @notice Toggle the flag for using the last optimization
     function toggleUseLastOptimization() external requiresAuth {
         useLastOpti = !useLastOpti;
     }
 
-    /**
-     * @notice Set the cache period
-     * @param newCachePeriod New cache period
-     */
+    /// @notice Set the cache period
+    /// @param newCachePeriod New cache period
     function setCachePeriod(uint256 newCachePeriod) external requiresAuth {
         cachePeriod = newCachePeriod;
     }
 
+    // TODO : add setters for extraConvexFraxBoost, veCRVDifferenceThreshold
+
     //////////////////////////////////////////////////////
     /// --- REMOVE CONVEX FRAX
     //////////////////////////////////////////////////////
-    /**
-     * @notice Pause the deposit on Convex Frax
-     */
+
+    /// @notice Pause the deposit on Convex Frax
     function pauseConvexFraxDeposit() external requiresAuth {
         // Revert if already paused
         if (isConvexFraxPaused) revert ALREADY_PAUSED();
@@ -349,9 +396,7 @@ contract Optimizor is Auth {
         convexFraxPausedTimestamp = block.timestamp;
     }
 
-    /**
-     * @notice Kill the deposit on Convex Frax
-     */
+    /// @notice Kill the deposit on Convex Frax
     function killConvexFrax() external requiresAuth {
         // Revert if not paused
         if (!isConvexFraxPaused) revert NOT_PAUSED();
@@ -389,41 +434,37 @@ contract Optimizor is Auth {
         }
     }
 
-    /**
-     * @notice Get the fallback addresses
-     */
+    /// @notice Get the fallback addresses
     function getFallbacks() external view returns (address[] memory) {
         return fallbacks;
     }
 
-    /**
-     * @notice Get the number of fallbacks
-     */
+    /// @notice Get the number of fallbacks
     function fallbacksLength() external view returns (uint256) {
         return fallbacks.length;
     }
 
-    /**
-     * @notice Rescue lost ERC20 tokens from contract
-     * @param token Addresss of token to rescue
-     * @param to Address to send rescued tokens to
-     * @param amount Amount of token to rescue
-     */
+    /// @notice Rescue lost ERC20 tokens from contract
+    /// @param token Addresss of token to rescue
+    /// @param to Address to send rescued tokens to
+    /// @param amount Amount of token to rescue
     function rescueERC20(address token, address to, uint256 amount) external requiresAuth {
         // Transfer `amount` of `token` to `to`
         ERC20(token).safeTransfer(to, amount);
     }
 
-    /**
-     * @notice Get minimum between two uint256
-     * @param a First uint256
-     * @param b Second uint256
-     * @return The minimum between a and b
-     */
+    /// @notice Get minimum between two uint256
+    /// @param a First uint256
+    /// @param b Second uint256
+    /// @return The minimum between a and b
     function min(uint256 a, uint256 b) private pure returns (uint256) {
         return (a < b) ? a : b;
     }
 
+    /// @notice Get absolute difference between two uint256
+    /// @param a First uint256
+    /// @param b Second uint256
+    /// @return The absolute difference between a and b
     function absDiff(uint256 a, uint256 b) private pure returns (uint256) {
         return (a > b) ? a - b : b - a;
     }
