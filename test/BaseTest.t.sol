@@ -71,7 +71,10 @@ contract BaseTest is Test {
     ERC20 public constant CRV3 = ERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
     ERC20 public constant EUR3 = ERC20(0xb9446c4Ef5EBE66268dA6700D26f96273DE3d571);
     ERC20 public constant CNC_ETH = ERC20(0xF9835375f6b268743Ea0a54d742Aa156947f8C06);
+    ERC20 public constant SDT_ETH = ERC20(0x6359B6d3e327c497453d4376561eE276c6933323);
     ERC20 public constant STETH_ETH = ERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
+    ERC20 public constant SDCRV_CRV = ERC20(0xf7b55C3732aD8b2c2dA7c24f30A69f55c54FB717);
+    ERC20 public constant UZD_FRAXBP = ERC20(0x68934F60758243eafAf4D2cFeD27BF8010bede3a);
     ERC20 public constant COIL_FRAXBP = ERC20(0xb85010193FD15aF8390dbD62790Da70F46c1126B);
     ERC20 public constant ALUSD_FRAXBP = ERC20(0xB30dA2376F63De30b42dC055C93fa474F31330A5);
 
@@ -79,12 +82,18 @@ contract BaseTest is Test {
     address public constant GAUGE_CRV3 = 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
     address public constant GAUGE_EUR3 = 0x1E212e054d74ed136256fc5a5DDdB4867c6E003F;
     address public constant GAUGE_CNC_ETH = 0x5A8fa46ebb404494D718786e55c4E043337B10bF;
+    address public constant GAUGE_SDT_ETH = 0x60355587a8D4aa67c2E64060Ab36e566B9bCC000;
     address public constant GAUGE_STETH_ETH = 0x182B723a58739a9c974cFDB385ceaDb237453c28;
+    address public constant GAUGE_SDCRV_CRV = 0x663FC22e92f26C377Ddf3C859b560C4732ee639a;
+    address public constant GAUGE_UZD_FRAXBP = 0xBdCA4F610e7101Cc172E2135ba025737B99AbD30;
     address public constant GAUGE_COIL_FRAXBP = 0x06B30D5F2341C2FB3F6B48b109685997022Bd272;
     address public constant GAUGE_ALUSD_FRAXBP = 0x740BA8aa0052E07b925908B380248cb03f3DE5cB;
 
     // --- Stake DAO Vault address
     IVault public constant VAULT_3CRV = IVault(0xb9205784b05fbe5b5298792A24C2CB844B7dc467);
+    IVault public constant VAULT_SDT_ETH = IVault(0x1513b44A589FFc76d0727968eB55dA4110B39422);
+    IVault public constant VAULT_SDCRV_CRV = IVault(0xd6415fF2639835300Ab947Fe67BAd6F0B31400c1);
+    IVault public constant VAULT_UZD_FRAXBP = IVault(0xbc61f6973cE564eFFB16Cd79B5BC3916eaD592E2);
 
     // --- Lockers address
     address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
@@ -121,6 +130,7 @@ contract BaseTest is Test {
     // --- Mapings for test purpose only
     mapping(address => bool) public isMetapool;
     mapping(address => address) public gauges;
+    mapping(address => address) public vaults;
     mapping(address => address) public liquidityGaugeMocks;
 
     //////////////////////////////////////////////////////
@@ -135,6 +145,9 @@ contract BaseTest is Test {
         gauges[address(ALUSD_FRAXBP)] = GAUGE_ALUSD_FRAXBP;
         gauges[address(STETH_ETH)] = GAUGE_STETH_ETH;
         gauges[address(COIL_FRAXBP)] = GAUGE_COIL_FRAXBP;
+        gauges[address(SDCRV_CRV)] = GAUGE_SDCRV_CRV;
+        gauges[address(SDT_ETH)] = GAUGE_SDT_ETH;
+        gauges[address(UZD_FRAXBP)] = GAUGE_UZD_FRAXBP;
 
         // Set mapping for metapools
         isMetapool[address(CRV3)] = false;
@@ -142,6 +155,15 @@ contract BaseTest is Test {
         isMetapool[address(CNC_ETH)] = false;
         isMetapool[address(ALUSD_FRAXBP)] = true;
         isMetapool[address(STETH_ETH)] = false;
+        isMetapool[address(SDCRV_CRV)] = false;
+        isMetapool[address(SDT_ETH)] = false;
+        isMetapool[address(UZD_FRAXBP)] = true;
+
+        // Set mappings for vaults
+        vaults[address(SDCRV_CRV)] = address(VAULT_SDCRV_CRV);
+        vaults[address(SDT_ETH)] = address(VAULT_SDT_ETH);
+        vaults[address(CRV3)] = address(VAULT_3CRV);
+        vaults[address(UZD_FRAXBP)] = address(VAULT_UZD_FRAXBP);
     }
 
     //////////////////////////////////////////////////////
