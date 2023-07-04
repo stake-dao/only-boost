@@ -51,6 +51,11 @@ contract FallbackConvexCurve is BaseFallback {
 
     /// @notice Update mapping of pool ids from ConvexCurve to LP token address
     function setAllPidsOptimized() public override requiresAuth {
+        _setAllPidsOptimized();
+    }
+
+    /// @notice Internal process for mapping of pool ids from ConvexCurve to LP token address
+    function _setAllPidsOptimized() internal override {
         // Cache the length of the pool registry
         uint256 len = BOOSTER_CONVEX_CURVE.poolLength();
 

@@ -88,7 +88,7 @@ contract BaseFallback is Auth {
         curveStrategy = _curveStrategy;
 
         // Set all the pid mapping
-        setAllPidsOptimized();
+        _setAllPidsOptimized();
     }
 
     //////////////////////////////////////////////////////
@@ -173,6 +173,8 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
 
     function setAllPidsOptimized() public virtual {}
+
+    function _setAllPidsOptimized() internal virtual {}
 
     function isActive(address token) external view virtual returns (bool) {}
 
