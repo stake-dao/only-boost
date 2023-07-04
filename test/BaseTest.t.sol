@@ -23,6 +23,7 @@ import {AccumulatorMock} from "src/mocks/AccumulatorMock.sol";
 import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
 
 // --- Interfaces
+import {IVault} from "src/interfaces/IVault.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
@@ -82,6 +83,9 @@ contract BaseTest is Test {
     address public constant GAUGE_COIL_FRAXBP = 0x06B30D5F2341C2FB3F6B48b109685997022Bd272;
     address public constant GAUGE_ALUSD_FRAXBP = 0x740BA8aa0052E07b925908B380248cb03f3DE5cB;
 
+    // --- Stake DAO Vault address
+    IVault public constant VAULT_3CRV = IVault(0xb9205784b05fbe5b5298792A24C2CB844B7dc467);
+
     // --- Lockers address
     address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
@@ -89,6 +93,8 @@ contract BaseTest is Test {
 
     // --- Users address
     address public immutable ALICE = makeAddr("Alice");
+    address public constant MS_STAKEDAO = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
+    address public constant DEPLOYER_007 = 0x000755Fbe4A24d7478bfcFC1E561AfCE82d1ff62;
 
     // --- Fees amounts in basis points
     uint256 public constant FEE_PERF = 100; // 1%
@@ -247,11 +253,17 @@ contract BaseTest is Test {
         vm.label(GAUGE_STETH_ETH, "GAUGE_STETH_ETH");
         vm.label(GAUGE_COIL_FRAXBP, "GAUGE_COIL_FRAXBP");
         vm.label(GAUGE_ALUSD_FRAXBP, "GAUGE_ALUSD_FRAXBP");
+
+        // Vaults
+        vm.label(address(VAULT_3CRV), "VAULT_3CRV");
+
+        vm.label(MS_STAKEDAO, "MS_STAKEDAO");
+        vm.label(DEPLOYER_007, "DEPLOYER_007");
     }
 
     function _labelContract() internal {
         vm.label(address(rolesAuthority), "RolesAuthority");
-        vm.label(address(curveStrategy), "CurveStrategy");
+        vm.label(address(curveStrategy), "NewCurveStrategy");
         vm.label(address(curveStrategy.optimizor()), "Optimizor");
         vm.label(address(fallbackConvexFrax), "FallbackConvexFrax");
         vm.label(address(fallbackConvexCurve), "FallbackConvexCurve");
