@@ -318,10 +318,11 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CRV3, partStakeDAO, partConvex);
 
-        _claimLiquidLockerTest(CRV3, 1 weeks, new address[](0));
+        _claimLiquidLockerTest(CRV3, 1 weeks, new address[](0), ALICE);
     }
 
     function test_Claim_ExtraRewardsWithReceiver() public useFork(forkId1) {
+        // Deposit only into Stake dao
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CNC_ETH, 1, 0);
 
         _deposit(CNC_ETH, partStakeDAO, partConvex);
@@ -329,17 +330,18 @@ contract CurveStrategyTest is BaseTest {
         address[] memory extraTokens = new address[](1);
         extraTokens[0] = address(CNC);
 
-        _claimLiquidLockerTest(CNC_ETH, 1 weeks, extraTokens);
+        _claimLiquidLockerTest(CNC_ETH, 1 weeks, extraTokens, ALICE);
     }
 
     function test_Claim_ExtraRewardsWithoutReceiver() public useFork(forkId1) {
+        // Deposit only into Stake dao
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(STETH_ETH, 1, 0);
 
         _deposit(STETH_ETH, partStakeDAO, partConvex);
 
         address[] memory extraTokens = new address[](1);
         extraTokens[0] = address(LDO);
-        _claimLiquidLockerTest(STETH_ETH, 1 weeks, extraTokens);
+        _claimLiquidLockerTest(STETH_ETH, 1 weeks, extraTokens, ALICE);
     }
 
     function test_Claim_ConvexCurveRewardsWithoutFees() public useFork(forkId1) {
@@ -347,9 +349,7 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CRV3, partStakeDAO, partConvex, 0);
 
-        fallbackConvexCurve.setFeesOnRewards(0);
-
-        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(ALUSD_FRAXBP)));
+        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(ALUSD_FRAXBP)), ALICE);
     }
 
     function test_Claim_ConvexCurveRewardsWithFees() public useFork(forkId1) {
@@ -357,9 +357,7 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CRV3, partStakeDAO, partConvex, 0);
 
-        fallbackConvexCurve.setFeesOnRewards(1e16);
-
-        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(CRV3)));
+        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(CRV3)), ALICE);
     }
 
     function test_Claim_ConvexFraxRewardsWithoutFees() public useFork(forkId1) {
@@ -367,9 +365,7 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
 
-        fallbackConvexCurve.setFeesOnRewards(0);
-
-        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)));
+        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)), ALICE);
     }
 
     function test_Claim_ConvexFraxRewardsWithFees() public useFork(forkId1) {
@@ -377,9 +373,7 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
 
-        fallbackConvexFrax.setFeesOnRewards(1e16);
-
-        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)));
+        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)), ALICE);
     }
 
     function test_Claim_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
@@ -591,7 +585,7 @@ contract CurveStrategyTest is BaseTest {
     // --- Kill ConvexFrax
     function test_KillConvexFrax() public useFork(forkId1) {
         // === DEPOSIT PROCESS === //
-        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1_000_000e18);
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 10_000_000e18);
         _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex);
 
         // Pause ConvexFrax deposit

@@ -502,7 +502,8 @@ contract CurveStrategy is Auth {
             if (fallbacks[i] == address(LOCKER)) continue;
 
             // Do the claim
-            (address[] memory rewardsTokens, uint256[] memory amounts) = BaseFallback(fallbacks[i]).claimRewards(token);
+            (address[] memory rewardsTokens, uint256[] memory amounts) =
+                BaseFallback(fallbacks[i]).claimRewards(token, msg.sender);
 
             uint256 len2 = rewardsTokens.length;
             // Check balance after claim
@@ -719,7 +720,7 @@ contract CurveStrategy is Auth {
     /// @notice Get the fees and receiver for a Liquidity gauge
     /// @param gauge Address of Liquidity gauge
     /// @return fees_ Struct containing the fees
-    /// @return rewardsReceiver_ Address of the rewards receiver  
+    /// @return rewardsReceiver_ Address of the rewards receiver
     /// @return veSDTFeeProxy_ Address of the VeSDTFeeProxy
     function getFeesAndReceiver(address gauge) public view returns (Fees memory, address, address, address) {
         return (feesInfos[gauge], address(accumulator), rewardsReceiver, veSDTFeeProxy);

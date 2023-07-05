@@ -113,8 +113,12 @@ contract BaseFallback is Auth {
 
     /// @notice Internal process to handle rewards
     /// @param rewardsTokens Array of address containing rewards tokens to handle
+    /// @param claimer Address of claimer
     /// @return Array of uint256 containing amounts of rewards tokens remaining after fees
-    function _handleRewards(address token, address[] memory rewardsTokens) internal returns (uint256[] memory) {
+    function _handleRewards(address token, address[] memory rewardsTokens, address claimer)
+        internal
+        returns (uint256[] memory)
+    {
         uint256[] memory amountsRewards = new uint256[](rewardsTokens.length);
 
         // Cache extra rewards tokens length
@@ -123,7 +127,7 @@ contract BaseFallback is Auth {
         if (extraRewardsLength > 0) {
             for (uint8 i = 0; i < extraRewardsLength;) {
                 // Cache extra rewards token balance
-                amountsRewards[i] = _distributeRewardToken(token, rewardsTokens[i]);
+                amountsRewards[i] = _distributeRewardToken(token, rewardsTokens[i], claimer);
 
                 // No need to check for overflows
                 unchecked {
@@ -138,18 +142,22 @@ contract BaseFallback is Auth {
     /// @notice Internal process to distribute rewards
     /// @dev Distribute rewards to strategy and charge fees
     /// @param token Address of token to distribute
+    /// @param claimer Address of claimer
     /// @return Amount of token distributed
-    function _distributeRewardToken(address lpToken, address token) internal returns (uint256) {
+    function _distributeRewardToken(address lpToken, address token, address claimer) internal returns (uint256) {
         // Transfer CRV rewards to strategy and charge fees
         uint256 _tokenBalance = ERC20(token).balanceOf(address(this));
 
         // If there is reward token to distribute
         if (_tokenBalance > 0) {
-            // Get gauge address form curve strategy
-            address gauge = ICurveStrategy(curveStrategy).gauges(lpToken);
+            // Take fees only on CRV rewards
+            if (token == address(CRV)) {
+                // Get gauge address form curve strategy
+                address gauge = ICurveStrategy(curveStrategy).gauges(lpToken);
 
-            // Send fees
-            _tokenBalance = _sendFee(gauge, token, _tokenBalance);
+                // Send fees
+                _tokenBalance = _sendFee(gauge, token, _tokenBalance, claimer);
+            }
 
             // Transfer rewards to strategy
             ERC20(token).safeTransfer(curveStrategy, _tokenBalance);
@@ -164,8 +172,12 @@ contract BaseFallback is Auth {
     /// @param gauge Address of Liqudity gauge corresponding to LP token
     /// @param rewardToken Address of reward token
     /// @param rewardsBalance Amount of reward token
+    /// @param claimer Address of claimer
     /// @return Amount of reward token remaining
-    function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
+    function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance, address claimer)
+        internal
+        returns (uint256)
+    {
         // Fetch fees amount and fees receiver from curve strategy
         (ICurveStrategy.Fees memory fee, address accumulator, address rewardsReceiver, address veSDTFeeProxy) =
             ICurveStrategy(curveStrategy).getFeesAndReceiver(gauge);
@@ -181,7 +193,7 @@ contract BaseFallback is Auth {
         IAccumulator(accumulator).depositToken(rewardToken, accumulatorPart);
         ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
         ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
-        ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
+        ERC20(rewardToken).safeTransfer(claimer, claimerPart);
 
         // Return remaining
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
@@ -203,7 +215,11 @@ contract BaseFallback is Auth {
 
     function withdraw(address token, uint256 amount) external virtual {}
 
-    function claimRewards(address token) external virtual returns (address[] memory, uint256[] memory) {}
+    function claimRewards(address token, address claimer)
+        external
+        virtual
+        returns (address[] memory, uint256[] memory)
+    {}
 
     function getRewardsTokens(address token) public view virtual returns (address[] memory) {}
 

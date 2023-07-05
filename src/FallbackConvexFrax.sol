@@ -176,9 +176,15 @@ contract FallbackConvexFrax is BaseFallback {
     /// @notice Main gateway to claim rewards from ConvexFrax
     /// @dev Only callable by the strategy
     /// @param token Address of LP token to claim reward from
+    /// @param claimer Address of the claimer
     /// @return Array of rewards tokens address
     /// @return Array of rewards tokens amount
-    function claimRewards(address token) external override requiresAuth returns (address[] memory, uint256[] memory) {
+    function claimRewards(address token, address claimer)
+        external
+        override
+        requiresAuth
+        returns (address[] memory, uint256[] memory)
+    {
         // Cache rewardsTokens
         address[] memory rewardsTokens = getRewardsTokens(token);
 
@@ -192,7 +198,7 @@ contract FallbackConvexFrax is BaseFallback {
         IStakingProxyConvex(vaults[pidInfo.pid]).getReward(true);
 
         // Handle extra rewards split
-        return (rewardsTokens, _handleRewards(token, rewardsTokens));
+        return (rewardsTokens, _handleRewards(token, rewardsTokens, claimer));
     }
 
     //////////////////////////////////////////////////////
