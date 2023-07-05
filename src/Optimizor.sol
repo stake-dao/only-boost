@@ -97,7 +97,7 @@ contract Optimizor is Auth {
 
     // --- Uints
     /// @notice Extra boost for Convex Frax, 1e16 = 1%
-    uint256 public extraConvexFraxBoost = 1e16;
+    uint256 public extraConvexFraxBoost = 25e16;
 
     /// @notice 10% difference threshold for veCRV, 5e16 = 5%
     uint256 public veCRVDifferenceThreshold = 5e16;
