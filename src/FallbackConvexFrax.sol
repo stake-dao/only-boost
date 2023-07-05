@@ -192,7 +192,7 @@ contract FallbackConvexFrax is BaseFallback {
         IStakingProxyConvex(vaults[pidInfo.pid]).getReward(true);
 
         // Handle extra rewards split
-        return (rewardsTokens, _handleRewards(rewardsTokens));
+        return (rewardsTokens, _handleRewards(token, rewardsTokens));
     }
 
     //////////////////////////////////////////////////////

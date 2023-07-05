@@ -711,4 +711,17 @@ contract CurveStrategy is Auth {
         (bool success, bytes memory result) = to.call{value: value}(data);
         return (success, result);
     }
+
+    //////////////////////////////////////////////////////
+    /// --- VIEW
+    //////////////////////////////////////////////////////
+
+    /// @notice Get the fees and receiver for a Liquidity gauge
+    /// @param gauge Address of Liquidity gauge
+    /// @return fees_ Struct containing the fees
+    /// @return rewardsReceiver_ Address of the rewards receiver  
+    /// @return veSDTFeeProxy_ Address of the VeSDTFeeProxy
+    function getFeesAndReceiver(address gauge) public view returns (Fees memory, address, address, address) {
+        return (feesInfos[gauge], address(accumulator), rewardsReceiver, veSDTFeeProxy);
+    }
 }

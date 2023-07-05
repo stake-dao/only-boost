@@ -139,7 +139,7 @@ contract FallbackConvexCurve is BaseFallback {
         IBaseRewardsPool(crvRewards).getReward(address(this), rewardsTokens.length > 0 ? true : false);
 
         // Handle extra rewards split
-        return (rewardsTokens, _handleRewards(rewardsTokens));
+        return (rewardsTokens, _handleRewards(token, rewardsTokens));
     }
 
     //////////////////////////////////////////////////////

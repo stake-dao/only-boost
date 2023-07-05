@@ -8,6 +8,10 @@ import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
+// --- Interfaces
+import {IAccumulator} from "src/interfaces/IAccumulator.sol";
+import {ICurveStrategy} from "src/interfaces/ICurveStrategy.sol";
+
 /// @title BaseFallback
 /// @author Stake DAO
 /// @notice Base contract for fallback implementation for Stake DAO Strategies
@@ -54,9 +58,6 @@ contract BaseFallback is Auth {
     /// @notice Number of pools on ConvexCurve or ConvexFrax
     uint256 public lastPidsCount;
 
-    /// @notice Fees to be collected from the strategy, in WAD unit
-    uint256 public rewardFee;
-
     // --- Mappings
     /// @notice LP token address -> pool ids from ConvexCurve or ConvexFrax
     mapping(address => PidsInfo) public pids;
@@ -95,12 +96,6 @@ contract BaseFallback is Auth {
     /// --- MUTATIVE FUNCTIONS
     //////////////////////////////////////////////////////
 
-    /// @notice Set fees on rewards new value
-    /// @param _feesOnRewards Value of new fees on rewards, in WAD unit
-    function setFeesOnRewards(uint256 _feesOnRewards) external requiresAuth {
-        rewardFee = _feesOnRewards;
-    }
-
     /// @notice Set fees receiver new address
     /// @param _feesReceiver Address of new fees receiver
     function setFeesReceiver(address _feesReceiver) external requiresAuth {
@@ -119,7 +114,7 @@ contract BaseFallback is Auth {
     /// @notice Internal process to handle rewards
     /// @param rewardsTokens Array of address containing rewards tokens to handle
     /// @return Array of uint256 containing amounts of rewards tokens remaining after fees
-    function _handleRewards(address[] memory rewardsTokens) internal returns (uint256[] memory) {
+    function _handleRewards(address token, address[] memory rewardsTokens) internal returns (uint256[] memory) {
         uint256[] memory amountsRewards = new uint256[](rewardsTokens.length);
 
         // Cache extra rewards tokens length
@@ -128,7 +123,7 @@ contract BaseFallback is Auth {
         if (extraRewardsLength > 0) {
             for (uint8 i = 0; i < extraRewardsLength;) {
                 // Cache extra rewards token balance
-                amountsRewards[i] = _distributeRewardToken(rewardsTokens[i]);
+                amountsRewards[i] = _distributeRewardToken(token, rewardsTokens[i]);
 
                 // No need to check for overflows
                 unchecked {
@@ -144,20 +139,17 @@ contract BaseFallback is Auth {
     /// @dev Distribute rewards to strategy and charge fees
     /// @param token Address of token to distribute
     /// @return Amount of token distributed
-    function _distributeRewardToken(address token) internal returns (uint256) {
+    function _distributeRewardToken(address lpToken, address token) internal returns (uint256) {
         // Transfer CRV rewards to strategy and charge fees
         uint256 _tokenBalance = ERC20(token).balanceOf(address(this));
 
         // If there is reward token to distribute
         if (_tokenBalance > 0) {
-            // If there is a fee to be collected
-            if (rewardFee > 0) {
-                // Calculate fee amount
-                uint256 feeAmount = _tokenBalance.mulWadDown(rewardFee);
-                _tokenBalance -= feeAmount;
-                // Transfer fee to fee receiver
-                ERC20(token).safeTransfer(feeReceiver, feeAmount);
-            }
+            // Get gauge address form curve strategy
+            address gauge = ICurveStrategy(curveStrategy).gauges(lpToken);
+
+            // Send fees
+            _tokenBalance = _sendFee(gauge, token, _tokenBalance);
 
             // Transfer rewards to strategy
             ERC20(token).safeTransfer(curveStrategy, _tokenBalance);
@@ -166,6 +158,33 @@ contract BaseFallback is Auth {
         emit ClaimedRewards(token, _tokenBalance);
 
         return _tokenBalance;
+    }
+
+    /// @notice Internal process to send fees from rewards
+    /// @param gauge Address of Liqudity gauge corresponding to LP token
+    /// @param rewardToken Address of reward token
+    /// @param rewardsBalance Amount of reward token
+    /// @return Amount of reward token remaining
+    function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
+        // Fetch fees amount and fees receiver from curve strategy
+        (ICurveStrategy.Fees memory fee, address accumulator, address rewardsReceiver, address veSDTFeeProxy) =
+            ICurveStrategy(curveStrategy).getFeesAndReceiver(gauge);
+
+        // calculate the amount for each fee recipient
+        uint256 multisigFee = rewardsBalance.mulDivDown(fee.perfFee, 10_000);
+        uint256 accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, 10_000);
+        uint256 veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, 10_000);
+        uint256 claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, 10_000);
+
+        // send
+        ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
+        IAccumulator(accumulator).depositToken(rewardToken, accumulatorPart);
+        ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
+        ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
+        ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
+
+        // Return remaining
+        return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
     //////////////////////////////////////////////////////
