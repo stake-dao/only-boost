@@ -606,6 +606,11 @@ contract CurveStrategy is Auth {
         emit VaultToggled(vault, vaults[vault]);
     }
 
+    /// @notice Toggle claim all flag
+    function toggleClaimAll() external requiresAuth {
+        claimAll = !claimAll;
+    }
+
     /// @notice Set gauge address for a LP token
     /// @param token Address of LP token corresponding to `gauge`
     /// @param gauge Address of liquidity gauge corresponding to `token`
@@ -663,6 +668,13 @@ contract CurveStrategy is Auth {
         // Optimizor can be set to address(0) to disable it
         optimizor = Optimizor(newOptimizor);
         emit OptimizorSet(newOptimizor);
+    }
+
+    /// @notice Set SdtDistributor new address
+    /// @param newSdtDistributor Address of new SdtDistributor
+    function setSdtDistributor(address newSdtDistributor) external requiresAuth {
+        if (newSdtDistributor == address(0)) revert ADDRESS_NULL();
+        sdtDistributor = newSdtDistributor;
     }
 
     /// @notice Set fees for a Liquidity gauge

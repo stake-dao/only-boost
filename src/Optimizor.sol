@@ -99,7 +99,7 @@ contract Optimizor is Auth {
     /// @notice Extra boost for Convex Frax, 1e16 = 1%
     uint256 public extraConvexFraxBoost = 25e16;
 
-    /// @notice 10% difference threshold for veCRV, 5e16 = 5%
+    /// @notice veCRV difference threshold to trigger a new optimal amount calculation, 5e16 = 5%
     uint256 public veCRVDifferenceThreshold = 5e16;
 
     /// @notice Cached veCRV value for Stake DAO Liquidity Locker
@@ -389,7 +389,23 @@ contract Optimizor is Auth {
         cachePeriod = newCachePeriod;
     }
 
-    // TODO : add setters for extraConvexFraxBoost, veCRVDifferenceThreshold
+    /// @notice Set Extra Convex Frax Boost %
+    /// @param newExtraConvexFraxBoost New Extra Convex Frax Boost %
+    function setExtraConvexFraxBoost(uint256 newExtraConvexFraxBoost) external requiresAuth {
+        extraConvexFraxBoost = newExtraConvexFraxBoost;
+    }
+
+    /// @notice Set veCRV Difference Threshold
+    /// @param newVeCRVDifferenceThreshold New veCRV Difference Threshold
+    function setVeCRVDifferenceThreshold(uint256 newVeCRVDifferenceThreshold) external requiresAuth {
+        veCRVDifferenceThreshold = newVeCRVDifferenceThreshold;
+    }
+
+    /// @notice Set new Curve Strategy
+    /// @param newCurveStrategy New Curve Strategy address
+    function setCurveStrategy(address newCurveStrategy) external requiresAuth {
+        curveStrategy = CurveStrategy(newCurveStrategy);
+    }
 
     //////////////////////////////////////////////////////
     /// --- REMOVE CONVEX FRAX

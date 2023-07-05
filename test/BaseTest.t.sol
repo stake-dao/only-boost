@@ -590,19 +590,6 @@ contract BaseTest is Test {
         uint256[] memory balanceBeforeExtraLG = new uint256[](extraTokensLength);
         uint256[] memory balanceBeforeFeeReceiver = new uint256[](extraTokensLength);
 
-        if (extraTokensLength > 0) {
-            for (uint256 i = 0; i < extraTokensLength; ++i) {
-                balanceBeforeExtraLG[i] = ERC20(extraTokens[i]).balanceOf(liquidityGaugeMocks[address(token)]);
-                if (isMetapool[address(token)]) {
-                    balanceBeforeFeeReceiver[i] =
-                        ERC20(extraTokens[i]).balanceOf(address(fallbackConvexFrax.feeReceiver()));
-                } else {
-                    balanceBeforeFeeReceiver[i] =
-                        ERC20(extraTokens[i]).balanceOf(address(fallbackConvexCurve.feeReceiver()));
-                }
-            }
-        }
-
         _; // Claim process happen here
 
         // === ASSERTIONS === //

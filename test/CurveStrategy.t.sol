@@ -836,6 +836,72 @@ contract CurveStrategyTest is BaseTest {
         curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, gauges[address(ALUSD_FRAXBP)], 10001);
     }
 
+    function test_SetCurveStrategy() public useFork(forkId1) {
+        address before = address(fallbackConvexCurve.curveStrategy());
+
+        fallbackConvexCurve.setCurveStrategy(address(0x1));
+
+        assertNotEq(address(fallbackConvexCurve.curveStrategy()), before, "0");
+        assertEq(address(fallbackConvexCurve.curveStrategy()), address(0x1), "1");
+
+        before = address(optimizor.curveStrategy());
+
+        optimizor.setCurveStrategy(address(0x1));
+        assertNotEq(address(optimizor.curveStrategy()), before, "2");
+        assertEq(address(optimizor.curveStrategy()), address(0x1), "3");
+    }
+
+    function test_SetSdtDistributor() public useFork(forkId1) {
+        assertTrue(address(curveStrategy.sdtDistributor()) != address(0x1), "0");
+
+        curveStrategy.setSdtDistributor(address(0x1));
+
+        assertEq(address(curveStrategy.sdtDistributor()), address(0x1), "1");
+    }
+
+    function test_SetLockingIntervalSec() public useFork(forkId1) {
+        uint256 before = fallbackConvexFrax.lockingIntervalSec();
+
+        fallbackConvexFrax.setLockingIntervalSec(1);
+
+        assertNotEq(fallbackConvexFrax.lockingIntervalSec(), before, "0");
+        assertEq(fallbackConvexFrax.lockingIntervalSec(), 1, "1");
+    }
+
+    function test_toggleClaimAll() public useFork(forkId1) {
+        bool before = curveStrategy.claimAll();
+
+        curveStrategy.toggleClaimAll();
+
+        assertEq(curveStrategy.claimAll(), !before, "1");
+    }
+
+    function test_ToggleClaimOnWithdraw() public useFork(forkId1) {
+        bool before = fallbackConvexCurve.claimOnWithdraw();
+
+        fallbackConvexCurve.toggleClaimOnWithdraw();
+
+        assertEq(fallbackConvexCurve.claimOnWithdraw(), !before, "1");
+    }
+
+    function test_SetExtraConvexFraxBoost() public useFork(forkId1) {
+        uint256 before = optimizor.extraConvexFraxBoost();
+
+        optimizor.setExtraConvexFraxBoost(1);
+
+        assertNotEq(optimizor.extraConvexFraxBoost(), before, "0");
+        assertEq(optimizor.extraConvexFraxBoost(), 1, "1");
+    }
+
+    function test_SetVeCRVDifferenceThreshold() public useFork(forkId1) {
+        uint256 before = optimizor.veCRVDifferenceThreshold();
+
+        optimizor.setVeCRVDifferenceThreshold(1);
+
+        assertNotEq(optimizor.veCRVDifferenceThreshold(), before, "0");
+        assertEq(optimizor.veCRVDifferenceThreshold(), 1, "1");
+    }
+
     // --- Execute
     function test_Execute() public useFork(forkId1) {
         (bool success, bytes memory data) =
@@ -848,11 +914,6 @@ contract CurveStrategyTest is BaseTest {
     //////////////////////////////////////////////////////
     /// --- FALLBACKS
     //////////////////////////////////////////////////////
-    function test_setFeesReceiver() public useFork(forkId1) {
-        assertTrue(fallbackConvexFrax.feeReceiver() != address(0x1), "0");
-        fallbackConvexFrax.setFeesReceiver(address(0x1));
-        assertEq(fallbackConvexFrax.feeReceiver(), address(0x1), "1");
-    }
 
     function test_RescueTokens() public useFork(forkId1) {
         deal(address(CRV), address(fallbackConvexFrax), 1000);

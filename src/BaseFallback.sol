@@ -51,9 +51,6 @@ contract BaseFallback is Auth {
     /// @notice Curve Strategy address
     address public curveStrategy;
 
-    /// @notice Address to receive fees, MS Stake DAO
-    address public feeReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
-
     // --- Uints
     /// @notice Number of pools on ConvexCurve or ConvexFrax
     uint256 public lastPidsCount;
@@ -95,12 +92,6 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS
     //////////////////////////////////////////////////////
-
-    /// @notice Set fees receiver new address
-    /// @param _feesReceiver Address of new fees receiver
-    function setFeesReceiver(address _feesReceiver) external requiresAuth {
-        feeReceiver = _feesReceiver;
-    }
 
     /// @notice Rescue lost ERC20 tokens from contract
     /// @param token Addresss of token to rescue
@@ -197,6 +188,12 @@ contract BaseFallback is Auth {
 
         // Return remaining
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
+    }
+
+    /// @notice Set new curve strategy address
+    /// @param _curveStrategy Address of curve strategy
+    function setCurveStrategy(address _curveStrategy) external requiresAuth {
+        curveStrategy = _curveStrategy;
     }
 
     //////////////////////////////////////////////////////

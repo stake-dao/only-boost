@@ -106,15 +106,10 @@ contract FallbackConvexFrax is BaseFallback {
         lastPidsCount = len;
     }
 
-    /// @notice Check if the pid corresponding to LP token is active and initialized internally
-    /// @param token Address of the LP token
-    /// @return Flag if the pool is active and initialized internally
-    function isActive(address token) external view override returns (bool) {
-        // Check if the pid is active
-        (,,,, uint8 _isActive) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pids[stkTokens[token]].pid);
-
-        // Return if the pid is active and initialized
-        return pids[stkTokens[token]].isInitialized && _isActive == 1;
+    /// @notice Update locking interval
+    /// @param _lockingIntervalSec Duration in seconds for locking period
+    function setLockingIntervalSec(uint256 _lockingIntervalSec) external requiresAuth {
+        lockingIntervalSec = _lockingIntervalSec;
     }
 
     /// @notice Main gateway to deposit LP token into ConvexFrax
@@ -205,9 +200,21 @@ contract FallbackConvexFrax is BaseFallback {
     /// --- VIEW FUNCTIONS
     //////////////////////////////////////////////////////
 
+    /// @notice Check if the pid corresponding to LP token is active and initialized internally
+    /// @param token Address of the LP token
+    /// @return Flag if the pool is active and initialized internally
+    function isActive(address token) external view override returns (bool) {
+        // Check if the pid is active
+        (,,,, uint8 _isActive) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pids[stkTokens[token]].pid);
+
+        // Return if the pid is active and initialized
+        return pids[stkTokens[token]].isInitialized && _isActive == 1;
+    }
+
     /// @notice Get all the rewards tokens from pid corresponding to `token`
     /// @param token Address of LP token to get rewards tokens
     /// @return Array of rewards tokens address
+
     function getRewardsTokens(address token) public view override returns (address[] memory) {
         // Cache the pid
         PidsInfo memory pidInfo = pids[stkTokens[token]];

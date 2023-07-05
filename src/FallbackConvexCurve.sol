@@ -80,15 +80,9 @@ contract FallbackConvexCurve is BaseFallback {
         lastPidsCount = len;
     }
 
-    /// @notice Check if the pid corresponding to LP token is active and initialized internally
-    /// @param token Address of the LP token
-    /// @return Flag if the pool is active and initialized internally
-    function isActive(address token) external view override returns (bool) {
-        // Check if the pool is initialized and not shutdown
-        (,,,,, bool shutdown) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);
-
-        // Return if the pool is initialized and not shutdown
-        return pids[token].isInitialized && !shutdown;
+    /// @notice Toggle claim on withdraw on or off
+    function toggleClaimOnWithdraw() external requiresAuth {
+        claimOnWithdraw = !claimOnWithdraw;
     }
 
     /// @notice Main gateway to deposit LP token into ConvexCurve
@@ -152,9 +146,20 @@ contract FallbackConvexCurve is BaseFallback {
     /// --- VIEW FUNCTIONS
     //////////////////////////////////////////////////////
 
+    /// @notice Check if the pid corresponding to LP token is active and initialized internally
+    /// @param token Address of the LP token
+    /// @return Flag if the pool is active and initialized internally
+    function isActive(address token) external view override returns (bool) {
+        // Check if the pool is initialized and not shutdown
+        (,,,,, bool shutdown) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);
+
+        // Return if the pool is initialized and not shutdown
+        return pids[token].isInitialized && !shutdown;
+    }
     /// @notice Get all the rewards tokens from pid corresponding to `token`
     /// @param token Address of LP token to get rewards tokens
     /// @return Array of rewards tokens address
+
     function getRewardsTokens(address token) public view override returns (address[] memory) {
         // Cache the pid
         PidsInfo memory pidInfo = pids[token];
