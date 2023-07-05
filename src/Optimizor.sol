@@ -166,8 +166,10 @@ contract Optimizor is Auth {
     function optimalAmount(address liquidityGauge, uint256 veCRVStakeDAO, bool isMeta) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
+        uint256 veCRVTotal = ERC20(LOCKER_CRV).totalSupply(); // New
 
         // Liquidity Gauge
+        uint256 totalSupply = ERC20(liquidityGauge).totalSupply(); // New
         uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
 
         // CVX
@@ -181,8 +183,16 @@ contract Optimizor is Auth {
         boost = isMeta ? boost + extraConvexFraxBoost : boost;
 
         // Result
-        return balanceConvex * veCRVStakeDAO * (1e18 - FEES_STAKEDAO) / (veCRVConvex * (1e18 - FEES_CONVEX + boost));
+        return (
+            3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
+                / (
+                    (2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply
+                        + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
+                )
+        );
     }
+
+    event log_named_uint256(string name, uint256 value);
 
     //////////////////////////////////////////////////////
     /// --- OPTIMIZATION FOR STRATEGIE DEPOSIT & WITHDRAW
