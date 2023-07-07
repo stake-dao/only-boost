@@ -2,11 +2,9 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
+verbosity = 3
 
-[etherscan]
-etherscan_api_key = { key = "${ETHERSCAN_API_KEY}", chain = "mainnet"}
-
-[rpc_endpoints]
-mainnet = "https://eth.llamarpc.com"
-
-# See more config options https://github.com/foundry-rs/foundry/tree/master/config
+[invariant]
+runs = 100
+depth = 10
+fail_on_revert = false

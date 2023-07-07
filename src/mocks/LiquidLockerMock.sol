@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 contract LiquidLockerMock {
     address public strategy;
@@ -8,6 +8,10 @@ contract LiquidLockerMock {
     error ONLY_STRATEGY();
 
     constructor(address _strategy) {
+        strategy = _strategy;
+    }
+
+    function setStrategy(address _strategy) external {
         strategy = _strategy;
     }
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import "test/BaseTest.t.sol";
 
@@ -12,13 +12,13 @@ contract CurveStrategyTest is BaseTest {
     //////////////////////////////////////////////////////
     function setUp() public {
         // Create a fork of mainnet, fixing block number for faster testing
-        forkId1 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_1);
-        forkId2 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_2);
-        forkId3 = vm.createFork(vm.rpcUrl("mainnet"), FORK_BLOCK_NUMBER_3);
+        forkId1 = FORK_BLOCK_NUMBER_1;
+        forkId2 = FORK_BLOCK_NUMBER_2;
+        forkId3 = FORK_BLOCK_NUMBER_3;
     }
 
     modifier useFork(uint256 forkId) {
-        vm.selectFork(forkId);
+        vm.rollFork(forkId);
         _setup();
         _;
     }
@@ -31,10 +31,10 @@ contract CurveStrategyTest is BaseTest {
         fallbackConvexFrax = new FallbackConvexFrax(address(this), rolesAuthority, address(curveStrategy));
         optimizor =
         new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve), address(fallbackConvexFrax));
-        liquidityGaugeMockCRV3 = new LiquidityGaugeMock();
-        liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock();
-        liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock();
-        liquidityGaugeMockALUSD_FRAXBP = new LiquidityGaugeMock();
+        liquidityGaugeMockCRV3 = new LiquidityGaugeMock(CRV3);
+        liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock(CNC_ETH);
+        liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock(STETH_ETH);
+        liquidityGaugeMockALUSD_FRAXBP = new LiquidityGaugeMock(ALUSD_FRAXBP);
         accumulatorMock = new AccumulatorMock();
         // End deployment contracts
 
@@ -68,11 +68,22 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Deposit_AllOnStakeDAOBecauseOnlyChoice() public useFork(forkId1) {
-        // Create a fack fallback that return false for `isActive`
-        FallbackConvexCurveMock mock = new FallbackConvexCurveMock(address(curveStrategy));
-        optimizor.setFallbackAddresses(address(mock), address(fallbackConvexFrax));
+        // Mock call on fallback that return false for `isActive`
+        vm.mockCall(
+            address(fallbackConvexCurve), abi.encodeWithSignature("isActive(address)", address(CRV3)), abi.encode(false)
+        );
 
         _depositTest(CRV3, 5_000_000e18, 0, 0);
+    }
+
+    function test_Deposit_AllOnStakeDAOBecauseNoOptimizor() public useFork(forkId1) {
+        curveStrategy.setOptimizor(address(0));
+
+        // Test deposit not metapool
+        _depositTest(CRV3, 5_000_000e18, 0, 0);
+
+        // Test deposit metapool
+        _depositTest(ALUSD_FRAXBP, 5_000_000e18, 0, 0);
     }
 
     function test_Deposit_UsingConvexCurveFallback() public useFork(forkId1) {
@@ -85,6 +96,12 @@ contract CurveStrategyTest is BaseTest {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
 
         _depositTest(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
+
+        BaseFallback.PidsInfo memory pid = fallbackConvexFrax.getPid(address(ALUSD_FRAXBP));
+        assertEq(fallbackConvexFrax.balanceOfLocked(pid.pid), partConvex);
+
+        skip(fallbackConvexFrax.lockingIntervalSec());
+        assertEq(fallbackConvexFrax.balanceOfLocked(pid.pid), 0);
     }
 
     function test_Deposit_UsingConvexFraxSecondDeposit() public useFork(forkId1) {
@@ -124,6 +141,7 @@ contract CurveStrategyTest is BaseTest {
 
         _addCOIL_FRAXBPOnConvexFrax();
         isMetapool[address(COIL_FRAXBP)] = true;
+        fallbackConvexFrax.setAllPidsOptimized();
 
         // Second deposit into StakeDAO Locker and Convex Frax
         (uint256 partStakeDAOAfter, uint256 partConvexAfter) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
@@ -142,7 +160,7 @@ contract CurveStrategyTest is BaseTest {
         CVX.safeApprove(address(curveStrategy), 1);
 
         // Should revert because no gauge for CVX
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.deposit(address(CVX), 1);
     }
 
@@ -156,13 +174,13 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", gauges[address(CRV3)], 0, data),
             abi.encode(false, 0x0)
         );
 
         // Should revert because no gauge for CRV3
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.deposit(address(CRV3), 1);
     }
 
@@ -174,6 +192,14 @@ contract CurveStrategyTest is BaseTest {
 
         // === WITHDRAW PROCESS === //
         _withdrawTest(CRV3, partStakeDAO, partConvex, 0);
+    }
+
+    function test_Withdraw_AllFromStakeDAOBecauseNoOptimizor() public useFork(forkId1) {
+        curveStrategy.setOptimizor(address(0));
+
+        _deposit(CRV3, 5_000_000e18, 0, 0);
+
+        _withdrawTest(CRV3, 5_000_000e18, 0, 0);
     }
 
     function test_Withdraw_UsingConvexCurveFallback() public useFork(forkId1) {
@@ -225,13 +251,14 @@ contract CurveStrategyTest is BaseTest {
         // Add the pool on ConvexFrax
         _addCOIL_FRAXBPOnConvexFrax();
         isMetapool[address(COIL_FRAXBP)] = true;
+        fallbackConvexFrax.setAllPidsOptimized();
 
         // Second deposit into StakeDAO Locker and Convex Frax
         (uint256 partStakeDAOAfter, uint256 partConvexAfter) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
         _depositTest(COIL_FRAXBP, partStakeDAOAfter, partConvexAfter, 0);
 
         // Use the total amount owned by the locker to be sure to withdraw all
-        uint256 balanceOfStakeDAO = ERC20(gauges[address(COIL_FRAXBP)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfStakeDAO = ERC20(gauges[address(COIL_FRAXBP)]).balanceOf(LOCKER);
 
         // === WITHDRAW PROCESS === //
         _withdrawTest(
@@ -245,13 +272,13 @@ contract CurveStrategyTest is BaseTest {
     function test_Withdraw_RevertWhen_WRONG_AMOUNT() public useFork(forkId1) {
         _deposit(CRV3, 100, 0);
 
-        uint256 balanceOfStakeDAO = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceOfStakeDAO = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER);
         vm.expectRevert(Optimizor.WRONG_AMOUNT.selector);
         curveStrategy.withdraw(address(CRV3), balanceOfStakeDAO + 1);
     }
 
     function test_Withdraw_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.withdraw(address(CVX), 1);
     }
 
@@ -260,13 +287,13 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", gauges[address(CRV3)], 0, data),
             abi.encode(false, 0x0)
         );
 
         // Should revert because no gauge for CRV3
-        vm.expectRevert(EventsAndErrors.WITHDRAW_FAILED.selector);
+        vm.expectRevert(CurveStrategy.WITHDRAW_FAILED.selector);
         curveStrategy.withdraw(address(CRV3), 1);
     }
 
@@ -275,13 +302,13 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV3), 0, data),
             abi.encode(false, 0x0)
         );
 
         // Should revert because no gauge for CRV3
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.TRANSFER_FROM_LOCKER_FAILED.selector);
         curveStrategy.withdraw(address(CRV3), 1);
     }
 
@@ -291,10 +318,11 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CRV3, partStakeDAO, partConvex);
 
-        _claimLiquidLockerTest(CRV3, 1 weeks, new address[](0));
+        _claimLiquidLockerTest(CRV3, 1 weeks, new address[](0), ALICE);
     }
 
     function test_Claim_ExtraRewardsWithReceiver() public useFork(forkId1) {
+        // Deposit only into Stake dao
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CNC_ETH, 1, 0);
 
         _deposit(CNC_ETH, partStakeDAO, partConvex);
@@ -302,17 +330,18 @@ contract CurveStrategyTest is BaseTest {
         address[] memory extraTokens = new address[](1);
         extraTokens[0] = address(CNC);
 
-        _claimLiquidLockerTest(CNC_ETH, 1 weeks, extraTokens);
+        _claimLiquidLockerTest(CNC_ETH, 1 weeks, extraTokens, ALICE);
     }
 
     function test_Claim_ExtraRewardsWithoutReceiver() public useFork(forkId1) {
+        // Deposit only into Stake dao
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(STETH_ETH, 1, 0);
 
         _deposit(STETH_ETH, partStakeDAO, partConvex);
 
         address[] memory extraTokens = new address[](1);
         extraTokens[0] = address(LDO);
-        _claimLiquidLockerTest(STETH_ETH, 1 weeks, extraTokens);
+        _claimLiquidLockerTest(STETH_ETH, 1 weeks, extraTokens, ALICE);
     }
 
     function test_Claim_ConvexCurveRewardsWithoutFees() public useFork(forkId1) {
@@ -320,9 +349,7 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CRV3, partStakeDAO, partConvex, 0);
 
-        fallbackConvexCurve.setFeesOnRewards(0);
-
-        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(ALUSD_FRAXBP)));
+        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(ALUSD_FRAXBP)), ALICE);
     }
 
     function test_Claim_ConvexCurveRewardsWithFees() public useFork(forkId1) {
@@ -330,9 +357,7 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(CRV3, partStakeDAO, partConvex, 0);
 
-        fallbackConvexCurve.setFeesOnRewards(1e16);
-
-        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(CRV3)));
+        _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(CRV3)), ALICE);
     }
 
     function test_Claim_ConvexFraxRewardsWithoutFees() public useFork(forkId1) {
@@ -340,9 +365,7 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
 
-        fallbackConvexCurve.setFeesOnRewards(0);
-
-        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)));
+        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)), ALICE);
     }
 
     function test_Claim_ConvexFraxRewardsWithFees() public useFork(forkId1) {
@@ -350,18 +373,16 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
 
-        fallbackConvexFrax.setFeesOnRewards(1e16);
-
-        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)));
+        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)), ALICE);
     }
 
     function test_Claim_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.claim(address(CVX));
     }
 
     function test_Claim_RevertWhen_ADDRESS_NULL_OnFallbacks() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.claimFallbacks(address(CVX));
     }
 
@@ -375,13 +396,13 @@ contract CurveStrategyTest is BaseTest {
         // Here 0 and Data are not specified because amount claimed is unknown.
         // But address(CRV3) is needed, otherwise it will revert on the "claim call"
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", curveStrategy.CRV_MINTER(), 0, data),
             abi.encode(false, 0x0)
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.MINT_FAILED.selector);
+        vm.expectRevert(CurveStrategy.MINT_FAILED.selector);
         curveStrategy.claim(address(CRV3));
     }
 
@@ -395,13 +416,13 @@ contract CurveStrategyTest is BaseTest {
         // Here 0 and Data are not specified because amount claimed is unknown.
         // But address(CRV3) is needed, otherwise it will revert on the "claim call"
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV)), //, 0, data),
             abi.encode(false, 0x0)
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.claim(address(CRV3));
     }
 
@@ -415,13 +436,13 @@ contract CurveStrategyTest is BaseTest {
         // Here 0 and Data are not specified because amount claimed is unknown.
         // But address(STETH_ETH) is needed, otherwise it will revert on the first transfer
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(LDO)), //, 0, data),
             abi.encode(false, 0x0)
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.claim(address(STETH_ETH));
     }
 
@@ -445,7 +466,7 @@ contract CurveStrategyTest is BaseTest {
 
     function test_Claim3CRV_RevertWhen_AMOUNT_NULL() public useFork(forkId1) {
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.AMOUNT_NULL.selector);
+        vm.expectRevert(CurveStrategy.AMOUNT_NULL.selector);
         curveStrategy.claim3Crv(false);
     }
 
@@ -454,13 +475,13 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", curveStrategy.CRV_FEE_D(), 0, data),
             abi.encode(false, 0x0)
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.CLAIM_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CLAIM_FAILED.selector);
         curveStrategy.claim3Crv(true);
     }
 
@@ -472,13 +493,13 @@ contract CurveStrategyTest is BaseTest {
         // Here 0 and Data are not specified because amount claimed is unknown.
         // But address(CRV3) is needed, otherwise it will revert on the "claim call"
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV3)), // 0, data),
             abi.encode(false, 0x0)
         );
 
         // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.claim3Crv(true);
     }
 
@@ -486,7 +507,7 @@ contract CurveStrategyTest is BaseTest {
     function test_MigrateLP() public useFork(forkId1) {
         assertEq(CRV3.balanceOf(address(this)), 0, "0");
 
-        uint256 balanceGaugeBefore = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER_STAKEDAO);
+        uint256 balanceGaugeBefore = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER);
         // === DEPOSIT PROCESS === //
         _deposit(CRV3, 100, 0);
 
@@ -498,33 +519,33 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_MigrateLP_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.migrateLP(address(CVX));
     }
 
     function test_MigrateLP_RevertWhen_WITHDRAW_FAILED() public useFork(forkId1) {
         // Get balance of the gauge
-        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER));
         // data used on executed function by the LL
         bytes memory data = abi.encodeWithSignature("withdraw(uint256)", balanceGauge);
 
         // Mock the call to force the fail on withdraw from gauge from the LL
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", gauges[address(CRV3)], 0, data),
             abi.encode(false, 0x0)
         );
 
         // Assert Error
-        vm.expectRevert(EventsAndErrors.WITHDRAW_FAILED.selector);
+        vm.expectRevert(CurveStrategy.WITHDRAW_FAILED.selector);
         curveStrategy.migrateLP(address(CRV3));
     }
 
     function test_MigrateLP_RevertWhen_CALL_FAILED() public useFork(forkId1) {
         // Get balance of the gauge
-        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceGauge = ERC20(gauges[address(CRV3)]).balanceOf(address(LOCKER));
         // Get balance of the locker
-        uint256 balanceLocker = CRV3.balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceLocker = CRV3.balanceOf(address(LOCKER));
 
         // data used on executed function by the LL
         bytes memory data =
@@ -532,13 +553,13 @@ contract CurveStrategyTest is BaseTest {
 
         // Mock the call to force the fail on transfer LP from the LL
         vm.mockCall(
-            address(LOCKER_STAKEDAO),
+            address(LOCKER),
             abi.encodeWithSignature("execute(address,uint256,bytes)", address(CRV3), 0, data),
             abi.encode(false, 0x0)
         );
 
         // Assert Revert
-        vm.expectRevert(EventsAndErrors.CALL_FAILED.selector);
+        vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
         curveStrategy.migrateLP(address(CRV3));
     }
 
@@ -564,7 +585,7 @@ contract CurveStrategyTest is BaseTest {
     // --- Kill ConvexFrax
     function test_KillConvexFrax() public useFork(forkId1) {
         // === DEPOSIT PROCESS === //
-        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1_000_000e18);
+        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 10_000_000e18);
         _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex);
 
         // Pause ConvexFrax deposit
@@ -579,7 +600,7 @@ contract CurveStrategyTest is BaseTest {
         assertGt(fallbackConvexFrax.balanceOf(address(ALUSD_FRAXBP)), 0, "0");
 
         uint256 balanceBeforeConvexCurve = fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP));
-        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER));
 
         // === KILL PROCESS === //
         optimizor.killConvexFrax();
@@ -590,7 +611,7 @@ contract CurveStrategyTest is BaseTest {
         //Assertion 2: Check ConvexCurve balance
         assertGt(fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP)), balanceBeforeConvexCurve, "2");
         //Assertion 3: Check StakeDAO balance
-        assertGt(ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER_STAKEDAO)), balanceBeforeStakeDAO, "3");
+        assertGt(ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER)), balanceBeforeStakeDAO, "3");
     }
 
     function test_KillConvexFrax_RevertWhen_NOT_PAUSED() public useFork(forkId1) {
@@ -647,8 +668,11 @@ contract CurveStrategyTest is BaseTest {
         // --- Test for Metapool
         // Get last optimization value
         (uint256 valueBefore, uint256 tsBefore) = optimizor.lastOptiMetapool(gauges[address(ALUSD_FRAXBP)]);
+
+        // Get veCRVStakeDAO balance
+        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
         // Calculate optimization
-        uint256 calculatedOpti = optimizor.optimization1(address(gauges[address(ALUSD_FRAXBP)]), true);
+        uint256 calculatedOpti = optimizor.optimalAmount(address(gauges[address(ALUSD_FRAXBP)]), veCRVStakeDAO, true);
 
         // Call the optimize deposit
         optimizor.optimizeDeposit(address(ALUSD_FRAXBP), gauges[address(ALUSD_FRAXBP)], 1_000_000e18);
@@ -665,8 +689,10 @@ contract CurveStrategyTest is BaseTest {
         // --- Test for non Metapool
         // Get last optimization value
         (valueBefore, tsBefore) = optimizor.lastOpti(gauges[address(CRV3)]);
+        // Get veCRVStakeDAO balance
+        veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
         // Calculate optimization
-        calculatedOpti = optimizor.optimization1(address(gauges[address(CRV3)]), false);
+        calculatedOpti = optimizor.optimalAmount(address(gauges[address(CRV3)]), veCRVStakeDAO, false);
 
         // Call the optimize deposit
         optimizor.optimizeDeposit(address(CRV3), gauges[address(CRV3)], 1_000_000e18);
@@ -689,6 +715,14 @@ contract CurveStrategyTest is BaseTest {
         _optimizedDepositReturnedValueAfter4And7Days(CRV3);
     }
 
+    function test_OptimizedDepositReturnedValueAfterCRVLockMetapool() public useFork(forkId1) {
+        _optimizedDepositReturnedValueAfterCRVLock(ALUSD_FRAXBP);
+    }
+
+    function test_OptimizedDepositReturnedValueAfterCRVLockNotMetapool() public useFork(forkId1) {
+        _optimizedDepositReturnedValueAfterCRVLock(CRV3);
+    }
+
     // --- Setters
     function test_ToggleVault() public useFork(forkId1) {
         assertEq(curveStrategy.vaults(address(0x1)), false, "0");
@@ -699,7 +733,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_ToggleVault_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.toggleVault(address(0));
     }
 
@@ -712,7 +746,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetGauge_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setGauge(address(0), address(0x2));
     }
 
@@ -725,23 +759,23 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetLGType_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setLGtype(address(0), 1);
     }
 
     function test_SetMultiGauge() public useFork(forkId1) {
-        assertEq(curveStrategy.multiGauges(address(0x1)), address(0), "0");
+        assertEq(curveStrategy.rewardDistributors(address(0x1)), address(0), "0");
 
         curveStrategy.setMultiGauge(address(0x1), address(0x2));
 
-        assertEq(curveStrategy.multiGauges(address(0x1)), address(0x2), "1");
+        assertEq(curveStrategy.rewardDistributors(address(0x1)), address(0x2), "1");
     }
 
     function test_SetMultiGauge_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setMultiGauge(address(0), address(0x2));
 
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setMultiGauge(address(0x2), address(0));
     }
 
@@ -754,7 +788,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetVeSDTProxyRevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setVeSDTProxy(address(0));
     }
 
@@ -767,7 +801,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetAccumulator_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setAccumulator(address(0));
     }
 
@@ -780,7 +814,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_SetRewardsReceiver_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.setRewardsReceiver(address(0));
     }
 
@@ -792,19 +826,80 @@ contract CurveStrategyTest is BaseTest {
         assertEq(address(curveStrategy.optimizor()), address(0x1), "1");
     }
 
-    function test_SetOptimizor_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
-        curveStrategy.setOptimizor(address(0));
-    }
-
     function test_ManageFee_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.ADDRESS_NULL.selector);
-        curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.PERFFEE, address(0), 10);
+        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, address(0), 10);
     }
 
     function test_RevertWhen_FeeTooHigh_ManageFee() public useFork(forkId1) {
-        vm.expectRevert(EventsAndErrors.FEE_TOO_HIGH.selector);
-        curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.PERFFEE, gauges[address(ALUSD_FRAXBP)], 10001);
+        vm.expectRevert(CurveStrategy.FEE_TOO_HIGH.selector);
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, gauges[address(ALUSD_FRAXBP)], 10001);
+    }
+
+    function test_SetCurveStrategy() public useFork(forkId1) {
+        address before = address(fallbackConvexCurve.curveStrategy());
+
+        fallbackConvexCurve.setCurveStrategy(address(0x1));
+
+        assertNotEq(address(fallbackConvexCurve.curveStrategy()), before, "0");
+        assertEq(address(fallbackConvexCurve.curveStrategy()), address(0x1), "1");
+
+        before = address(optimizor.curveStrategy());
+
+        optimizor.setCurveStrategy(address(0x1));
+        assertNotEq(address(optimizor.curveStrategy()), before, "2");
+        assertEq(address(optimizor.curveStrategy()), address(0x1), "3");
+    }
+
+    function test_SetSdtDistributor() public useFork(forkId1) {
+        assertTrue(address(curveStrategy.sdtDistributor()) != address(0x1), "0");
+
+        curveStrategy.setSdtDistributor(address(0x1));
+
+        assertEq(address(curveStrategy.sdtDistributor()), address(0x1), "1");
+    }
+
+    function test_SetLockingIntervalSec() public useFork(forkId1) {
+        uint256 before = fallbackConvexFrax.lockingIntervalSec();
+
+        fallbackConvexFrax.setLockingIntervalSec(1);
+
+        assertNotEq(fallbackConvexFrax.lockingIntervalSec(), before, "0");
+        assertEq(fallbackConvexFrax.lockingIntervalSec(), 1, "1");
+    }
+
+    function test_toggleClaimAll() public useFork(forkId1) {
+        bool before = curveStrategy.claimAll();
+
+        curveStrategy.toggleClaimAll();
+
+        assertEq(curveStrategy.claimAll(), !before, "1");
+    }
+
+    function test_ToggleClaimOnWithdraw() public useFork(forkId1) {
+        bool before = fallbackConvexCurve.claimOnWithdraw();
+
+        fallbackConvexCurve.toggleClaimOnWithdraw();
+
+        assertEq(fallbackConvexCurve.claimOnWithdraw(), !before, "1");
+    }
+
+    function test_SetExtraConvexFraxBoost() public useFork(forkId1) {
+        uint256 before = optimizor.extraConvexFraxBoost();
+
+        optimizor.setExtraConvexFraxBoost(1);
+
+        assertNotEq(optimizor.extraConvexFraxBoost(), before, "0");
+        assertEq(optimizor.extraConvexFraxBoost(), 1, "1");
+    }
+
+    function test_SetVeCRVDifferenceThreshold() public useFork(forkId1) {
+        uint256 before = optimizor.veCRVDifferenceThreshold();
+
+        optimizor.setVeCRVDifferenceThreshold(1);
+
+        assertNotEq(optimizor.veCRVDifferenceThreshold(), before, "0");
+        assertEq(optimizor.veCRVDifferenceThreshold(), 1, "1");
     }
 
     // --- Execute
@@ -819,11 +914,6 @@ contract CurveStrategyTest is BaseTest {
     //////////////////////////////////////////////////////
     /// --- FALLBACKS
     //////////////////////////////////////////////////////
-    function test_setFeesReceiver() public useFork(forkId1) {
-        assertTrue(fallbackConvexFrax.feesReceiver() != address(0x1), "0");
-        fallbackConvexFrax.setFeesReceiver(address(0x1));
-        assertEq(fallbackConvexFrax.feesReceiver(), address(0x1), "1");
-    }
 
     function test_RescueTokens() public useFork(forkId1) {
         deal(address(CRV), address(fallbackConvexFrax), 1000);

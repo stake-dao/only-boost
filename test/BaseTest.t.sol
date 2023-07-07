@@ -1,29 +1,29 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
 
 // --- Libraries
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Authority} from "solmate/auth/Auth.sol";
-import {RolesAuthority} from "solmate/auth/authorities/RolesAuthority.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {RolesAuthority} from "solmate/auth/authorities/RolesAuthority.sol";
 
 // --- Contracts
 import {Optimizor} from "src/Optimizor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
-import {EventsAndErrors} from "src/EventsAndErrors.sol";
 import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 // --- Mocks
 import {AccumulatorMock} from "src/mocks/AccumulatorMock.sol";
 import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
-import {FallbackConvexCurveMock} from "src/mocks/FallbackConvexCurveMock.sol";
 
 // --- Interfaces
+import {IVault} from "src/interfaces/IVault.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
@@ -32,6 +32,7 @@ import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.so
 
 contract BaseTest is Test {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     //////////////////////////////////////////////////////
     /// --- CONTRACTS & MOCKS & INTERFACES
@@ -52,9 +53,9 @@ contract BaseTest is Test {
 
     // --- Interfaces
     ILocker public locker;
-    IBoosterConvexFrax public boosterConvexFrax;
-    IBoosterConvexCurve public boosterConvexCurve;
-    IPoolRegistryConvexFrax public poolRegistryConvexFrax;
+    IBoosterConvexFrax public BOOSTER_CONVEX_FRAX;
+    IBoosterConvexCurve public BOOSTER_CONVEX_CURVE;
+    IPoolRegistryConvexFrax public POOL_REGISTRY_CONVEX_FRAX;
 
     //////////////////////////////////////////////////////
     /// --- CONSTANTS & IMMUABLES
@@ -70,7 +71,10 @@ contract BaseTest is Test {
     ERC20 public constant CRV3 = ERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
     ERC20 public constant EUR3 = ERC20(0xb9446c4Ef5EBE66268dA6700D26f96273DE3d571);
     ERC20 public constant CNC_ETH = ERC20(0xF9835375f6b268743Ea0a54d742Aa156947f8C06);
+    ERC20 public constant SDT_ETH = ERC20(0x6359B6d3e327c497453d4376561eE276c6933323);
     ERC20 public constant STETH_ETH = ERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
+    ERC20 public constant SDCRV_CRV = ERC20(0xf7b55C3732aD8b2c2dA7c24f30A69f55c54FB717);
+    ERC20 public constant UZD_FRAXBP = ERC20(0x68934F60758243eafAf4D2cFeD27BF8010bede3a);
     ERC20 public constant COIL_FRAXBP = ERC20(0xb85010193FD15aF8390dbD62790Da70F46c1126B);
     ERC20 public constant ALUSD_FRAXBP = ERC20(0xB30dA2376F63De30b42dC055C93fa474F31330A5);
 
@@ -78,16 +82,28 @@ contract BaseTest is Test {
     address public constant GAUGE_CRV3 = 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
     address public constant GAUGE_EUR3 = 0x1E212e054d74ed136256fc5a5DDdB4867c6E003F;
     address public constant GAUGE_CNC_ETH = 0x5A8fa46ebb404494D718786e55c4E043337B10bF;
+    address public constant GAUGE_SDT_ETH = 0x60355587a8D4aa67c2E64060Ab36e566B9bCC000;
     address public constant GAUGE_STETH_ETH = 0x182B723a58739a9c974cFDB385ceaDb237453c28;
+    address public constant GAUGE_SDCRV_CRV = 0x663FC22e92f26C377Ddf3C859b560C4732ee639a;
+    address public constant GAUGE_UZD_FRAXBP = 0xBdCA4F610e7101Cc172E2135ba025737B99AbD30;
     address public constant GAUGE_COIL_FRAXBP = 0x06B30D5F2341C2FB3F6B48b109685997022Bd272;
     address public constant GAUGE_ALUSD_FRAXBP = 0x740BA8aa0052E07b925908B380248cb03f3DE5cB;
 
+    // --- Stake DAO Vault address
+    IVault public constant VAULT_3CRV = IVault(0xb9205784b05fbe5b5298792A24C2CB844B7dc467);
+    IVault public constant VAULT_SDT_ETH = IVault(0x1513b44A589FFc76d0727968eB55dA4110B39422);
+    IVault public constant VAULT_SDCRV_CRV = IVault(0xd6415fF2639835300Ab947Fe67BAd6F0B31400c1);
+    IVault public constant VAULT_UZD_FRAXBP = IVault(0xbc61f6973cE564eFFB16Cd79B5BC3916eaD592E2);
+
     // --- Lockers address
-    address public constant LOCKER_STAKEDAO = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
+    address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
+    address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2; // CRV Locker
 
     // --- Users address
     address public immutable ALICE = makeAddr("Alice");
+    address public constant MS_STAKEDAO = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
+    address public constant DEPLOYER_007 = 0x000755Fbe4A24d7478bfcFC1E561AfCE82d1ff62;
 
     // --- Fees amounts in basis points
     uint256 public constant FEE_PERF = 100; // 1%
@@ -114,6 +130,7 @@ contract BaseTest is Test {
     // --- Mapings for test purpose only
     mapping(address => bool) public isMetapool;
     mapping(address => address) public gauges;
+    mapping(address => address) public vaults;
     mapping(address => address) public liquidityGaugeMocks;
 
     //////////////////////////////////////////////////////
@@ -128,6 +145,9 @@ contract BaseTest is Test {
         gauges[address(ALUSD_FRAXBP)] = GAUGE_ALUSD_FRAXBP;
         gauges[address(STETH_ETH)] = GAUGE_STETH_ETH;
         gauges[address(COIL_FRAXBP)] = GAUGE_COIL_FRAXBP;
+        gauges[address(SDCRV_CRV)] = GAUGE_SDCRV_CRV;
+        gauges[address(SDT_ETH)] = GAUGE_SDT_ETH;
+        gauges[address(UZD_FRAXBP)] = GAUGE_UZD_FRAXBP;
 
         // Set mapping for metapools
         isMetapool[address(CRV3)] = false;
@@ -135,6 +155,15 @@ contract BaseTest is Test {
         isMetapool[address(CNC_ETH)] = false;
         isMetapool[address(ALUSD_FRAXBP)] = true;
         isMetapool[address(STETH_ETH)] = false;
+        isMetapool[address(SDCRV_CRV)] = false;
+        isMetapool[address(SDT_ETH)] = false;
+        isMetapool[address(UZD_FRAXBP)] = true;
+
+        // Set mappings for vaults
+        vaults[address(SDCRV_CRV)] = address(VAULT_SDCRV_CRV);
+        vaults[address(SDT_ETH)] = address(VAULT_SDT_ETH);
+        vaults[address(CRV3)] = address(VAULT_3CRV);
+        vaults[address(UZD_FRAXBP)] = address(VAULT_UZD_FRAXBP);
     }
 
     //////////////////////////////////////////////////////
@@ -143,10 +172,10 @@ contract BaseTest is Test {
     function _afterDeployment() internal {
         curveStrategy.setOptimizor(address(optimizor));
         // Setup contracts
-        locker = ILocker(LOCKER_STAKEDAO);
-        boosterConvexFrax = IBoosterConvexFrax(fallbackConvexFrax.boosterConvexFrax());
-        boosterConvexCurve = IBoosterConvexCurve(fallbackConvexCurve.boosterConvexCurve());
-        poolRegistryConvexFrax = IPoolRegistryConvexFrax(fallbackConvexFrax.poolRegistryConvexFrax());
+        locker = ILocker(LOCKER);
+        BOOSTER_CONVEX_FRAX = IBoosterConvexFrax(fallbackConvexFrax.BOOSTER_CONVEX_FRAX());
+        BOOSTER_CONVEX_CURVE = IBoosterConvexCurve(fallbackConvexCurve.BOOSTER_CONVEX_CURVE());
+        POOL_REGISTRY_CONVEX_FRAX = IPoolRegistryConvexFrax(fallbackConvexFrax.POOL_REGISTRY_CONVEX_FRAX());
 
         _labelContract();
         // Add all curve gauges
@@ -187,10 +216,10 @@ contract BaseTest is Test {
             address token = tokens[i];
             if (token == address(0)) break;
 
-            curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.PERFFEE, gauges[address(token)], FEE_PERF);
-            curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.VESDTFEE, gauges[address(token)], FEE_VESDT);
-            curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.ACCUMULATORFEE, gauges[address(token)], FEE_ACCU);
-            curveStrategy.manageFee(EventsAndErrors.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, gauges[address(token)], FEE_PERF);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDTFEE, gauges[address(token)], FEE_VESDT);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATORFEE, gauges[address(token)], FEE_ACCU);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
         }
 
         // Grant public access to claim function for curve strategy
@@ -246,18 +275,24 @@ contract BaseTest is Test {
         vm.label(GAUGE_STETH_ETH, "GAUGE_STETH_ETH");
         vm.label(GAUGE_COIL_FRAXBP, "GAUGE_COIL_FRAXBP");
         vm.label(GAUGE_ALUSD_FRAXBP, "GAUGE_ALUSD_FRAXBP");
+
+        // Vaults
+        vm.label(address(VAULT_3CRV), "VAULT_3CRV");
+
+        vm.label(MS_STAKEDAO, "MS_STAKEDAO");
+        vm.label(DEPLOYER_007, "DEPLOYER_007");
     }
 
     function _labelContract() internal {
         vm.label(address(rolesAuthority), "RolesAuthority");
-        vm.label(address(curveStrategy), "CurveStrategy");
+        vm.label(address(curveStrategy), "NewCurveStrategy");
         vm.label(address(curveStrategy.optimizor()), "Optimizor");
         vm.label(address(fallbackConvexFrax), "FallbackConvexFrax");
         vm.label(address(fallbackConvexCurve), "FallbackConvexCurve");
         vm.label(address(locker), "Locker");
-        vm.label(address(boosterConvexFrax), "BoosterConvexFrax");
-        vm.label(address(boosterConvexCurve), "BoosterConvexCurve");
-        vm.label(address(poolRegistryConvexFrax), "PoolRegistryConvexFrax");
+        vm.label(address(BOOSTER_CONVEX_FRAX), "BoosterConvexFrax");
+        vm.label(address(BOOSTER_CONVEX_CURVE), "BoosterConvexCurve");
+        vm.label(address(POOL_REGISTRY_CONVEX_FRAX), "PoolRegistryConvexFrax");
 
         // Mocks
         vm.label(address(accumulatorMock), "AccumulatorMock");
@@ -272,7 +307,7 @@ contract BaseTest is Test {
         // https://etherscan.io/tx/0xbcc25272dad48329ed963991f156b929b28ee171e4ad157e2d9b749f3d85eb7b
         // Add all the stuff for ConvexFrax
         vm.prank(0x947B7742C403f20e5FaCcDAc5E092C943E7D0277); // Convex Deployer
-        boosterConvexFrax.addPool(
+        BOOSTER_CONVEX_FRAX.addPool(
             0x7D54C53e6940E88a7ac1970490DAFbBF85D982f4,
             0x39cd4db6460d8B5961F73E997E86DdbB7Ca4D5F6,
             0xa5B6f8Ec4122c5Fe0dBc4Ead8Bfe66A412aE427C
@@ -361,10 +396,63 @@ contract BaseTest is Test {
         }
     }
 
+    function _optimizedDepositReturnedValueAfterCRVLock(ERC20 token) internal {
+        // Toggle using last optimization
+        optimizor.toggleUseLastOptimization();
+
+        // Call the optimize deposit
+        (, uint256[] memory valuesBefore) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+        uint256 crvLockBefore = optimizor.cacheVeCRVLockerBalance();
+
+        // Liquid Locker lock less CRV than needed to bypass threshold
+        uint256 amountToBypassThreshold =
+            ERC20(LOCKER_CRV).balanceOf(LOCKER).mulWadDown(optimizor.veCRVDifferenceThreshold());
+
+        deal(address(CRV), address(this), amountToBypassThreshold / 2);
+        CRV.safeTransfer(address(LOCKER), amountToBypassThreshold / 2);
+        vm.prank(ILocker(LOCKER).governance());
+        ILocker(LOCKER).increaseAmount(amountToBypassThreshold / 2);
+
+        // Call the optimize deposit
+        (, uint256[] memory valuesAfter) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+        uint256 crvLockAfter = optimizor.cacheVeCRVLockerBalance();
+
+        // Because not enough CRV locked, we should have the same values
+        assertEq(valuesBefore[0], valuesAfter[0], "0");
+        assertEq(valuesBefore[1], valuesAfter[1], "1");
+        assertEq(valuesBefore[2], valuesAfter[2], "2");
+        assertEq(crvLockBefore, crvLockAfter, "3");
+
+        // Actualize CRV to lock to bypass threshold
+        amountToBypassThreshold = ERC20(LOCKER_CRV).balanceOf(LOCKER).mulWadDown(optimizor.veCRVDifferenceThreshold());
+
+        // Liquid Locker lock enough CRV to bypass threshold
+        deal(address(CRV), address(this), amountToBypassThreshold);
+        CRV.safeTransfer(address(LOCKER), amountToBypassThreshold);
+        vm.prank(ILocker(LOCKER).governance());
+        ILocker(LOCKER).increaseAmount(amountToBypassThreshold);
+
+        // Call the optimize deposit
+        (, valuesAfter) = optimizor.optimizeDeposit(address(token), gauges[address(token)], 10_000_000e18);
+        crvLockAfter = optimizor.cacheVeCRVLockerBalance();
+
+        if (isMetapool[address(token)]) {
+            assertEq(valuesBefore[1], valuesAfter[1], "4.1");
+            assertNotEq(valuesBefore[2], valuesAfter[2], "5.1");
+        } else {
+            assertNotEq(valuesBefore[1], valuesAfter[1], "4.2");
+            assertEq(valuesBefore[2], valuesAfter[2], "5.2");
+        }
+        assertTrue(valuesBefore[0] != valuesAfter[0], "6");
+        assertNotEq(crvLockBefore, crvLockAfter, "7");
+    }
+
     // --- Assertions
     modifier _depositTestMod(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex, uint256 timejump) {
         // --- Before Deposit --- //
-        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(token)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(token)]).balanceOf(address(LOCKER));
         uint256 balanceBeforeConvex = ERC20(gauges[address(token)]).balanceOf(address(LOCKER_CONVEX));
         uint256 timestampBefore = block.timestamp;
         BaseFallback.PidsInfo memory pidsInfoBefore;
@@ -373,8 +461,9 @@ contract BaseTest is Test {
         if (amountConvex != 0) {
             if (isMetapool[address(token)] && !optimizor.isConvexFraxPaused()) {
                 pidsInfoBefore = fallbackConvexFrax.getPid(address(token));
-                address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfoBefore.pid, address(fallbackConvexFrax));
-                (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfoBefore.pid);
+                address personalVault =
+                    POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfoBefore.pid, address(fallbackConvexFrax));
+                (, address staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pidsInfoBefore.pid);
 
                 // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
                 // and the last one is emptyed. So we need to get the last one.
@@ -382,7 +471,7 @@ contract BaseTest is Test {
                 if (lockCount > 0) infosBefore = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCount - 1];
             } else {
                 pidsInfoBefore = fallbackConvexCurve.getPid(address(token));
-                (,,, crvRewards,,) = boosterConvexCurve.poolInfo(pidsInfoBefore.pid);
+                (,,, crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidsInfoBefore.pid);
             }
         }
 
@@ -394,8 +483,8 @@ contract BaseTest is Test {
         if (amountConvex != 0) {
             if (isMetapool[address(token)] && !optimizor.isConvexFraxPaused()) {
                 pidsInfo = fallbackConvexFrax.getPid(address(token));
-                address personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
-                (, address staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
+                address personalVault = POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
+                (, address staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pidsInfo.pid);
 
                 // On each withdraw all LP are withdraw and only the remaining is locked, so a new lockedStakes is created
                 // and the last one is emptyed. So we need to get the last one.
@@ -403,21 +492,17 @@ contract BaseTest is Test {
                 if (lockCount > 0) infos = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCount - 1];
             } else {
                 pidsInfo = fallbackConvexCurve.getPid(address(token));
-                (,,, crvRewards,,) = boosterConvexCurve.poolInfo(pidsInfo.pid);
+                (,,, crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidsInfo.pid);
             }
         }
 
         // === ASSERTIONS === //
         //Assertion 1: Check Gauge balance of Stake DAO Liquid Locker
-        assertEq(
-            ERC20(gauges[address(token)]).balanceOf(address(LOCKER_STAKEDAO)) - balanceBeforeStakeDAO,
-            amountStakeDAO,
-            "1"
-        );
+        assertEq(ERC20(gauges[address(token)]).balanceOf(address(LOCKER)) - balanceBeforeStakeDAO, amountStakeDAO, "1");
 
         if (isMetapool[address(token)] && amountConvex != 0 && !optimizor.isConvexFraxPaused()) {
             // Assertion 2: Check personal vault created
-            assertTrue(poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax)) != address(0), "2");
+            assertTrue(POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfo.pid, address(fallbackConvexFrax)) != address(0), "2");
             // Assertion 3: Check value for personal vault, such as liquidity, kek_id, timestamps, lock_multiplier
             assertEq(infos.liquidity, amountConvex + infosBefore.liquidity, "3");
             assertEq(infos.kek_id, fallbackConvexFrax.kekIds(fallbackConvexFrax.vaults(pidsInfo.pid)), "4"); // kek_id is the same as vault
@@ -436,7 +521,7 @@ contract BaseTest is Test {
 
     modifier _withdrawTestMod(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex) {
         // Check Stake DAO balance before withdraw
-        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(token)]).balanceOf(address(LOCKER_STAKEDAO));
+        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(token)]).balanceOf(address(LOCKER));
         uint256 balanceBeforeConvex;
         BaseFallback.PidsInfo memory pidsInfo;
         IFraxUnifiedFarm.LockedStake memory infosBefore;
@@ -446,8 +531,8 @@ contract BaseTest is Test {
         if (isMetapool[address(token)]) {
             // Get all needed infos for following assertions
             pidsInfo = fallbackConvexFrax.getPid(address(token));
-            personalVault = poolRegistryConvexFrax.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
-            (, staking,,,) = poolRegistryConvexFrax.poolInfo(pidsInfo.pid);
+            personalVault = POOL_REGISTRY_CONVEX_FRAX.vaultMap(pidsInfo.pid, address(fallbackConvexFrax));
+            (, staking,,,) = POOL_REGISTRY_CONVEX_FRAX.poolInfo(pidsInfo.pid);
             lockCountBefore = IFraxUnifiedFarm(staking).lockedStakesOfLength(personalVault);
             if (lockCountBefore > 0) {
                 infosBefore = IFraxUnifiedFarm(staking).lockedStakesOf(personalVault)[lockCountBefore - 1];
@@ -471,11 +556,7 @@ contract BaseTest is Test {
         //Assertion 1: Check test received token
         assertEq(token.balanceOf(address(this)), amountStakeDAO + amountConvex, "1");
         // Assertion 2: Check Gauge balance of Stake DAO Liquid Locker
-        assertEq(
-            balanceBeforeStakeDAO - ERC20(gauges[address(token)]).balanceOf(address(LOCKER_STAKEDAO)),
-            amountStakeDAO,
-            "2"
-        );
+        assertEq(balanceBeforeStakeDAO - ERC20(gauges[address(token)]).balanceOf(address(LOCKER)), amountStakeDAO, "2");
         // Assertion 3: Check Convex balance of fallbackConvexFrax or fallbackConvexCurve
         if (!isMetapool[address(token)]) {
             assertEq(balanceBeforeConvex - fallbackConvexCurve.balanceOf(address(token)), amountConvex, "3");
@@ -498,7 +579,7 @@ contract BaseTest is Test {
         }
     }
 
-    modifier _claimLiquidLockerMod(ERC20 token, address[] memory extraTokens) {
+    modifier _claimLiquidLockerMod(ERC20 token, address[] memory extraTokens, address claimer) {
         // Cache balance before
         uint256 balanceBeforeLG = CRV.balanceOf(liquidityGaugeMocks[address(token)]);
         uint256 balanceBeforeAC = CRV.balanceOf(address(curveStrategy.accumulator()));
@@ -508,19 +589,6 @@ contract BaseTest is Test {
         uint256 extraTokensLength = extraTokens.length;
         uint256[] memory balanceBeforeExtraLG = new uint256[](extraTokensLength);
         uint256[] memory balanceBeforeFeeReceiver = new uint256[](extraTokensLength);
-
-        if (extraTokensLength > 0) {
-            for (uint256 i = 0; i < extraTokensLength; ++i) {
-                balanceBeforeExtraLG[i] = ERC20(extraTokens[i]).balanceOf(liquidityGaugeMocks[address(token)]);
-                if (isMetapool[address(token)]) {
-                    balanceBeforeFeeReceiver[i] =
-                        ERC20(extraTokens[i]).balanceOf(address(fallbackConvexFrax.feesReceiver()));
-                } else {
-                    balanceBeforeFeeReceiver[i] =
-                        ERC20(extraTokens[i]).balanceOf(address(fallbackConvexCurve.feesReceiver()));
-                }
-            }
-        }
 
         _; // Claim process happen here
 
@@ -539,24 +607,34 @@ contract BaseTest is Test {
         //Assertion 6 & 7: Check extra token received
         if (extraTokensLength == 0) return;
         for (uint256 i = 0; i < extraTokensLength; ++i) {
-            //Assertion 6: Check extra token received
-            assertGt(ERC20(extraTokens[i]).balanceOf(liquidityGaugeMocks[address(token)]), balanceBeforeExtraLG[i], "6");
+            _checkBalanceLGMock(address(token), extraTokens[i], balanceBeforeExtraLG[i]);
+            if (extraTokens[i] == address(CRV)) {
+                _checkFeesOnCRV(address(token), claimer);
+            }
+        }
+    }
 
+    function _checkBalanceLGMock(address lpToken, address rewardToken, uint256 balanceBeforeLG) internal {
+        //Assertion 6: Check extra token received
+        assertGt(ERC20(rewardToken).balanceOf(liquidityGaugeMocks[lpToken]), balanceBeforeLG, "6");
+    }
+
+    function _checkFeesOnCRV(address lpToken, address claimer) internal {
+        {
+            (CurveStrategy.Fees memory fee, address accumulator, address rewardsReceiver, address veSDTFeeProxy) =
+                CurveStrategy(curveStrategy).getFeesAndReceiver(gauges[lpToken]);
             //Assertion 7: Check extra token received by fee receiver
-            if (isMetapool[address(token)]) {
-                if (fallbackConvexFrax.feesOnRewards() == 0) continue;
-                assertGt(
-                    ERC20(extraTokens[i]).balanceOf(address(fallbackConvexFrax.feesReceiver())),
-                    balanceBeforeFeeReceiver[i],
-                    "7"
-                );
-            } else {
-                if (fallbackConvexCurve.feesOnRewards() == 0) continue;
-                assertGt(
-                    ERC20(extraTokens[i]).balanceOf(address(fallbackConvexCurve.feesReceiver())),
-                    balanceBeforeFeeReceiver[i],
-                    "7"
-                );
+            if (fee.accumulatorFee != 0) {
+                assertGt(CRV.balanceOf(accumulator), 0, "7.1");
+            }
+            if (fee.perfFee != 0) {
+                assertGt(CRV.balanceOf(rewardsReceiver), 0, "7.2");
+            }
+            if (fee.veSDTFee != 0) {
+                assertGt(CRV.balanceOf(veSDTFeeProxy), 0, "7.3");
+            }
+            if (fee.claimerRewardFee != 0) {
+                assertGt(CRV.balanceOf(claimer), 0, "7.4");
             }
         }
     }
@@ -576,9 +654,9 @@ contract BaseTest is Test {
         _withdraw(token, amountStakeDAO, amountConvex, timejump);
     }
 
-    function _claimLiquidLockerTest(ERC20 token, uint256 timejump, address[] memory extraTokens)
+    function _claimLiquidLockerTest(ERC20 token, uint256 timejump, address[] memory extraTokens, address claimer)
         internal
-        _claimLiquidLockerMod(token, extraTokens)
+        _claimLiquidLockerMod(token, extraTokens, claimer)
     {
         _claimLiquidLocker(token, timejump);
     }
@@ -596,13 +674,14 @@ contract BaseTest is Test {
         if (amountStakeDAO == 1) {
             amountStakeDAO = REF_AMOUNT;
         } else if (amountStakeDAO == MAX) {
+            uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
             // Calculate optimal amount
-            uint256 optimalAmount = optimizor.optimization1(
-                gauges[address(token)], isMetapool[address(token)] && !optimizor.isConvexFraxPaused()
+            uint256 optimalAmount = optimizor.optimalAmount(
+                gauges[address(token)], veCRVStakeDAO, isMetapool[address(token)] && !optimizor.isConvexFraxPaused()
             );
             assert(optimalAmount > 0);
 
-            uint256 currentBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER_STAKEDAO);
+            uint256 currentBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER);
             amountStakeDAO = optimalAmount > currentBalance ? optimalAmount - currentBalance : 0;
         }
 
