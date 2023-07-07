@@ -192,8 +192,6 @@ contract Optimizor is Auth {
         );
     }
 
-    event log_named_uint256(string name, uint256 value);
-
     //////////////////////////////////////////////////////
     /// --- OPTIMIZATION FOR STRATEGIE DEPOSIT & WITHDRAW
     //////////////////////////////////////////////////////
