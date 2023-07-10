@@ -61,40 +61,45 @@ contract IntegrationTest is BaseTest {
 
         // 3. Create roles for `deposit` on Fallback Convex Curve
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(3, address(fallbackConvexCurve), FallbackConvexCurve.deposit.selector, true);
+        rolesAuthority.setRoleCapability(3, address(fallbackConvexCurve), BaseFallback.deposit.selector, true);
 
         // 3. Grant `deposit` role from Fallback Convex Curve to Curve Strategy
         vm.prank(MS_STAKEDAO);
         rolesAuthority.setUserRole(address(curveStrategy), 3, true);
+
+        // 4. Create roles for `deposit` on Fallback Convex Frax
+        vm.prank(MS_STAKEDAO);
+        rolesAuthority.setRoleCapability(4, address(fallbackConvexFrax), BaseFallback.deposit.selector, true);
+
+        // 4. Grant `deposit` role from Fallback Convex Frax to Curve Strategy
+        vm.prank(MS_STAKEDAO);
+        rolesAuthority.setUserRole(address(curveStrategy), 4, true);
     }
 
     function test_Integration_3Pool() public {
-        // Set gauges on Curve Strategy
-        vm.prank(MS_STAKEDAO);
-        curveStrategy.setGauge(address(CRV3), gauges[address(CRV3)]);
-
-        // Set new strategy
-        vm.prank(MS_STAKEDAO);
-        VAULT_SDCRV_CRV.setCurveStrategy(address(curveStrategy));
+        _testSwitchStrategy(address(CRV3));
     }
 
     function test_Integration_SDT_ETH() public {
-        // Set gauges on Curve Strategy
-        vm.prank(MS_STAKEDAO);
-        curveStrategy.setGauge(address(SDT_ETH), gauges[address(SDT_ETH)]);
-
-        // Set new strategy
-        vm.prank(MS_STAKEDAO);
-        VAULT_SDT_ETH.setCurveStrategy(address(curveStrategy));
+        _testSwitchStrategy(address(SDT_ETH));
     }
 
     function test_Integration_UZD_FRAXBP() public {
+        _testSwitchStrategy(address(UZD_FRAXBP));
+    }
+
+    function _testSwitchStrategy(address token) internal {
         // Set gauges on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        curveStrategy.setGauge(address(UZD_FRAXBP), gauges[address(UZD_FRAXBP)]);
+        curveStrategy.setGauge(token, gauges[token]);
+
+        // Get LL LP Balance
+        uint256 balanceBefore = ERC20(gauges[token]).balanceOf(LOCKER);
 
         // Set new strategy
         vm.prank(MS_STAKEDAO);
-        VAULT_UZD_FRAXBP.setCurveStrategy(address(curveStrategy));
+        IVault(vaults[token]).setCurveStrategy(address(curveStrategy));
+
+        assertEq(balanceBefore, _totalBalance(token));
     }
 }
