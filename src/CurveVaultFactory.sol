@@ -66,7 +66,7 @@ contract CurveVaultFactory {
 
     /// @notice Function to clone Curve Vault and its gauge contracts
     /// @param _crvGaugeAddress curve liqudity gauge address
-    function cloneAndInit(address _crvGaugeAddress) public {
+    function cloneAndInit(address _crvGaugeAddress) public returns (address, address) {
         // Get the weight of the gauge
         uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(_crvGaugeAddress);
 
@@ -112,6 +112,8 @@ contract CurveVaultFactory {
         ILiquidityGaugeStrat(gaugeImplAddress).add_reward(CRV, curveStrategy);
         ILiquidityGaugeStrat(gaugeImplAddress).set_claimer(CLAIM_REWARDS);
         ILiquidityGaugeStrat(gaugeImplAddress).commit_transfer_ownership(GOVERNANCE);
+
+        return (vaultImplAddress, gaugeImplAddress);
     }
 
     //////////////////////////////////////////////////////
