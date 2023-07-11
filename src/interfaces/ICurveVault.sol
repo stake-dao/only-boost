@@ -13,4 +13,6 @@ interface ICurveVault {
     function setLiquidityGauge(address _liquidityGauge) external;
 
     function setGovernance(address _governance) external;
+
+    function name() external view returns (string memory);
 }
