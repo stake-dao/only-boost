@@ -4,6 +4,8 @@ pragma solidity 0.8.20;
 import {ClonesUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
 import {ERC20Upgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
 
+import {Optimizor} from "src/Optimizor.sol";
+import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
 
 import {ICurveVault} from "src/interfaces/ICurveVault.sol";
@@ -34,10 +36,12 @@ contract CurveVaultFactory {
     /// --- VARIABLES
     ///////////////////////////////////////////////////////////////
 
-    address public curveStrategy;
+    CurveStrategy public curveStrategy;
     address public vaultImpl = 0x9FDd0A0cfD98775565811E081d404309B23ea996;
     address public gaugeImpl = 0x3Dc56D46F0Bd13655EfB29594a2e44534c453BF9;
     address public sdtDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C;
+
+    bool public setAllPids = true;
 
     ////////////////////////////////////////////////////////////////
     /// --- EVENTS
@@ -57,7 +61,7 @@ contract CurveVaultFactory {
     //////////////////////////////////////////////////////
 
     constructor(address _curveStrategy) {
-        curveStrategy = _curveStrategy;
+        curveStrategy = CurveStrategy(_curveStrategy);
     }
 
     //////////////////////////////////////////////////////
@@ -101,17 +105,28 @@ contract CurveVaultFactory {
         // Setters
         ICurveVault(vaultImplAddress).setLiquidityGauge(gaugeImplAddress);
         ICurveVault(vaultImplAddress).setGovernance(GOVERNANCE);
-        CurveStrategy(curveStrategy).toggleVault(vaultImplAddress);
-        CurveStrategy(curveStrategy).setGauge(vaultLpToken, _crvGaugeAddress);
-        CurveStrategy(curveStrategy).setMultiGauge(_crvGaugeAddress, gaugeImplAddress);
-        CurveStrategy(curveStrategy).manageFee(CurveStrategy.MANAGEFEE.PERFFEE, _crvGaugeAddress, 200); //%2 default
-        CurveStrategy(curveStrategy).manageFee(CurveStrategy.MANAGEFEE.VESDTFEE, _crvGaugeAddress, 500); //%5 default
-        CurveStrategy(curveStrategy).manageFee(CurveStrategy.MANAGEFEE.ACCUMULATORFEE, _crvGaugeAddress, 800); //%8 default
-        CurveStrategy(curveStrategy).manageFee(CurveStrategy.MANAGEFEE.CLAIMERREWARD, _crvGaugeAddress, 50); //%0.5 default
-        CurveStrategy(curveStrategy).setLGtype(_crvGaugeAddress, liquidityGaugeType);
-        ILiquidityGaugeStrat(gaugeImplAddress).add_reward(CRV, curveStrategy);
+        curveStrategy.toggleVault(vaultImplAddress);
+        curveStrategy.setGauge(vaultLpToken, _crvGaugeAddress);
+        curveStrategy.setMultiGauge(_crvGaugeAddress, gaugeImplAddress);
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, _crvGaugeAddress, 200); //%2 default
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDTFEE, _crvGaugeAddress, 500); //%5 default
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATORFEE, _crvGaugeAddress, 800); //%8 default
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMERREWARD, _crvGaugeAddress, 50); //%0.5 default
+        curveStrategy.setLGtype(_crvGaugeAddress, liquidityGaugeType);
+        ILiquidityGaugeStrat(gaugeImplAddress).add_reward(CRV, address(curveStrategy));
         ILiquidityGaugeStrat(gaugeImplAddress).set_claimer(CLAIM_REWARDS);
         ILiquidityGaugeStrat(gaugeImplAddress).commit_transfer_ownership(GOVERNANCE);
+
+        // Update pids mapping on fallbacks
+        if (setAllPids) {
+            address[] memory fallbacks = Optimizor(curveStrategy.optimizor()).getFallbacks();
+            for (uint8 i = 1; i < fallbacks.length;) {
+                BaseFallback(fallbacks[i]).setAllPidsOptimized();
+                unchecked {
+                    ++i;
+                }
+            }
+        }
 
         return (vaultImplAddress, gaugeImplAddress);
     }
@@ -139,7 +154,7 @@ contract CurveVaultFactory {
             cloneVault(_impl, _lpToken, keccak256(abi.encodePacked(_governance, _name, _symbol, curveStrategy)));
 
         // Init Vault
-        ICurveVault(deployed).init(_lpToken, address(this), _name, _symbol, curveStrategy);
+        ICurveVault(deployed).init(_lpToken, address(this), _name, _symbol, address(curveStrategy));
 
         // Return vault address
         return address(deployed);

@@ -5,8 +5,6 @@ pragma solidity 0.8.20;
 import "test/BaseTest.t.sol";
 
 contract CurveVaultFactoryTest is BaseTest {
-    using ClonesUpgradeable for address;
-
     address public constant VAULT_IMPL = 0x9FDd0A0cfD98775565811E081d404309B23ea996;
     address public constant GAUGE_IMPL = 0x3Dc56D46F0Bd13655EfB29594a2e44534c453BF9;
 
@@ -28,9 +26,21 @@ contract CurveVaultFactoryTest is BaseTest {
         // Curve Vault Factory
         curveVaultFactory = new CurveVaultFactory(address(curveStrategy));
 
+        // Fallbacks
+        fallbackConvexCurve = new FallbackConvexCurve(MS_STAKEDAO, rolesAuthority, address(curveStrategy)); // Convex Curve
+        fallbackConvexFrax = new FallbackConvexFrax(MS_STAKEDAO, rolesAuthority, address(curveStrategy)); // Convex Frax
+
+        // Optimizor
+        optimizor =
+        new Optimizor(MS_STAKEDAO, rolesAuthority, address(curveStrategy), address(fallbackConvexCurve), address(fallbackConvexFrax));
+
         vm.stopPrank();
 
         // --- Setters --- //
+        // Set Optimizor on Curve Strategy
+        vm.prank(MS_STAKEDAO);
+        curveStrategy.setOptimizor(address(optimizor));
+
         // 1. Create roles for `toggleVault` on Curve Strategy
         vm.prank(MS_STAKEDAO);
         rolesAuthority.setRoleCapability(1, address(curveStrategy), CurveStrategy.toggleVault.selector, true);
@@ -70,6 +80,26 @@ contract CurveVaultFactoryTest is BaseTest {
         // 5. Grant `setLGtype` role from Curve Strategy to Vault Factory
         vm.prank(MS_STAKEDAO);
         rolesAuthority.setUserRole(address(curveVaultFactory), 5, true);
+
+        // 6. Create roles for `setAllPidsOptimized` on Curve Fallback
+        vm.prank(MS_STAKEDAO);
+        rolesAuthority.setRoleCapability(
+            6, address(fallbackConvexCurve), BaseFallback.setAllPidsOptimized.selector, true
+        );
+
+        // 6. Grant `setAllPidsOptimized` role from Fallback to Vault Factory
+        vm.prank(MS_STAKEDAO);
+        rolesAuthority.setUserRole(address(curveVaultFactory), 6, true);
+
+        // 7. Create roles for `setAllPidsOptimized` on Frax Fallback
+        vm.prank(MS_STAKEDAO);
+        rolesAuthority.setRoleCapability(
+            7, address(fallbackConvexFrax), BaseFallback.setAllPidsOptimized.selector, true
+        );
+
+        // 7. Grant `setAllPidsOptimized` role from Fallback to Vault Factory
+        vm.prank(MS_STAKEDAO);
+        rolesAuthority.setUserRole(address(curveVaultFactory), 7, true);
 
         _labelContract();
     }
