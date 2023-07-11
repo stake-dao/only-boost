@@ -11,8 +11,10 @@ import {IGaugeController} from "src/interfaces/IGaugeController.sol";
 import {ILiquidityGaugeStrat} from "src/interfaces/ILiquidityGaugeStrat.sol";
 import {ICurveLiquidityGauge} from "src/interfaces/ICurveLiquidityGauge.sol";
 
-/// @title Factory contract usefull for creating new curve vaults that supports LP related
-/// to the curve platform, and the gauge multi rewards attached to it.
+/// @title Vault Factory
+/// @notice Factory contract for creating new curve vaults that supports LP
+/// related to the curve platform, and the liquidity gauge attached to it.
+/// @author Stake DAO
 contract CurveVaultFactory {
     using ClonesUpgradeable for address;
 
@@ -50,9 +52,17 @@ contract CurveVaultFactory {
 
     error INVALIDE_WEIGHT();
 
+    //////////////////////////////////////////////////////
+    /// --- CONSTRUCTOR
+    //////////////////////////////////////////////////////
+
     constructor(address _curveStrategy) {
         curveStrategy = _curveStrategy;
     }
+
+    //////////////////////////////////////////////////////
+    /// --- MAIN FUNCTIONS FOR VAULT CREATION
+    //////////////////////////////////////////////////////
 
     /// @notice Function to clone Curve Vault and its gauge contracts
     /// @param _crvGaugeAddress curve liqudity gauge address
@@ -103,6 +113,10 @@ contract CurveVaultFactory {
         ILiquidityGaugeStrat(gaugeImplAddress).set_claimer(CLAIM_REWARDS);
         ILiquidityGaugeStrat(gaugeImplAddress).commit_transfer_ownership(GOVERNANCE);
     }
+
+    //////////////////////////////////////////////////////
+    /// --- INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////
 
     /// @notice Internal function to clone the vault
     /// @param _impl address of contract to clone
@@ -186,6 +200,10 @@ contract CurveVaultFactory {
         // Return gauge address
         return ILiquidityGaugeStrat(deployed);
     }
+
+    //////////////////////////////////////////////////////
+    /// --- VIEW FUNCTIONS
+    //////////////////////////////////////////////////////
 
     /// @notice Function that predicts the future address passing the parameters
     /// @param _impl address of contract to clone
