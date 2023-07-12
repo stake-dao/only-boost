@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+// --- Libraries ---
 import {ClonesUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
 import {ERC20Upgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
 
+// --- Core contracts ---
 import {Optimizor} from "src/Optimizor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
 
+// --- Interfaces ---
 import {ICurveVault} from "src/interfaces/ICurveVault.sol";
 import {IGaugeController} from "src/interfaces/IGaugeController.sol";
 import {ILiquidityGaugeStrat} from "src/interfaces/ILiquidityGaugeStrat.sol";
@@ -22,11 +25,12 @@ contract CurveVaultFactory {
 
     ////////////////////////////////////////////////////////////////
     /// --- CONSTANTS
-    ///////////////////////////////////////////////////////////////$
+    ///////////////////////////////////////////////////////////////
 
     address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address public constant SDT = 0x73968b9a57c6E53d41345FD57a6E6ae27d6CDB2F;
     address public constant VESDT = 0x0C30476f66034E11782938DF8e4384970B6c9e8a;
+    address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6;
     address public constant VEBOOST = 0xD67bdBefF01Fc492f1864E61756E5FBB3f173506;
     address public constant GOVERNANCE = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
     address public constant CLAIM_REWARDS = 0xf30f23B7FB233172A41b32f82D263c33a0c9F8c2;
@@ -49,12 +53,14 @@ contract CurveVaultFactory {
 
     event VaultDeployed(address proxy, address lpToken, address impl);
     event GaugeDeployed(address proxy, address stakeToken, address impl);
+    event SetAllPidsToggled(bool status);
 
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
 
     error INVALIDE_WEIGHT();
+    error ONLY_GOVERNANCE();
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -118,17 +124,22 @@ contract CurveVaultFactory {
         ILiquidityGaugeStrat(gaugeImplAddress).commit_transfer_ownership(GOVERNANCE);
 
         // Update pids mapping on fallbacks
-        if (setAllPids) {
-            address[] memory fallbacks = Optimizor(curveStrategy.optimizor()).getFallbacks();
-            for (uint8 i = 1; i < fallbacks.length;) {
-                BaseFallback(fallbacks[i]).setAllPidsOptimized();
-                unchecked {
-                    ++i;
-                }
-            }
-        }
+        _updatePidsOnFallbacks();
 
         return (vaultImplAddress, gaugeImplAddress);
+    }
+
+    /// @notice Toggle setAllPids variable
+    /// @dev Only callable by `governance`
+    function toggleSetAllPids() public {
+        // Only governance can call this function
+        if (msg.sender != GOVERNANCE) revert ONLY_GOVERNANCE();
+
+        // Toggle setAllPids
+        setAllPids = !setAllPids;
+
+        // Emit event
+        emit SetAllPidsToggled(setAllPids);
     }
 
     //////////////////////////////////////////////////////
@@ -216,6 +227,30 @@ contract CurveVaultFactory {
 
         // Return gauge address
         return ILiquidityGaugeStrat(deployed);
+    }
+
+    /// @notice Internal function to update pids on fallbacks
+    function _updatePidsOnFallbacks() internal {
+        // Only update pids on fallbacks if setAllPids boolean is true
+        if (setAllPids) {
+            // Get optimizor address
+            Optimizor optimizor = curveStrategy.optimizor();
+
+            // If optimizor is set, update pids on fallbacks
+            if (address(optimizor) != address(0)) {
+                // Get fallbacks
+                address[] memory fallbacks = optimizor.getFallbacks();
+
+                // Loop through fallbacks and update pids
+                for (uint8 i = 0; i < fallbacks.length; ++i) {
+                    // Skip locker
+                    if (fallbacks[i] == LOCKER) continue;
+
+                    // Set all pids optimized
+                    BaseFallback(fallbacks[i]).setAllPidsOptimized();
+                }
+            }
+        }
     }
 
     //////////////////////////////////////////////////////

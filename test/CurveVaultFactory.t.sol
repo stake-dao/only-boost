@@ -108,6 +108,15 @@ contract CurveVaultFactoryTest is BaseTest {
         _test_VaultAndGaugeCreation(GAUGE_SWETH_FXETH);
     }
 
+    function test_ToggleSetAllPids() public {
+        bool before = curveVaultFactory.setAllPids();
+
+        vm.prank(MS_STAKEDAO);
+        curveVaultFactory.toggleSetAllPids();
+
+        assertEq(curveVaultFactory.setAllPids(), !before);
+    }
+
     function _test_VaultAndGaugeCreation(address _curveGauge) internal {
         // Clone and init vault and gauge
         (address vault, address gauge) = curveVaultFactory.cloneAndInit(_curveGauge);
