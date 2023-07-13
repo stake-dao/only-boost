@@ -13,6 +13,7 @@ import {RolesAuthority} from "solmate/auth/authorities/RolesAuthority.sol";
 
 // --- Contracts
 import {Optimizor} from "src/Optimizor.sol";
+import {CrvDepositor} from "src/CrvDepositor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
 import {CurveVaultFactory} from "src/CurveVaultFactory.sol";
@@ -27,7 +28,9 @@ import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
 import {IVault} from "src/interfaces/IVault.sol";
 import {IVeCRV} from "src/interfaces/IVeCRV.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
+import {ISdToken} from "src/interfaces/ISdToken.sol";
 import {ICurveVault} from "src/interfaces/ICurveVault.sol";
+import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
@@ -44,6 +47,7 @@ contract BaseTest is Test {
     //////////////////////////////////////////////////////
     // --- Contracts
     Optimizor public optimizor;
+    CrvDepositor public crvDepositor;
     CurveStrategy public curveStrategy;
     RolesAuthority public rolesAuthority;
     CurveVaultFactory public curveVaultFactory;

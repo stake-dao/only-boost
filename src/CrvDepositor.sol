@@ -65,12 +65,18 @@ contract CrvDepositor is Auth {
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
 
-    constructor(address _token, address _locker, address _minter, address _owner, Authority _authority)
-        Auth(_owner, _authority)
-    {
+    constructor(
+        address _token,
+        address _locker,
+        address _minter,
+        address _owner,
+        address _strategy,
+        Authority _authority
+    ) Auth(_owner, _authority) {
         TOKEN = ERC20(_token);
         LOCKER = _locker;
         MINTER = _minter;
+        strategy = CurveStrategy(_strategy);
     }
 
     //////////////////////////////////////////////////////
