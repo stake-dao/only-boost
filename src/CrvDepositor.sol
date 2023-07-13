@@ -6,6 +6,9 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
+// --- Core Contracts
+import {CurveStrategy} from "src/CurveStrategy.sol";
+
 // --- Interfaces
 import {ISdToken} from "src/interfaces/ISdToken.sol";
 import {ITokenMinter} from "src/interfaces/ITokenMinter.sol";
@@ -30,8 +33,8 @@ contract CrvDepositor is Auth {
     /// --- VARIABLES
     //////////////////////////////////////////////////////
 
+    CurveStrategy public strategy;
     address public gauge;
-
     uint256 public lockIncentive = 10; //incentive to users who spend gas to lock token
     uint256 public incentiveToken;
 
@@ -97,6 +100,12 @@ contract CrvDepositor is Auth {
         }
     }
 
+    /// @notice Set the new strategy
+    /// @param _strategy New Strategy address
+    function setStrategy(address _strategy) external requiresAuth {
+        strategy = CurveStrategy(_strategy);
+    }
+
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS
     //////////////////////////////////////////////////////
@@ -118,7 +127,7 @@ contract CrvDepositor is Auth {
             return;
         }
 
-        //ILocker(LOCKER).increaseAmount(tokenBalanceStaker);
+        strategy.increaseAmount(tokenBalanceStaker);
     }
 
     /// @notice Lock tokens held by the contract
