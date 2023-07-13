@@ -5,6 +5,7 @@ pragma solidity 0.8.20;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 // --- Core Contracts
 import {CurveStrategy} from "src/CurveStrategy.sol";
@@ -18,6 +19,7 @@ import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 /// @author Stake DAO
 contract CrvDepositor is Auth {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     //////////////////////////////////////////////////////
     /// --- CONSTANTS & IMMUTABLES
@@ -167,7 +169,7 @@ contract CrvDepositor is Auth {
             //move tokens here
             TOKEN.safeTransferFrom(msg.sender, address(this), _amount);
             //defer lock cost to another user
-            uint256 callIncentive = (_amount * lockIncentive) / FEE_DENOMINATOR;
+            uint256 callIncentive = _amount.mulDivDown(lockIncentive, FEE_DENOMINATOR);
             _amount = _amount - callIncentive;
             incentiveToken = incentiveToken + callIncentive;
         }
