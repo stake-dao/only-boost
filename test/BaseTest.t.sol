@@ -25,6 +25,7 @@ import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
 
 // --- Interfaces
 import {IVault} from "src/interfaces/IVault.sol";
+import {IVeCRV} from "src/interfaces/IVeCRV.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {ICurveVault} from "src/interfaces/ICurveVault.sol";
 import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
@@ -102,6 +103,7 @@ contract BaseTest is Test {
     IVault public constant VAULT_UZD_FRAXBP = IVault(0xbc61f6973cE564eFFB16Cd79B5BC3916eaD592E2);
 
     // --- Lockers address
+    address public constant VE_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
     address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
     address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2; // CRV Locker
