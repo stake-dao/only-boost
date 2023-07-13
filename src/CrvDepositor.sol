@@ -47,6 +47,16 @@ contract CrvDepositor is Auth {
     event FeesChanged(uint256 newFee);
 
     //////////////////////////////////////////////////////
+    /// --- ERRORS
+    //////////////////////////////////////////////////////
+
+    /// @notice Error emitted when input amount is null
+    error AMOUNT_NULL();
+
+    /// @notice Error emitted when input address is null
+    error ADDRESS_NULL();
+
+    //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
 
@@ -131,8 +141,8 @@ contract CrvDepositor is Auth {
     /// @param _stake Whether to stake the token
     /// @param _user User to deposit for
     function deposit(uint256 _amount, bool _lock, bool _stake, address _user) public {
-        require(_amount > 0, "!>0");
-        require(_user != address(0), "!user");
+        if (_amount == 0) revert AMOUNT_NULL();
+        if (_user == address(0)) revert ADDRESS_NULL();
 
         // If User chooses to lock Token
         if (_lock) {
