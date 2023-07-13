@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-// --- Libraries ---
+// --- Libraries
 import {ClonesUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/ClonesUpgradeable.sol";
 import {ERC20Upgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
 
-// --- Core contracts ---
+// --- Core contracts
 import {Optimizor} from "src/Optimizor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
 
-// --- Interfaces ---
+// --- Interfaces
 import {ICurveVault} from "src/interfaces/ICurveVault.sol";
 import {IGaugeController} from "src/interfaces/IGaugeController.sol";
 import {ILiquidityGaugeStrat} from "src/interfaces/ILiquidityGaugeStrat.sol";
