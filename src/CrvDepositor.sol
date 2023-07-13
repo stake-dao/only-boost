@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 // --- Solmate Contracts
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 
 // --- Interfaces
@@ -12,25 +13,31 @@ import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 
 /// @title Contract that accepts tokens and locks them
 /// @author Stake DAO
-contract CrvDepositor {
+contract CrvDepositor is Auth {
     using SafeTransferLib for ERC20;
 
-    /* ========== STATE VARIABLES ========== */
-    address public token;
-    uint256 private constant MAXTIME = 4 * 364 * 86_400;
-    uint256 private constant WEEK = 7 * 86_400;
+    //////////////////////////////////////////////////////
+    /// --- CONSTANTS & IMMUTABLES
+    //////////////////////////////////////////////////////
 
-    uint256 public lockIncentive = 10; //incentive to users who spend gas to lock token
+    ERC20 public immutable TOKEN;
+    address public immutable LOCKER;
+    address public immutable MINTER;
+    address public constant SD_VE_CRV = 0x478bBC744811eE8310B461514BDc29D03739084D;
     uint256 public constant FEE_DENOMINATOR = 10_000;
 
-    address public gauge;
-    address public governance;
-    address public immutable locker;
-    address public immutable minter;
-    uint256 public incentiveToken = 0;
+    //////////////////////////////////////////////////////
+    /// --- VARIABLES
+    //////////////////////////////////////////////////////
 
-    address public constant SD_VE_CRV = 0x478bBC744811eE8310B461514BDc29D03739084D;
-    /* ========== EVENTS ========== */
+    address public gauge;
+
+    uint256 public lockIncentive = 10; //incentive to users who spend gas to lock token
+    uint256 public incentiveToken;
+
+    //////////////////////////////////////////////////////
+    /// --- EVENTS
+    //////////////////////////////////////////////////////
 
     event Deposited(address indexed caller, address indexed user, uint256 amount, bool lock, bool stake);
     event IncentiveReceived(address indexed caller, uint256 amount);
@@ -39,69 +46,69 @@ contract CrvDepositor {
     event SdTokenOperatorChanged(address indexed newSdToken);
     event FeesChanged(uint256 newFee);
 
-    /* ========== CONSTRUCTOR ========== */
-    constructor(address _token, address _locker, address _minter) {
-        governance = msg.sender;
-        token = _token;
-        locker = _locker;
-        minter = _minter;
+    //////////////////////////////////////////////////////
+    /// --- CONSTRUCTOR
+    //////////////////////////////////////////////////////
+
+    constructor(address _token, address _locker, address _minter, address _owner, Authority _authority)
+        Auth(_owner, _authority)
+    {
+        TOKEN = ERC20(_token);
+        LOCKER = _locker;
+        MINTER = _minter;
     }
 
-    /* ========== RESTRICTED FUNCTIONS ========== */
-    /// @notice Set the new governance
-    /// @param _governance governance address
-    function setGovernance(address _governance) external {
-        require(msg.sender == governance, "!auth");
-        governance = _governance;
-        emit GovernanceChanged(_governance);
-    }
+    //////////////////////////////////////////////////////
+    /// --- RESTRICTED FUNCTIONS
+    //////////////////////////////////////////////////////
 
     /// @notice Set the new operator for minting sdToken
+    /// @dev Only callable by governance
     /// @param _operator operator address
-    function setSdTokenOperator(address _operator) external {
-        require(msg.sender == governance, "!auth");
-        ISdToken(minter).setOperator(_operator);
+    function setSdTokenOperator(address _operator) external requiresAuth {
+        ISdToken(MINTER).setOperator(_operator);
         emit SdTokenOperatorChanged(_operator);
     }
 
     /// @notice Set the gauge to deposit token yielded
+    /// @dev Only callable by governance
     /// @param _gauge gauge address
-    function setGauge(address _gauge) external {
-        require(msg.sender == governance, "!auth");
+    function setGauge(address _gauge) external requiresAuth {
         gauge = _gauge;
     }
 
     /// @notice set the fees for locking incentive
+    /// @dev Only callable by governance
     /// @param _lockIncentive contract must have tokens to lock
-    function setFees(uint256 _lockIncentive) external {
-        require(msg.sender == governance, "!auth");
-
+    function setFees(uint256 _lockIncentive) external requiresAuth {
         if (_lockIncentive <= 30) {
             lockIncentive = _lockIncentive;
             emit FeesChanged(_lockIncentive);
         }
     }
 
-    /* ========== MUTATIVE FUNCTIONS ========== */
+    //////////////////////////////////////////////////////
+    /// --- MUTATIVE FUNCTIONS
+    //////////////////////////////////////////////////////
 
     /// @notice Locks the tokens held by the contract
     /// @dev The contract must have tokens to lock
     function _lockToken() internal {
-        uint256 tokenBalance = ERC20(token).balanceOf(address(this));
+        uint256 tokenBalance = TOKEN.balanceOf(address(this));
 
-        // If there is Token available in the contract transfer it to the locker
+        // If there is Token available in the contract transfer it to the LOCKER
         if (tokenBalance > 0) {
-            ERC20(token).safeTransfer(locker, tokenBalance);
+            TOKEN.safeTransfer(LOCKER, tokenBalance);
             emit TokenLocked(msg.sender, tokenBalance);
         }
 
-        uint256 tokenBalanceStaker = ERC20(token).balanceOf(locker);
-        // If the locker has no tokens then return
+        uint256 tokenBalanceStaker = TOKEN.balanceOf(LOCKER);
+        // If the LOCKER has no tokens then return
         if (tokenBalanceStaker == 0) {
             return;
         }
 
-        //ILocker(locker).increaseAmount(tokenBalanceStaker);
+        //ILocker(LOCKER).increaseAmount(tokenBalanceStaker);
     }
 
     /// @notice Lock tokens held by the contract
@@ -111,7 +118,7 @@ contract CrvDepositor {
 
         // If there is incentive available give it to the user calling lockToken
         if (incentiveToken > 0) {
-            ITokenMinter(minter).mint(msg.sender, incentiveToken);
+            ITokenMinter(MINTER).mint(msg.sender, incentiveToken);
             emit IncentiveReceived(msg.sender, incentiveToken);
             incentiveToken = 0;
         }
@@ -129,7 +136,7 @@ contract CrvDepositor {
 
         // If User chooses to lock Token
         if (_lock) {
-            ERC20(token).safeTransferFrom(msg.sender, locker, _amount);
+            TOKEN.safeTransferFrom(msg.sender, LOCKER, _amount);
             _lockToken();
 
             if (incentiveToken > 0) {
@@ -139,7 +146,7 @@ contract CrvDepositor {
             }
         } else {
             //move tokens here
-            ERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
+            TOKEN.safeTransferFrom(msg.sender, address(this), _amount);
             //defer lock cost to another user
             uint256 callIncentive = (_amount * lockIncentive) / FEE_DENOMINATOR;
             _amount = _amount - callIncentive;
@@ -147,11 +154,11 @@ contract CrvDepositor {
         }
 
         if (_stake && gauge != address(0)) {
-            ITokenMinter(minter).mint(address(this), _amount);
-            ERC20(minter).safeApprove(gauge, _amount);
+            ITokenMinter(MINTER).mint(address(this), _amount);
+            ERC20(MINTER).safeApprove(gauge, _amount);
             ILiquidityGauge(gauge).deposit(_amount, _user);
         } else {
-            ITokenMinter(minter).mint(_user, _amount);
+            ITokenMinter(MINTER).mint(_user, _amount);
         }
 
         emit Deposited(msg.sender, _user, _amount, _lock, _stake);
@@ -163,7 +170,7 @@ contract CrvDepositor {
     /// @param _stake Whether to stake the token
     /// @param _user User to deposit for
     function depositAll(bool _lock, bool _stake, address _user) external {
-        uint256 tokenBal = ERC20(token).balanceOf(msg.sender);
+        uint256 tokenBal = TOKEN.balanceOf(msg.sender);
         deposit(tokenBal, _lock, _stake, _user);
     }
 
@@ -173,6 +180,6 @@ contract CrvDepositor {
     function lockSdveCrvToSdCrv(uint256 _amount) external {
         ERC20(SD_VE_CRV).transferFrom(msg.sender, address(this), _amount);
         // mint new sdCrv to the user
-        ITokenMinter(minter).mint(msg.sender, _amount);
+        ITokenMinter(MINTER).mint(msg.sender, _amount);
     }
 }
