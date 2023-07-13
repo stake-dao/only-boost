@@ -571,6 +571,33 @@ contract CurveStrategy is Auth {
     }
 
     //////////////////////////////////////////////////////
+    /// --- LOCKER MANAGEMENT
+    //////////////////////////////////////////////////////
+
+    /// @notice Increase CRV amount locked
+    /// @param value Amount of CRV to lock
+    function increaseAmount(uint256 value) external requiresAuth {
+        LOCKER.increaseAmount(value);
+    }
+
+    /// @notice Release all CRV locked
+    function release() external requiresAuth {
+        LOCKER.release();
+    }
+
+    /// @notice Set the governance address
+    /// @param _governance Address of the new governance
+    function setGovernance(address _governance) external requiresAuth {
+        LOCKER.setGovernance(_governance);
+    }
+
+    /// @notice Set the strategy address
+    /// @param _strategy Address of the new strategy
+    function setStrategy(address _strategy) external requiresAuth {
+        LOCKER.setStrategy(_strategy);
+    }
+
+    //////////////////////////////////////////////////////
     /// --- MIGRATION
     //////////////////////////////////////////////////////
 
