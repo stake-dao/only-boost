@@ -182,11 +182,14 @@ contract Optimizor is Auth {
         // Additional boost for Convex FRAX
         boost = isMeta ? boost + extraConvexFraxBoost : boost;
 
+        // Fees
+        uint256 feeDiff = boost + FEES_STAKEDAO > FEES_CONVEX ? FEES_STAKEDAO + boost - FEES_CONVEX : 0;
+
         // Result
         return (
             3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
                 / (
-                    (2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply
+                    (2 * (feeDiff) * balanceConvex * veCRVTotal) / totalSupply
                         + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
                 )
         );
