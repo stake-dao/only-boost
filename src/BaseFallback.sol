@@ -177,7 +177,7 @@ contract BaseFallback is Auth {
         uint256 multisigFee = rewardsBalance.mulDivDown(fee.perfFee, 10_000);
         uint256 accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, 10_000);
         uint256 veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, 10_000);
-        uint256 claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, 10_000);
+        uint256 claimerPart = claimer != address(0) ? rewardsBalance.mulDivDown(fee.claimerRewardFee, 10_000) : 0;
 
         // send
         ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
