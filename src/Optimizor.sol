@@ -52,7 +52,7 @@ contract Optimizor is Auth {
     address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
 
     /// @notice Convex CVX Vote-escrow contract
-    address public constant LOCKER_CVX = 0xD18140b4B819b895A3dba5442F959fA44994AF50;
+    address public constant LOCKER_CVX = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
     /// @notice Convex CRV Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80;
@@ -174,7 +174,7 @@ contract Optimizor is Auth {
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
+        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply();
 
         // Additional boost
         uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
