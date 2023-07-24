@@ -437,7 +437,7 @@ contract Optimizor is Auth {
         // Cache len
         uint256 len = fallbackConvexFrax.lastPidsCount();
 
-        for (uint256 i = 0; i < len;) {
+        for (uint256 i; i < len;) {
             // Check balanceOf on the fallback
             uint256 balance = fallbackConvexFrax.balanceOf(i);
 
