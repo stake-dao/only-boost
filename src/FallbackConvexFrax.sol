@@ -295,8 +295,11 @@ contract FallbackConvexFrax is BaseFallback {
         // and the last one is emptyed. So we need to get the last one.
         uint256 lockCount = IFraxUnifiedFarm(staking).lockedStakesOfLength(vaults[pid]);
 
+        // Check if the pid is initialized
+        bool initializedPid = vaults[pid] != address(0);
+
         // If no lockedStakes, return 0
-        if (lockCount == 0) return infos;
+        if (lockCount == 0 || !initializedPid) return infos;
 
         // Cache lockedStakes infos
         infos = IFraxUnifiedFarm(staking).lockedStakesOf(vaults[pid])[lockCount - 1];
