@@ -98,10 +98,11 @@ contract CurveStrategyTest is BaseTest {
         _depositTest(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
 
         BaseFallback.PidsInfo memory pid = fallbackConvexFrax.getPid(address(ALUSD_FRAXBP));
-        assertEq(fallbackConvexFrax.balanceOfLocked(pid.pid), partConvex);
+        (address token,) = fallbackConvexFrax.getLP(pid.pid);
+        assertEq(fallbackConvexFrax.balanceOfLocked(token), partConvex);
 
         skip(fallbackConvexFrax.lockingIntervalSec());
-        assertEq(fallbackConvexFrax.balanceOfLocked(pid.pid), 0);
+        assertEq(fallbackConvexFrax.balanceOfLocked(token), 0);
     }
 
     function test_Deposit_UsingConvexFraxSecondDeposit() public useFork(forkId1) {

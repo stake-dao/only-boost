@@ -438,12 +438,12 @@ contract Optimizor is Auth {
         uint256 len = fallbackConvexFrax.lastPidsCount();
 
         for (uint256 i = 0; i < len;) {
+            // Get LP token
+            (address token,) = fallbackConvexFrax.getLP(i);
             // Check balanceOf on the fallback
-            uint256 balance = fallbackConvexFrax.balanceOf(i);
+            uint256 balance = fallbackConvexFrax.balanceOf(token);
 
             if (balance > 0) {
-                // Get LP token
-                (address token,) = fallbackConvexFrax.getLP(i);
                 // Withdraw from convex frax
                 fallbackConvexFrax.withdraw(token, balance);
 

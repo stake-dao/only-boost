@@ -79,6 +79,12 @@ contract BaseFallback is Auth {
     event ClaimedRewards(address rewardToken, uint256 amountClaimed);
 
     //////////////////////////////////////////////////////
+    /// --- ERRORS
+    //////////////////////////////////////////////////////
+    /// @notice Error emitted when token is not active
+    error NOT_VALID_PID();
+
+    //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
 
@@ -220,5 +226,5 @@ contract BaseFallback is Auth {
 
     function getRewardsTokens(address token) public view virtual returns (address[] memory) {}
 
-    function getPid(address token) external view virtual returns (PidsInfo memory) {}
+    function getPid(address token) public view virtual returns (PidsInfo memory) {}
 }

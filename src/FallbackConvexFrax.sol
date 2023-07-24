@@ -118,7 +118,7 @@ contract FallbackConvexFrax is BaseFallback {
     /// @param amount Amount of LP token to deposit
     function deposit(address token, uint256 amount) external override requiresAuth {
         // Cache the pid
-        uint256 pid = pids[stkTokens[token]].pid;
+        uint256 pid = getPid(token).pid;
 
         // Create personal vault if not exist
         if (vaults[pid] == address(0)) vaults[pid] = BOOSTER_CONVEX_FRAX.createVault(pid);
@@ -143,12 +143,12 @@ contract FallbackConvexFrax is BaseFallback {
     /// @param amount Amount of LP token to withdraw
     function withdraw(address token, uint256 amount) external override requiresAuth {
         // Cache the pid
-        uint256 pid = pids[stkTokens[token]].pid;
+        address vault = vaults[getPid(token).pid];
 
         // Release all the locked curve lp
-        IStakingProxyConvex(vaults[pid]).withdrawLockedAndUnwrap(kekIds[vaults[pid]]);
+        IStakingProxyConvex(vault).withdrawLockedAndUnwrap(kekIds[vault]);
         // Set kekId to 0
-        delete kekIds[vaults[pid]];
+        delete kekIds[vault];
 
         // Transfer the curve lp back to user
         ERC20(token).safeTransfer(address(curveStrategy), amount);
@@ -161,9 +161,9 @@ contract FallbackConvexFrax is BaseFallback {
         if (remaining == 0) return;
 
         // Safe approve lp token to personal vault
-        ERC20(token).safeApprove(vaults[pid], remaining);
+        ERC20(token).safeApprove(vault, remaining);
         // Stake back the remaining curve lp
-        kekIds[vaults[pid]] = IStakingProxyConvex(vaults[pid]).stakeLockedCurveLp(amount, lockingIntervalSec);
+        kekIds[vault] = IStakingProxyConvex(vault).stakeLockedCurveLp(amount, lockingIntervalSec);
 
         emit Redeposited(token, remaining);
     }
@@ -247,10 +247,13 @@ contract FallbackConvexFrax is BaseFallback {
 
     /// @notice Get the pid corresponding to LP token
     /// @param token Address of LP token to get pid
-    /// @return Pid info struct
-    function getPid(address token) external view override returns (PidsInfo memory) {
-        // Return the pid corresponding to the stkToken, corresponding to the LP token
-        return pids[stkTokens[token]];
+    /// @return pid Pid info struct
+    function getPid(address token) public view override returns (PidsInfo memory pid) {
+        // Get the pid infos
+        pid = pids[stkTokens[token]];
+
+        // Revert if the pid is initialized
+        if (!pid.isInitialized) revert NOT_VALID_PID();
     }
 
     /// @notice Get the liquid balance of the LP token on ConvexFrax
@@ -259,17 +262,13 @@ contract FallbackConvexFrax is BaseFallback {
     /// @return Liquid Balance of the LP token on ConvexFrax
     function balanceOf(address token) public view override returns (uint256) {
         // Cache the pid
-        uint256 pid = pids[stkTokens[token]].pid;
+        PidsInfo memory pidInfo = pids[stkTokens[token]];
 
-        return balanceOf(pid);
-    }
+        // Check if the pid is initialized
+        if (!pidInfo.isInitialized) return 0;
 
-    /// @notice Get the liquid balance of the LP token on ConvexFrax
-    /// @dev Because LP are locked for a certain period of time, this represent the liquid balance
-    /// @param pid Pid to get the balanceOf
-    /// @return Liquid Balance of the LP token on ConvexFrax
-    function balanceOf(uint256 pid) public view returns (uint256) {
-        IFraxUnifiedFarm.LockedStake memory infos = _getInfos(pid);
+        // Get the lockedStakes infos
+        IFraxUnifiedFarm.LockedStake memory infos = _getInfos(pidInfo.pid);
 
         // If the lock is not expired, then return 0, as only the liquid balance is needed
         return block.timestamp >= infos.ending_timestamp ? infos.liquidity : 0;
@@ -277,10 +276,17 @@ contract FallbackConvexFrax is BaseFallback {
 
     /// @notice Get the locked balance of the LP token on ConvexFrax
     /// @dev Because LP are locked for a certain period of time, this represent the locked balance
-    /// @param pid Pid to get the balanceOf
+    /// @param token Address of LP token to get balance
     /// @return Liquid Balance of the LP token on ConvexFrax
-    function balanceOfLocked(uint256 pid) public view returns (uint256) {
-        IFraxUnifiedFarm.LockedStake memory infos = _getInfos(pid);
+    function balanceOfLocked(address token) public view returns (uint256) {
+        // Cache the pid
+        PidsInfo memory pidInfo = pids[stkTokens[token]];
+
+        // Check if the pid is initialized
+        if (!pidInfo.isInitialized) return 0;
+
+        // Get the lockedStakes infos
+        IFraxUnifiedFarm.LockedStake memory infos = _getInfos(pidInfo.pid);
 
         // If the lock is not expired, then return locked balance
         return block.timestamp >= infos.ending_timestamp ? 0 : infos.liquidity;

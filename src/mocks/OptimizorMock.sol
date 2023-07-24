@@ -332,14 +332,16 @@ contract OptimizorMock is Auth {
         uint256 len = fallbackConvexFrax.lastPidsCount();
 
         for (uint256 i = 0; i < len; ++i) {
-            uint256 balance = fallbackConvexFrax.balanceOf(i);
+            // Get LP token
+            (address token,) = fallbackConvexFrax.getLP(i);
+            // Check balanceOf on the fallback
+            uint256 balance = fallbackConvexFrax.balanceOf(token);
             if (balance > 0) {
-                (address lpToken,) = fallbackConvexFrax.getLP(i);
                 // Withdraw from convex frax
-                fallbackConvexFrax.withdraw(lpToken, balance);
+                fallbackConvexFrax.withdraw(token, balance);
 
                 // Follow optimized deposit logic
-                curveStrategy.depositForOptimizor(lpToken, balance);
+                curveStrategy.depositForOptimizor(token, balance);
             }
         }
     }
