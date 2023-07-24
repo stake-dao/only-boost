@@ -421,6 +421,8 @@ contract Optimizor is Auth {
     }
 
     /// @notice Kill the deposit on Convex Frax
+    /// @dev WARNING! Be sure that the `lockingIntervalSec` value has not been lowered on fallbackConvexFrax
+    /// between now and the previous `lockingIntervalSec seconds ago`!
     function killConvexFrax() external requiresAuth {
         // Revert if not paused
         if (!isConvexFraxPaused) revert NOT_PAUSED();
