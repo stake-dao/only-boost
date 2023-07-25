@@ -286,16 +286,18 @@ contract Optimizor is Auth {
             // Calculate optimal amount
             opt = optimalAmount(liquidityGauge, veCRVBalance, isMeta);
 
-            // Cache veCRV balance of Stake DAO, no need if already the same
-            if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;
+            if (useLastOpti) {
+                // Cache veCRV balance of Stake DAO, no need if already the same
+                if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;
 
-            // Cache optimal amount and timestamp
-            if (isMeta) {
-                // Update the cache for Metapool
-                lastOptiMetapool[liquidityGauge] = CachedOptimization(opt, block.timestamp);
-            } else {
-                // Update the cache for Classic Pool
-                lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
+                // Cache optimal amount and timestamp
+                if (isMeta) {
+                    // Update the cache for Metapool
+                    lastOptiMetapool[liquidityGauge] = CachedOptimization(opt, block.timestamp);
+                } else {
+                    // Update the cache for Classic Pool
+                    lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
+                }
             }
         }
     }
