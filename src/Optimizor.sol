@@ -102,8 +102,14 @@ contract Optimizor is Auth {
     /// @notice veCRV difference threshold to trigger a new optimal amount calculation, 5e16 = 5%
     uint256 public veCRVDifferenceThreshold = 5e16;
 
+    /// @notice Convex difference threshold to trigger a new optimal amount calculation, 5e16 = 5%
+    uint256 public convexDifferenceThreshold = 5e16;
+
     /// @notice Cached veCRV value for Stake DAO Liquidity Locker
     uint256 public cacheVeCRVLockerBalance;
+
+    /// @notice Cached Convex balance
+    uint256 public cacheConvexBalance;
 
     /// @notice Cache period for optimization
     uint256 public cachePeriod = 7 days;
@@ -269,6 +275,8 @@ contract Optimizor is Auth {
         internal
         returns (uint256 opt)
     {
+        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
+
         if (
             // 1. Optimize calculation is activated
             useLastOpti
@@ -279,15 +287,23 @@ contract Optimizor is Auth {
             )
             // 3. The cached veCRV balance of Stake DAO is below the acceptability threshold
             && absDiff(cacheVeCRVLockerBalance, veCRVBalance) < veCRVBalance.mulWadDown(veCRVDifferenceThreshold)
+            // 4. The cached Convex balance is within the acceptability threshold
+            && absDiff(cacheConvexBalance, balanceConvex) < balanceConvex.mulWadDown(convexDifferenceThreshold)
+        
+    
         ) {
             // Use cached optimal amount
             opt = isMeta ? lastOptiMetapool[liquidityGauge].value : lastOpti[liquidityGauge].value;
+            
         } else {
             // Calculate optimal amount
             opt = optimalAmount(liquidityGauge, veCRVBalance, isMeta);
 
             // Cache veCRV balance of Stake DAO, no need if already the same
             if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;
+
+            // Cache Convex balance, no need if already the same
+            if (cacheConvexBalance != balanceConvex) cacheConvexBalance = balanceConvex;
 
             // Cache optimal amount and timestamp
             if (isMeta) {
