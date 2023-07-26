@@ -102,8 +102,6 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
-    /// @notice Error emitted when not enough time has passed
-    error TOO_SOON();
 
     /// @notice Error emitted when amount is wrong
     error WRONG_AMOUNT();
