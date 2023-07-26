@@ -28,9 +28,7 @@ contract CurveStrategyTest is BaseTest {
         rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
         curveStrategy = new CurveStrategy(address(this), rolesAuthority);
         fallbackConvexCurve = new FallbackConvexCurve(address(this), rolesAuthority, address(curveStrategy));
-        fallbackConvexFrax = new FallbackConvexFrax(address(this), rolesAuthority, address(curveStrategy));
-        optimizor =
-        new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve), address(fallbackConvexFrax));
+        optimizor = new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock(CRV3);
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock(CNC_ETH);
         liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock(STETH_ETH);
@@ -53,10 +51,8 @@ contract CurveStrategyTest is BaseTest {
     // --- Deployment
     function test_DeploymentAddresses() public useFork(forkId1) {
         assertTrue(address(optimizor) != address(0), "1");
-        assertTrue(fallbackConvexFrax != FallbackConvexFrax(address(0)), "2");
         assertTrue(fallbackConvexCurve != FallbackConvexCurve(address(0)), "3");
         assertTrue(optimizor.fallbacksLength() != 0, "4");
-        assertTrue(fallbackConvexFrax.lastPidsCount() != 0, "5");
         assertTrue(fallbackConvexCurve.lastPidsCount() != 0, "6");
     }
 
@@ -90,67 +86,6 @@ contract CurveStrategyTest is BaseTest {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, MAX, 1);
 
         _depositTest(CRV3, partStakeDAO, partConvex, 0);
-    }
-
-    function test_Deposit_UsingConvexFraxFallBack() public useFork(forkId1) {
-        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-
-        _depositTest(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
-
-        BaseFallback.PidsInfo memory pid = fallbackConvexFrax.getPid(address(ALUSD_FRAXBP));
-        assertEq(fallbackConvexFrax.balanceOfLocked(pid.pid), partConvex);
-
-        skip(fallbackConvexFrax.lockingIntervalSec());
-        assertEq(fallbackConvexFrax.balanceOfLocked(pid.pid), 0);
-    }
-
-    function test_Deposit_UsingConvexFraxSecondDeposit() public useFork(forkId1) {
-        // === DEPOSIT PROCESS N°1 === /
-        (uint256 partStakeDAO1, uint256 partConvex1) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-        _deposit(ALUSD_FRAXBP, partStakeDAO1, partConvex1, 0);
-
-        // === DEPOSIT PROCESS N°2 === //
-        skip(10 days);
-        (uint256 partStakeDAO2, uint256 partConvex2) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-        rewind(10 days);
-        _depositTest(ALUSD_FRAXBP, partStakeDAO2, partConvex2, 10 days);
-        // Note: Locking additional liquidity doesn't change ending-timestamp
-    }
-
-    function test_Deposit_WhenConvexFraxIsPaused() public useFork(forkId1) {
-        // Pause ConvexFrax deposit
-        optimizor.pauseConvexFraxDeposit();
-
-        // === DEPOSIT PROCESS === //
-        (uint256 partStakeDAO1, uint256 partConvex1) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-        _depositTest(ALUSD_FRAXBP, partStakeDAO1, partConvex1, 0);
-    }
-
-    function test_Deposit_UsingConvexCurveAndFrax() public useFork(forkId2) {
-        // This situation could rarely happen, but it's possible
-        // When a pool is added on ConvexCurve, user can deposit on curveStrategy for this pool
-        // And some times after, the pool is added on ConvexFrax
-        // so this should have some tokens on both fallbacks,
-        // let's test it using COIL_FRAXBP, added on ConvexFrax at block 17326004 on this tx :
-        // https://etherscan.io/tx/0xbcc25272dad48329ed963991f156b929b28ee171e4ad157e2d9b749f3d85eb7b
-
-        // First deposit into StakeDAO Locker and Convex Curve,
-        // at the moment COIL_FRAXBP is not added on Metapool mapping on this test
-        (uint256 partStakeDAO, uint256 partConvexBefore) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
-        _depositTest(COIL_FRAXBP, partStakeDAO, partConvexBefore, 0);
-
-        _addCOIL_FRAXBPOnConvexFrax();
-        isMetapool[address(COIL_FRAXBP)] = true;
-        fallbackConvexFrax.setAllPidsOptimized();
-
-        // Second deposit into StakeDAO Locker and Convex Frax
-        (uint256 partStakeDAOAfter, uint256 partConvexAfter) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
-        _depositTest(COIL_FRAXBP, partStakeDAOAfter, partConvexAfter, 0);
-
-        skip(1 weeks);
-        // Check that we have tokens on both fallbacks
-        assertEq(fallbackConvexFrax.balanceOf(address(COIL_FRAXBP)), partConvexAfter, "1");
-        assertEq(fallbackConvexCurve.balanceOf(address(COIL_FRAXBP)), partConvexBefore, "2");
     }
 
     function test_Deposit_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
@@ -218,55 +153,6 @@ contract CurveStrategyTest is BaseTest {
 
         // === WITHDRAW PROCESS === //
         _withdrawTest(CRV3, partStakeDAO, partConvex, 0);
-    }
-
-    function test_Withdraw_UsingConvexFraxFallbackPartly() public useFork(forkId1) {
-        // === DEPOSIT PROCESS === //
-        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex);
-
-        // Withdraw ALUSD_FRAXBP
-        _withdrawTest(ALUSD_FRAXBP, 0, partConvex / 2, fallbackConvexFrax.lockingIntervalSec());
-    }
-
-    function test_Withdraw_UsingConvexFraxFallbackFully() public useFork(forkId1) {
-        // === DEPOSIT PROCESS === //
-        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex);
-
-        // Withdraw ALUSD_FRAXBP
-        _withdrawTest(ALUSD_FRAXBP, 0, partConvex, fallbackConvexFrax.lockingIntervalSec());
-    }
-
-    function test_Withdraw_AllUsingConvexCurveAndFrax() public useFork(forkId2) {
-        // This is the following ot test_Deposit_OnConvexCurveAndFrax
-        // On this withdraw we need to take tokens from both fallbacks
-
-        // === DEPOSIT PROCESS === //
-        // First deposit into StakeDAO Locker and Convex Curve,
-        // at the moment COIL_FRAXBP is not added on Metapool mapping on this test
-        (uint256 partStakeDAOBefore, uint256 partConvexBefore) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
-        _depositTest(COIL_FRAXBP, partStakeDAOBefore, partConvexBefore, 0);
-
-        // Add the pool on ConvexFrax
-        _addCOIL_FRAXBPOnConvexFrax();
-        isMetapool[address(COIL_FRAXBP)] = true;
-        fallbackConvexFrax.setAllPidsOptimized();
-
-        // Second deposit into StakeDAO Locker and Convex Frax
-        (uint256 partStakeDAOAfter, uint256 partConvexAfter) = _calculDepositAmount(COIL_FRAXBP, MAX, 1);
-        _depositTest(COIL_FRAXBP, partStakeDAOAfter, partConvexAfter, 0);
-
-        // Use the total amount owned by the locker to be sure to withdraw all
-        uint256 balanceOfStakeDAO = ERC20(gauges[address(COIL_FRAXBP)]).balanceOf(LOCKER);
-
-        // === WITHDRAW PROCESS === //
-        _withdrawTest(
-            COIL_FRAXBP,
-            partStakeDAOAfter + partStakeDAOBefore + balanceOfStakeDAO,
-            partConvexAfter + partConvexBefore,
-            fallbackConvexFrax.lockingIntervalSec()
-        );
     }
 
     function test_Withdraw_RevertWhen_WRONG_AMOUNT() public useFork(forkId1) {
@@ -358,22 +244,6 @@ contract CurveStrategyTest is BaseTest {
         _deposit(CRV3, partStakeDAO, partConvex, 0);
 
         _claimLiquidLockerTest(CRV3, 1 weeks, fallbackConvexCurve.getRewardsTokens(address(CRV3)), ALICE);
-    }
-
-    function test_Claim_ConvexFraxRewardsWithoutFees() public useFork(forkId1) {
-        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-
-        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
-
-        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)), ALICE);
-    }
-
-    function test_Claim_ConvexFraxRewardsWithFees() public useFork(forkId1) {
-        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
-
-        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex, 0);
-
-        _claimLiquidLockerTest(ALUSD_FRAXBP, 1 weeks, fallbackConvexFrax.getRewardsTokens(address(ALUSD_FRAXBP)), ALICE);
     }
 
     function test_Claim_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
@@ -563,69 +433,6 @@ contract CurveStrategyTest is BaseTest {
         curveStrategy.migrateLP(address(CRV3));
     }
 
-    // --- Pause ConvexFrax
-    function test_PauseConvexFraxDeposit() public useFork(forkId1) {
-        assertEq(optimizor.isConvexFraxPaused(), false, "0");
-        assertEq(optimizor.convexFraxPausedTimestamp(), 0, "1");
-
-        // Pause ConvexFrax deposit
-        optimizor.pauseConvexFraxDeposit();
-
-        assertEq(optimizor.isConvexFraxPaused(), true, "2");
-        assertEq(optimizor.convexFraxPausedTimestamp(), block.timestamp, "3");
-    }
-
-    function test_PauseConvexFraxDeposit_RevertWhen_ALREADY_PAUSED() public useFork(forkId1) {
-        optimizor.pauseConvexFraxDeposit();
-
-        vm.expectRevert(Optimizor.ALREADY_PAUSED.selector);
-        optimizor.pauseConvexFraxDeposit();
-    }
-
-    // --- Kill ConvexFrax
-    function test_KillConvexFrax() public useFork(forkId1) {
-        // === DEPOSIT PROCESS === //
-        (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 10_000_000e18);
-        _deposit(ALUSD_FRAXBP, partStakeDAO, partConvex);
-
-        // Pause ConvexFrax deposit
-        optimizor.pauseConvexFraxDeposit();
-
-        // Wait 1 week
-        skip(1 weeks);
-
-        // Authorize Optimizor to withdraw from convexFrax and deposit into strategy
-        _killConvexFraxAuth();
-
-        assertGt(fallbackConvexFrax.balanceOf(address(ALUSD_FRAXBP)), 0, "0");
-
-        uint256 balanceBeforeConvexCurve = fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP));
-        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER));
-
-        // === KILL PROCESS === //
-        optimizor.killConvexFrax();
-
-        // === ASSERTIONS === //
-        //Assertion 1: Check ConvexFrax balance
-        assertEq(fallbackConvexFrax.balanceOf(address(ALUSD_FRAXBP)), 0, "1");
-        //Assertion 2: Check ConvexCurve balance
-        assertGt(fallbackConvexCurve.balanceOf(address(ALUSD_FRAXBP)), balanceBeforeConvexCurve, "2");
-        //Assertion 3: Check StakeDAO balance
-        assertGt(ERC20(gauges[address(ALUSD_FRAXBP)]).balanceOf(address(LOCKER)), balanceBeforeStakeDAO, "3");
-    }
-
-    function test_KillConvexFrax_RevertWhen_NOT_PAUSED() public useFork(forkId1) {
-        vm.expectRevert(Optimizor.NOT_PAUSED.selector);
-        optimizor.killConvexFrax();
-    }
-
-    function test_KillConvexFrax_RevertWhen_TOO_SOON() public useFork(forkId1) {
-        optimizor.pauseConvexFraxDeposit();
-
-        vm.expectRevert(Optimizor.TOO_SOON.selector);
-        optimizor.killConvexFrax();
-    }
-
     // --- SendToAccumulator
     function test_SendToAccumulator() public useFork(forkId1) {
         // Send 1_000 ALUSD_FRAXBP to the curve strategy
@@ -665,40 +472,19 @@ contract CurveStrategyTest is BaseTest {
         // Toggle using last optimization
         optimizor.toggleUseLastOptimization();
 
-        // --- Test for Metapool
+        // --- Test for non Metapool
         // Get last optimization value
-        (uint256 valueBefore, uint256 tsBefore) = optimizor.lastOptiMetapool(gauges[address(ALUSD_FRAXBP)]);
-
+        (uint256 valueBefore, uint256 tsBefore) = optimizor.lastOpti(gauges[address(CRV3)]);
         // Get veCRVStakeDAO balance
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
         // Calculate optimization
-        uint256 calculatedOpti = optimizor.optimalAmount(address(gauges[address(ALUSD_FRAXBP)]), veCRVStakeDAO, true);
-
-        // Call the optimize deposit
-        optimizor.optimizeDeposit(address(ALUSD_FRAXBP), gauges[address(ALUSD_FRAXBP)], 1_000_000e18);
-
-        // Get last optimization value
-        (uint256 valueAfter, uint256 tsAfter) = optimizor.lastOptiMetapool(gauges[address(ALUSD_FRAXBP)]);
-
-        // Assertions
-        assertEq(valueBefore, 0, "0");
-        assertEq(tsBefore, 0, "1");
-        assertEq(valueAfter, calculatedOpti, "2");
-        assertEq(tsAfter, block.timestamp, "3");
-
-        // --- Test for non Metapool
-        // Get last optimization value
-        (valueBefore, tsBefore) = optimizor.lastOpti(gauges[address(CRV3)]);
-        // Get veCRVStakeDAO balance
-        veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
-        // Calculate optimization
-        calculatedOpti = optimizor.optimalAmount(address(gauges[address(CRV3)]), veCRVStakeDAO, false);
+        uint256 calculatedOpti = optimizor.optimalAmount(address(gauges[address(CRV3)]), veCRVStakeDAO);
 
         // Call the optimize deposit
         optimizor.optimizeDeposit(address(CRV3), gauges[address(CRV3)], 1_000_000e18);
 
         // Get last optimization value
-        (valueAfter, tsAfter) = optimizor.lastOpti(gauges[address(CRV3)]);
+        (uint256 valueAfter, uint256 tsAfter) = optimizor.lastOpti(gauges[address(CRV3)]);
 
         // Assertions
         assertEq(valueBefore, 0, "4");
@@ -707,16 +493,8 @@ contract CurveStrategyTest is BaseTest {
         assertEq(tsAfter, block.timestamp, "7");
     }
 
-    function test_OptimizeDepositReturnedValueAfter4And7DaysMetapool() public useFork(forkId1) {
-        _optimizedDepositReturnedValueAfter4And7Days(ALUSD_FRAXBP);
-    }
-
     function test_OptimizeDepositReturnedValueAfter4And7DaysNotMetapool() public useFork(forkId1) {
         _optimizedDepositReturnedValueAfter4And7Days(CRV3);
-    }
-
-    function test_OptimizedDepositReturnedValueAfterCRVLockMetapool() public useFork(forkId1) {
-        _optimizedDepositReturnedValueAfterCRVLock(ALUSD_FRAXBP);
     }
 
     function test_OptimizedDepositReturnedValueAfterCRVLockNotMetapool() public useFork(forkId1) {
@@ -859,15 +637,6 @@ contract CurveStrategyTest is BaseTest {
         assertEq(address(curveStrategy.sdtDistributor()), address(0x1), "1");
     }
 
-    function test_SetLockingIntervalSec() public useFork(forkId1) {
-        uint256 before = fallbackConvexFrax.lockingIntervalSec();
-
-        fallbackConvexFrax.setLockingIntervalSec(1);
-
-        assertNotEq(fallbackConvexFrax.lockingIntervalSec(), before, "0");
-        assertEq(fallbackConvexFrax.lockingIntervalSec(), 1, "1");
-    }
-
     function test_toggleClaimAll() public useFork(forkId1) {
         bool before = curveStrategy.claimAll();
 
@@ -882,15 +651,6 @@ contract CurveStrategyTest is BaseTest {
         fallbackConvexCurve.toggleClaimOnWithdraw();
 
         assertEq(fallbackConvexCurve.claimOnWithdraw(), !before, "1");
-    }
-
-    function test_SetExtraConvexFraxBoost() public useFork(forkId1) {
-        uint256 before = optimizor.extraConvexFraxBoost();
-
-        optimizor.setExtraConvexFraxBoost(1);
-
-        assertNotEq(optimizor.extraConvexFraxBoost(), before, "0");
-        assertEq(optimizor.extraConvexFraxBoost(), 1, "1");
     }
 
     function test_SetVeCRVDifferenceThreshold() public useFork(forkId1) {
@@ -916,10 +676,10 @@ contract CurveStrategyTest is BaseTest {
     //////////////////////////////////////////////////////
 
     function test_RescueTokens() public useFork(forkId1) {
-        deal(address(CRV), address(fallbackConvexFrax), 1000);
-        assertEq(CRV.balanceOf(address(fallbackConvexFrax)), 1000, "0");
-        fallbackConvexFrax.rescueERC20(address(CRV), address(this), 1000);
-        assertEq(CRV.balanceOf(address(fallbackConvexFrax)), 0, "1");
+        deal(address(CRV), address(fallbackConvexCurve), 1000);
+        assertEq(CRV.balanceOf(address(fallbackConvexCurve)), 1000, "0");
+        fallbackConvexCurve.rescueERC20(address(CRV), address(this), 1000);
+        assertEq(CRV.balanceOf(address(fallbackConvexCurve)), 0, "1");
     }
 
     function test_SetAllPidsOptimizedOnConvexCurve() public useFork(forkId3) {
@@ -935,14 +695,5 @@ contract CurveStrategyTest is BaseTest {
         fallbackConvexCurve.setAllPidsOptimized();
 
         assertEq(fallbackConvexCurve.lastPidsCount(), lastPidCount + 1, "0");
-    }
-
-    function test_SetAllPidsOptimizedOnConvexFrax() public useFork(forkId2) {
-        _addCOIL_FRAXBPOnConvexFrax();
-
-        uint256 lastPidCount = fallbackConvexFrax.lastPidsCount();
-        fallbackConvexFrax.setAllPidsOptimized();
-
-        assertEq(fallbackConvexFrax.lastPidsCount(), lastPidCount + 1, "0");
     }
 }
