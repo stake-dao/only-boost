@@ -242,16 +242,6 @@ contract CurveStrategy is Auth {
         _deposit(token, amount);
     }
 
-    /// @notice Optimizor gateway to deposit LP token into this strategy
-    /// @dev Only callable by the `optimizor` or the governance, should be used only when migration
-    /// @param token Address of LP token to deposit
-    /// @param amount Amount of LP token to deposit
-    function depositForOptimizor(address token, uint256 amount) external requiresAuth {
-        // Should be better named after
-        // Do the deposit process
-        _deposit(token, amount);
-    }
-
     /// @notice Internal gateway to deposit LP into this strategy
     /// @dev First check the optimal split, then send it to respective recipients
     /// @param token Address of LP token to deposit
