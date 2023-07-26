@@ -339,8 +339,8 @@ contract CurveStrategyTest is BaseTest {
 
         _deposit(STETH_ETH, partStakeDAO, partConvex);
 
-        address[] memory extraTokens = new address[](1);
-        extraTokens[0] = address(LDO);
+        address[] memory extraTokens = new address[](0);
+        //extraTokens[0] = address(LDO);
         _claimLiquidLockerTest(STETH_ETH, 1 weeks, extraTokens, ALICE);
     }
 

@@ -116,7 +116,7 @@ contract BaseTest is Test {
     uint256 public constant MAX = type(uint256).max;
 
     // --- Fork block numbers
-    uint256 public constant FORK_BLOCK_NUMBER_1 = 17330000;
+    uint256 public constant FORK_BLOCK_NUMBER_1 = 17700000;
     uint256 public constant FORK_BLOCK_NUMBER_2 = 17326000; // DO NOT TOUCH IT !!
     uint256 public constant FORK_BLOCK_NUMBER_3 = 17323000; // DO NOT TOUCH IT !!
 
@@ -184,6 +184,7 @@ contract BaseTest is Test {
         curveStrategy.setGauge(address(STETH_ETH), GAUGE_STETH_ETH);
         curveStrategy.setGauge(address(ALUSD_FRAXBP), GAUGE_ALUSD_FRAXBP);
         curveStrategy.setGauge(address(COIL_FRAXBP), GAUGE_COIL_FRAXBP);
+        curveStrategy.setGauge(address(SDCRV_CRV), GAUGE_SDCRV_CRV);
 
         // Add all stake dao gauges
         curveStrategy.setMultiGauge(gauges[address(CRV3)], address(liquidityGaugeMockCRV3));
