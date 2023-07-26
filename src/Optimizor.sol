@@ -15,11 +15,12 @@ import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 // --- Interfaces
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
+import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 
 /// @title Optimizor
 /// @author Stake DAO
 /// @notice External module for Stake DAO Strategy to optimize the deposit and withdraw between LiquidLockers and Fallbacks
-/// @dev Inherits from Solmate `Auth` implementatio
+/// @dev Inherits from Solmate `Auth` implementation
 contract Optimizor is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -234,18 +235,26 @@ contract Optimizor is Auth {
         }
         // If available on Convex Curve
         else if (statusCurve) {
-            // Get the optimal amount of lps that must be held by the locker
-            uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker, false);
+            // If Convex Curve has max boost, no need to optimize
+            if (
+                ILiquidityGauge(liquidityGauge).working_balances(LOCKER_CONVEX)
+                    == ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX)
+            ) {
+                amounts[1] = amount;
+            } else {
+                // Get the optimal amount of lps that must be held by the locker
+                uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker, false);
 
-            // Get the balance of the locker on the liquidity gauge
-            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
+                // Get the balance of the locker on the liquidity gauge
+                uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
 
-            // Stake DAO Curve
-            amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
-            // Convex Curve
-            amounts[1] = amount - amounts[0];
-            // Convex Frax
-            // amounts[2] = 0;
+                // Stake DAO Curve
+                amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
+                // Convex Curve
+                amounts[1] = amount - amounts[0];
+                // Convex Frax
+                // amounts[2] = 0;
+            }
         }
         // If not available on Convex Curve or Convex Frax
         else {

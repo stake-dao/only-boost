@@ -92,6 +92,23 @@ contract CurveStrategyTest is BaseTest {
         _depositTest(CRV3, partStakeDAO, partConvex, 0);
     }
 
+    function test_Deposit_UsingConvexCurveOnlyDueToMaxBoost() public useFork(forkId1) {
+        // Check balance before
+        uint256 balanceBeforeStakeDAO = ERC20(gauges[address(SDCRV_CRV)]).balanceOf(address(LOCKER));
+        uint256 balanceBeforeConvex = ERC20(gauges[address(SDCRV_CRV)]).balanceOf(address(LOCKER_CONVEX));
+
+        // Deposit SDCRV_CRV
+        _deposit(SDCRV_CRV, 200, 0);
+
+        // Check balance after
+        uint256 balanceAfterStakeDAO = ERC20(gauges[address(SDCRV_CRV)]).balanceOf(address(LOCKER));
+        uint256 balanceAfterConvex = ERC20(gauges[address(SDCRV_CRV)]).balanceOf(address(LOCKER_CONVEX));
+
+        // Because convex has max boost on this pool, all tokens should be on ConvexCurve fallback
+        assertEq(balanceAfterStakeDAO, balanceBeforeStakeDAO, "1");
+        assertEq(balanceAfterConvex, balanceBeforeConvex + 200, "2");
+    }
+
     function test_Deposit_UsingConvexFraxFallBack() public useFork(forkId1) {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(ALUSD_FRAXBP, MAX, 1);
 
