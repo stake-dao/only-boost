@@ -334,12 +334,6 @@ contract CurveStrategyTest is BaseTest {
         assertGt(CRV3.balanceOf(address(curveStrategy.accumulator())), balanceBeforeAC, "1");
     }
 
-    function test_Claim3CRV_RevertWhen_AMOUNT_NULL() public useFork(forkId1) {
-        // Because no time has been skipped, there is no rewards to claim
-        vm.expectRevert(CurveStrategy.AMOUNT_NULL.selector);
-        curveStrategy.claim3Crv(false);
-    }
-
     function test_Claim3CRV_RevertWhen_CLAIM_FAILED() public useFork(forkId1) {
         bytes memory data = abi.encodeWithSignature("claim()");
 

@@ -519,7 +519,7 @@ contract CurveStrategy is Auth {
 
         // Cache amount to send to accumulator
         uint256 amountToSend = ERC20(CRV3).balanceOf(address(LOCKER));
-        if (amountToSend == 0) revert AMOUNT_NULL();
+        if (amountToSend == 0) return;
 
         // Send 3crv from the LOCKER to the accumulator
         (success,) = LOCKER.execute(
