@@ -51,7 +51,7 @@ contract Optimizor is Auth {
     address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
 
     /// @notice Convex CVX Vote-escrow contract
-    address public constant LOCKER_CVX = 0xD18140b4B819b895A3dba5442F959fA44994AF50;
+    address public constant LOCKER_CVX = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
     /// @notice Convex CRV Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80;
@@ -95,9 +95,19 @@ contract Optimizor is Auth {
     /// @notice Cache period for optimization
     uint256 public cachePeriod = 7 days;
 
+    /// @notice Adjustment factor for CVX / vlCVX
+    uint256 public adjustmentFactor = 1e18;
+
     // --- Mappings
     /// @notice Map liquidityGauge => CachedOptimization
     mapping(address => CachedOptimization) public lastOpti;
+
+    ////////////////////////////////////////////////////////////////
+    /// --- EVENTS
+    ///////////////////////////////////////////////////////////////
+    /// @notice Event emitted when the adjustment factor is updated
+    /// @param newAdjustmentFactor The new adjustment factor
+    event AdjustmentFactorUpdated(uint256 newAdjustmentFactor);
 
     //////////////////////////////////////////////////////
     /// --- ERRORS
@@ -137,10 +147,10 @@ contract Optimizor is Auth {
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
+        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply();
 
         // Additional boost
-        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
+        uint256 boost = adjustmentFactor * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
         // Fees
         uint256 feeDiff = boost + FEES_STAKEDAO > FEES_CONVEX ? FEES_STAKEDAO + boost - FEES_CONVEX : 0;
@@ -231,6 +241,14 @@ contract Optimizor is Auth {
                 lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
         }
+    }
+
+    /// @notice Adjust the conversion factor for CVX / vlCVX
+    /// @param _adjustmentFactor The new adjustment factor
+    /// @dev Only the admin can call this
+    function setAdjustmentFactor(uint256 _adjustmentFactor) external requiresAuth {
+        adjustmentFactor = _adjustmentFactor;
+        emit AdjustmentFactorUpdated(_adjustmentFactor);
     }
 
     /// @notice Return the amount that need to be withdrawn from StakeDAO Liquid Locker and from each fallback
