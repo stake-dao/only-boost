@@ -542,12 +542,15 @@ contract CurveStrategy is Auth {
         uint256 accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, BASE_FEE);
         uint256 veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, BASE_FEE);
         uint256 claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, BASE_FEE);
+
         // send
-        ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
-        accumulator.depositToken(rewardToken, accumulatorPart);
-        ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
-        ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
-        ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
+        if (accumulatorPart > 0) {
+            ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
+            accumulator.depositToken(rewardToken, accumulatorPart);
+        }
+        if (multisigFee > 0) ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
+        if (veSDTPart > 0) ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
+        if (claimerPart > 0) ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
