@@ -141,7 +141,7 @@ contract FallbackConvexCurve is BaseFallback {
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidInfo.pid);
         // Withdraw from ConvexCurve gauge
-        IBaseRewardsPool(crvRewards).getReward(address(this), rewardsTokens.length > 0 ? true : false);
+        IBaseRewardsPool(crvRewards).getReward(address(this), rewardsTokens.length > 2 ? true : false);
 
         // Handle extra rewards split
         return (rewardsTokens, _handleRewards(token, rewardsTokens, claimer));
