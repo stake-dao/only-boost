@@ -194,10 +194,10 @@ contract Optimizor is Auth {
 
         // Result
         return (
-            3 * (adjustmentFactor - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
+            3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
                 / (
                     (2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply
-                        + 3 * veCRVConvex * (adjustmentFactor + boost - FEES_CONVEX)
+                        + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
                 )
         );
     }
