@@ -24,15 +24,14 @@ contract CurveStrategyInvariantsForkTest is BaseTest {
         rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
         curveStrategy = new CurveStrategy(address(this), rolesAuthority);
         fallbackConvexCurve = new FallbackConvexCurve(address(this), rolesAuthority, address(curveStrategy));
-        fallbackConvexFrax = new FallbackConvexFrax(address(this), rolesAuthority, address(curveStrategy));
         optimizor =
-        new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve), address(fallbackConvexFrax));
+        new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock(CRV3);
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock(CNC_ETH);
         liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock(STETH_ETH);
         liquidityGaugeMockALUSD_FRAXBP = new LiquidityGaugeMock(ALUSD_FRAXBP);
         accumulatorMock = new AccumulatorMock();
-        handler = new Handler(curveStrategy, fallbackConvexCurve, fallbackConvexFrax, optimizor ,CRV3);
+        handler = new Handler(curveStrategy, fallbackConvexCurve, optimizor ,CRV3);
         // End deployment contracts
 
         rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.deposit.selector, true);
