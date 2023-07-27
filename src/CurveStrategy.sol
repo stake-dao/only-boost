@@ -271,7 +271,7 @@ contract CurveStrategy is Auth {
         }
 
         // Loops on fallback to deposit lp tokens
-        for (uint8 i; i < recipients.length; ++i) {
+        for (uint256 i; i < recipients.length; ++i) {
             // Skip if the optimized amount is 0
             if (optimizedAmounts[i] == 0) continue;
 
@@ -347,7 +347,7 @@ contract CurveStrategy is Auth {
 
         // Cache length
         uint256 len = recipients.length;
-        for (uint8 i; i < len; ++i) {
+        for (uint256 i; i < len; ++i) {
             // Skip if the optimized amount is 0
             if (optimizedAmounts[i] == 0) continue;
 
@@ -421,7 +421,7 @@ contract CurveStrategy is Auth {
             address[8] memory rewardTokens;
             uint256[8] memory rewardsBalanceBeforeLocker;
 
-            for (uint8 i; i < 8; ++i) {
+            for (uint256 i; i < 8; ++i) {
                 // Get reward token
                 address rewardToken_ = ILiquidityGauge(gauge).reward_tokens(i);
                 if (rewardToken_ == address(0)) break;
@@ -442,7 +442,7 @@ contract CurveStrategy is Auth {
                 ILiquidityGauge(gauge).claim_rewards(address(LOCKER));
             }
 
-            for (uint8 i = 0; i < 8; ++i) {
+            for (uint256 i; i < 8; ++i) {
                 // Get reward token from previous cache
                 address rewardToken = rewardTokens[i];
 
@@ -490,7 +490,7 @@ contract CurveStrategy is Auth {
 
         // Cache the fallbacks length
         uint256 len = fallbacks.length;
-        for (uint8 i = 0; i < len; ++i) {
+        for (uint256 i; i < len; ++i) {
             // Skip the locker fallback
             if (fallbacks[i] == address(LOCKER)) continue;
 
@@ -500,7 +500,7 @@ contract CurveStrategy is Auth {
 
             uint256 len2 = rewardsTokens.length;
             // Check balance after claim
-            for (uint8 j; j < len2; ++j) {
+            for (uint256 j; j < len2; ++j) {
                 // Skip if no reward obtained
                 if (amounts[j] == 0) continue;
                 // Approve and deposit the reward to the multi gauge

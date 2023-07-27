@@ -116,7 +116,7 @@ contract BaseFallback is Auth {
         uint256 extraRewardsLength = rewardsTokens.length;
         // Transfer extra rewards to strategy if any
         if (extraRewardsLength > 0) {
-            for (uint8 i = 0; i < extraRewardsLength;) {
+            for (uint256 i; i < extraRewardsLength;) {
                 // Cache extra rewards token balance
                 amountsRewards[i] = _distributeRewardToken(token, rewardsTokens[i], claimer);
 

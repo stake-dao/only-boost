@@ -177,7 +177,7 @@ contract FallbackConvexCurve is BaseFallback {
 
         // If there is extra rewards, add them to the array
         if (extraRewardsLength > 0) {
-            for (uint256 i = 0; i < extraRewardsLength;) {
+            for (uint256 i; i < extraRewardsLength;) {
                 // Add the extra reward token to the array
                 tokens[i + 2] = IBaseRewardsPool(crvRewards).extraRewards(i);
 
