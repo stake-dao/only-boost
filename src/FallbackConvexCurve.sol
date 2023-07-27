@@ -111,6 +111,11 @@ contract FallbackConvexCurve is BaseFallback {
         // Transfer the amount
         ERC20(token).safeTransfer(curveStrategy, amount);
 
+        if (claimOnWithdraw) {
+            address[] memory rewardsTokens = getRewardsTokens(token);
+            _handleRewards(token, rewardsTokens, address(0));
+        }
+
         emit Withdrawn(token, amount);
     }
 
