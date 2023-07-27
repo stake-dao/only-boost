@@ -17,13 +17,11 @@ contract Handler is BaseTest {
     constructor(
         CurveStrategy _curveStrategy,
         FallbackConvexCurve _fallbackConvexCurve,
-        FallbackConvexFrax _fallbackConvexFrax,
         Optimizor _optimizor,
         ERC20 _token
     ) {
         curveStrategy = _curveStrategy;
         fallbackConvexCurve = _fallbackConvexCurve;
-        fallbackConvexFrax = _fallbackConvexFrax;
         optimizor = _optimizor;
         token = _token;
         balanceBeforeStakeDAO = balanceStakeDAO();
