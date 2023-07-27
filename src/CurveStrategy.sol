@@ -220,6 +220,9 @@ contract CurveStrategy is Auth {
     /// @notice Error emitted when transfer from locker failed
     error TRANSFER_FROM_LOCKER_FAILED();
 
+    /// @notice Error emitted when auth failed
+    error UNAUTHORIZED();
+
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
@@ -238,16 +241,6 @@ contract CurveStrategy is Auth {
         // Transfer the token to this contract
         ERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        // Do the deposit process
-        _deposit(token, amount);
-    }
-
-    /// @notice Optimizor gateway to deposit LP token into this strategy
-    /// @dev Only callable by the `optimizor` or the governance, should be used only when migration
-    /// @param token Address of LP token to deposit
-    /// @param amount Amount of LP token to deposit
-    function depositForOptimizor(address token, uint256 amount) external requiresAuth {
-        // Should be better named after
         // Do the deposit process
         _deposit(token, amount);
     }
@@ -278,7 +271,7 @@ contract CurveStrategy is Auth {
         }
 
         // Loops on fallback to deposit lp tokens
-        for (uint8 i; i < recipients.length; ++i) {
+        for (uint256 i; i < recipients.length; ++i) {
             // Skip if the optimized amount is 0
             if (optimizedAmounts[i] == 0) continue;
 
@@ -354,7 +347,7 @@ contract CurveStrategy is Auth {
 
         // Cache length
         uint256 len = recipients.length;
-        for (uint8 i; i < len; ++i) {
+        for (uint256 i; i < len; ++i) {
             // Skip if the optimized amount is 0
             if (optimizedAmounts[i] == 0) continue;
 
@@ -428,7 +421,7 @@ contract CurveStrategy is Auth {
             address[8] memory rewardTokens;
             uint256[8] memory rewardsBalanceBeforeLocker;
 
-            for (uint8 i; i < 8; ++i) {
+            for (uint256 i; i < 8; ++i) {
                 // Get reward token
                 address rewardToken_ = ILiquidityGauge(gauge).reward_tokens(i);
                 if (rewardToken_ == address(0)) break;
@@ -449,7 +442,7 @@ contract CurveStrategy is Auth {
                 ILiquidityGauge(gauge).claim_rewards(address(LOCKER));
             }
 
-            for (uint8 i = 0; i < 8; ++i) {
+            for (uint256 i; i < 8; ++i) {
                 // Get reward token from previous cache
                 address rewardToken = rewardTokens[i];
 
@@ -497,7 +490,7 @@ contract CurveStrategy is Auth {
 
         // Cache the fallbacks length
         uint256 len = fallbacks.length;
-        for (uint8 i = 0; i < len; ++i) {
+        for (uint256 i; i < len; ++i) {
             // Skip the locker fallback
             if (fallbacks[i] == address(LOCKER)) continue;
 
@@ -507,7 +500,7 @@ contract CurveStrategy is Auth {
 
             uint256 len2 = rewardsTokens.length;
             // Check balance after claim
-            for (uint8 j; j < len2; ++j) {
+            for (uint256 j; j < len2; ++j) {
                 // Skip if no reward obtained
                 if (amounts[j] == 0) continue;
                 // Approve and deposit the reward to the multi gauge
@@ -552,12 +545,15 @@ contract CurveStrategy is Auth {
         uint256 accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, BASE_FEE);
         uint256 veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, BASE_FEE);
         uint256 claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, BASE_FEE);
+
         // send
-        ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
-        accumulator.depositToken(rewardToken, accumulatorPart);
-        ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
-        ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
-        ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
+        if (accumulatorPart > 0) {
+            ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
+            accumulator.depositToken(rewardToken, accumulatorPart);
+        }
+        if (multisigFee > 0) ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
+        if (veSDTPart > 0) ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
+        if (claimerPart > 0) ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
@@ -575,9 +571,12 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
 
     /// @notice Migrate LP token from the locker to the vault
-    /// @dev Only callable by the governance
+    /// @dev Only callable by the vault
     /// @param token Address of LP token to migrate
-    function migrateLP(address token) external requiresAuth {
+    function migrateLP(address token) external {
+        // Revert if the vault is not active
+        if (!vaults[msg.sender]) revert UNAUTHORIZED();
+
         // Get gauge address
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
