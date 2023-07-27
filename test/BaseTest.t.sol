@@ -182,6 +182,9 @@ contract BaseTest is Test {
         curveStrategy.setLGtype(gauges[address(STETH_ETH)], 0);
         curveStrategy.setLGtype(gauges[address(ALUSD_FRAXBP)], 0);
 
+        // Toggle vault
+        curveStrategy.toggleVault(vaults[address(CRV3)]);
+
         // Set gauge mocks
         liquidityGaugeMocks[address(CRV3)] = address(liquidityGaugeMockCRV3);
         liquidityGaugeMocks[address(CNC_ETH)] = address(liquidityGaugeMockCNC_ETH);

@@ -375,21 +375,29 @@ contract CurveStrategyTest is BaseTest {
 
     // --- Migrate LP
     function test_MigrateLP() public useFork(forkId1) {
-        assertEq(CRV3.balanceOf(address(this)), 0, "0");
+        assertEq(CRV3.balanceOf(vaults[address(CRV3)]), 0, "0");
 
         uint256 balanceGaugeBefore = ERC20(gauges[address(CRV3)]).balanceOf(LOCKER);
         // === DEPOSIT PROCESS === //
         _deposit(CRV3, 100, 0);
 
         // === MIGRATE LP PROCESS === //
+        // Prank the vault to be able to call migrateLP
+        vm.prank(vaults[address(CRV3)]);
         curveStrategy.migrateLP(address(CRV3));
 
         // === ASSERTIONS === //
-        assertEq(CRV3.balanceOf(address(this)), balanceGaugeBefore + 100, "1");
+        assertEq(CRV3.balanceOf(vaults[address(CRV3)]), balanceGaugeBefore + 100, "1");
+    }
+
+    function test_MigrateLP_RevertWhen_UNAUTHORIZED() public useFork(forkId1) {
+        vm.expectRevert(CurveStrategy.UNAUTHORIZED.selector);
+        curveStrategy.migrateLP(address(CRV3));
     }
 
     function test_MigrateLP_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
         vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
+        vm.prank(vaults[address(CRV3)]);
         curveStrategy.migrateLP(address(CVX));
     }
 
@@ -408,6 +416,9 @@ contract CurveStrategyTest is BaseTest {
 
         // Assert Error
         vm.expectRevert(CurveStrategy.WITHDRAW_FAILED.selector);
+        // Prank the vault to be able to call migrateLP
+        vm.prank(vaults[address(CRV3)]);
+        // Call the function
         curveStrategy.migrateLP(address(CRV3));
     }
 
@@ -419,7 +430,7 @@ contract CurveStrategyTest is BaseTest {
 
         // data used on executed function by the LL
         bytes memory data =
-            abi.encodeWithSignature("transfer(address,uint256)", address(this), balanceGauge + balanceLocker);
+            abi.encodeWithSignature("transfer(address,uint256)", vaults[address(CRV3)], balanceGauge + balanceLocker);
 
         // Mock the call to force the fail on transfer LP from the LL
         vm.mockCall(
@@ -430,6 +441,9 @@ contract CurveStrategyTest is BaseTest {
 
         // Assert Revert
         vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
+        // Prank the vault to be able to call migrateLP
+        vm.prank(vaults[address(CRV3)]);
+        // Call the function
         curveStrategy.migrateLP(address(CRV3));
     }
 

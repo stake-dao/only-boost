@@ -220,6 +220,9 @@ contract CurveStrategy is Auth {
     /// @notice Error emitted when transfer from locker failed
     error TRANSFER_FROM_LOCKER_FAILED();
 
+    /// @notice Error emitted when auth failed
+    error UNAUTHORIZED();
+
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
@@ -568,9 +571,12 @@ contract CurveStrategy is Auth {
     //////////////////////////////////////////////////////
 
     /// @notice Migrate LP token from the locker to the vault
-    /// @dev Only callable by the governance
+    /// @dev Only callable by the vault
     /// @param token Address of LP token to migrate
-    function migrateLP(address token) external requiresAuth {
+    function migrateLP(address token) external {
+        // Revert if the vault is not active
+        if (!vaults[msg.sender]) revert UNAUTHORIZED();
+
         // Get gauge address
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
