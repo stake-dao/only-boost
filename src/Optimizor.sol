@@ -200,7 +200,7 @@ contract Optimizor is Auth {
                 amounts[1] = amount;
             } else {
                 // Get the optimal amount of lps that must be held by the locker
-                uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker, false);
+                uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker);
 
                 // Get the balance of the locker on the liquidity gauge
                 uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));

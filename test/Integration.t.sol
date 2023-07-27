@@ -97,21 +97,11 @@ contract IntegrationTest is BaseTest {
         VAULT_UZD_FRAXBP.setCurveStrategy(address(curveStrategy));
     }
 
-    ////////////////////////////////////////////////////////////////
-
-    /// --- Audit - Attack vectors
-
-    ///////////////////////////////////////////////////////////////
-
     /// @dev https://github.com/stake-dao/strategy-optimizor/issues/4 + https://github.com/stake-dao/strategy-optimizor/issues/27
-
     /// @notice The test function should take into account potential vulnerabilities:
-
     /// 1. An attacker can force out all but the smallest CVX staker, skyrocketing the boost value. This would result in a scenario where Convex benefits outweigh StakeDAO's, causing all deposited LP tokens to be directed towards Convex.
-
     /// 2. If an attacker forces out all CVX stakers, the lockedSupply() would become 0, leading to a division by zero error in the boost calculation. This would result in the Optimizor failing to work, effectively 'bricking' it.
-
-    function testZach__KickExpiredLocks() public {
+    function test_Integration_KickExpiredLocks() public {
         VLCVX vlcvx = VLCVX(0x72a19342e8F1838460eBFCCEf09F6585e32db86E);
 
         address bob = address(0xB0B);
@@ -145,10 +135,6 @@ contract IntegrationTest is BaseTest {
         uint256 lockedSupplyAfter = vlcvx.lockedSupply();
 
         uint256 boostAfter = _calculateBoost();
-
-        console.log(lockedSupplyBefore, lockedSupplyAfter);
-
-        console.log(boostBefore, boostAfter);
 
         assertEq(totalBefore, 10e18);
         assertEq(unlockableBefore, 10e18);
