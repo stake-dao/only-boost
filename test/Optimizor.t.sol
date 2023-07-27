@@ -31,7 +31,7 @@ contract OptimizorTest is BaseTest {
         optimizor.optimalAmount(gauges[address(EUR3)], veCRVStakeDAO);
     }
 
-    /// --- Opitmitzation on deposit
+    /// --- Optimization on deposit
     function test_OptimizationOnDeposit_StakeDAOAndConvexCurve() public {
         // Cache the address of the token
         ERC20 token = CRV3;

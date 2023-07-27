@@ -5,6 +5,12 @@ pragma solidity 0.8.20;
 import "test/BaseTest.t.sol";
 import {VLCVX} from "test/interfaces/IVLCVX.sol";
 
+interface IGauge {
+    function balanceOf(address) external view returns (uint256);
+    function withdraw(uint256) external;
+    function deposit(uint256) external;
+}
+
 contract IntegrationTest is BaseTest {
     function setUp() public {
         _labelAddress();
@@ -97,6 +103,56 @@ contract IntegrationTest is BaseTest {
         VAULT_UZD_FRAXBP.setCurveStrategy(address(curveStrategy));
     }
 
+    function test_Integration_Manipulate_Cache() public {
+        // Cache the address of the token
+        ERC20 token = CRV3;
+
+        // Get the initial balances and amounts
+        uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER);
+        uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
+        uint256 amountStakeDAO =
+            optimizor.optimalAmount(gauges[address(token)], veCRVStakeDAO, false) - lockerGaugeBalance;
+        uint256 amountFallbackCurve = 5_000_000e18;
+        uint256 amountTotal = amountStakeDAO + amountFallbackCurve;
+        uint256 balanceConvex = IGauge(GAUGE_CRV3).balanceOf(LOCKER_CONVEX);
+
+        // Set gauges on Curve Strategy and set the new strategy
+        vm.startPrank(MS_STAKEDAO);
+        curveStrategy.setGauge(address(token), gauges[address(token)]);
+        VAULT_3CRV.setCurveStrategy(address(curveStrategy));
+        optimizor.toggleUseLastOptimization();
+        vm.stopPrank();
+
+        // Prank as MS_STAKEDAO and get the optimized amounts before manipulation
+        vm.prank(MS_STAKEDAO);
+        (, uint256[] memory resultsBefore) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], amountTotal);
+
+        // Withdraw from the Convex gauge and make a deposit via StakeDAO's CurveStrategy contract
+        vm.startPrank(LOCKER_CONVEX);
+        IGauge(GAUGE_CRV3).withdraw(balanceConvex);
+        token.approve(address(VAULT_3CRV), amountStakeDAO);
+        VAULT_3CRV.deposit(address(LOCKER_CONVEX), amountStakeDAO, false);
+        vm.stopPrank();
+
+        // Trigger cache and redeposit into the Convex gauge
+        vm.prank(MS_STAKEDAO);
+        optimizor.optimizeDeposit(address(token), gauges[address(token)], amountStakeDAO);
+        vm.startPrank(LOCKER_CONVEX);
+        token.approve(address(GAUGE_CRV3), balanceConvex - amountStakeDAO);
+        IGauge(GAUGE_CRV3).deposit(balanceConvex - amountStakeDAO);
+        vm.stopPrank();
+
+        // Get the optimized amounts after manipulation
+        vm.prank(MS_STAKEDAO);
+        (, uint256[] memory resultsAfter) =
+            optimizor.optimizeDeposit(address(token), gauges[address(token)], amountTotal);
+
+        // The optimized amounts before and after should not be the same as we don't use the cache
+        assert(resultsBefore[0] != resultsAfter[0]);
+        assert(resultsBefore[1] != resultsAfter[1]);
+    }
+
     /// @dev https://github.com/stake-dao/strategy-optimizor/issues/4 + https://github.com/stake-dao/strategy-optimizor/issues/27
     /// @notice The test function should take into account potential vulnerabilities:
     /// 1. An attacker can force out all but the smallest CVX staker, skyrocketing the boost value. This would result in a scenario where Convex benefits outweigh StakeDAO's, causing all deposited LP tokens to be directed towards Convex.
@@ -146,7 +202,6 @@ contract IntegrationTest is BaseTest {
     }
 
     /// @notice Reproduce boost calculation from Optimizor
-
     function _calculateBoost() internal view returns (uint256 boost) {
         // Copied from Optimizor
 
