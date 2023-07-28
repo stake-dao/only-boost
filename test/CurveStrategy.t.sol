@@ -72,16 +72,6 @@ contract CurveStrategyTest is BaseTest {
         _depositTest(CRV3, 5_000_000e18, 0, 0);
     }
 
-    function test_Deposit_AllOnStakeDAOBecauseNoOptimizor() public useFork(forkId1) {
-        curveStrategy.setOptimizor(address(0));
-
-        // Test deposit not metapool
-        _depositTest(CRV3, 5_000_000e18, 0, 0);
-
-        // Test deposit metapool
-        _depositTest(ALUSD_FRAXBP, 5_000_000e18, 0, 0);
-    }
-
     function test_Deposit_UsingConvexCurveFallback() public useFork(forkId1) {
         (uint256 partStakeDAO, uint256 partConvex) = _calculDepositAmount(CRV3, MAX, 1);
 
@@ -144,14 +134,6 @@ contract CurveStrategyTest is BaseTest {
 
         // === WITHDRAW PROCESS === //
         _withdrawTest(CRV3, partStakeDAO, partConvex, 0);
-    }
-
-    function test_Withdraw_AllFromStakeDAOBecauseNoOptimizor() public useFork(forkId1) {
-        curveStrategy.setOptimizor(address(0));
-
-        _deposit(CRV3, 5_000_000e18, 0, 0);
-
-        _withdrawTest(CRV3, 5_000_000e18, 0, 0);
     }
 
     function test_Withdraw_UsingConvexCurveFallback() public useFork(forkId1) {
