@@ -211,10 +211,12 @@ contract FallbackConvexCurve is BaseFallback {
     /// @param token Address of LP token to get balance
     /// @return Balance of the LP token on ConvexCurve
     function balanceOf(address token) public view override returns (uint256) {
+        // Cache PID
+        PidsInfo memory pidInfo = pids[token];
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pids[token].pid);
+        (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidInfo.pid);
 
         // Return the balance of the LP token on ConvexCurve if initialized, else 0
-        return pids[token].isInitialized ? ERC20(crvRewards).balanceOf(address(this)) : 0;
+        return pidInfo.isInitialized ? ERC20(crvRewards).balanceOf(address(this)) : 0;
     }
 }
