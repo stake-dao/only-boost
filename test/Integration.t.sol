@@ -110,8 +110,7 @@ contract IntegrationTest is BaseTest {
         // Get the initial balances and amounts
         uint256 lockerGaugeBalance = ERC20(gauges[address(token)]).balanceOf(LOCKER);
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
-        uint256 amountStakeDAO =
-            optimizor.optimalAmount(gauges[address(token)], veCRVStakeDAO, false) - lockerGaugeBalance;
+        uint256 amountStakeDAO = optimizor.optimalAmount(gauges[address(token)], veCRVStakeDAO) - lockerGaugeBalance;
         uint256 amountFallbackCurve = 5_000_000e18;
         uint256 amountTotal = amountStakeDAO + amountFallbackCurve;
         uint256 balanceConvex = IGauge(GAUGE_CRV3).balanceOf(LOCKER_CONVEX);

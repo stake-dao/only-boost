@@ -687,6 +687,15 @@ contract CurveStrategyTest is BaseTest {
         assertEq(optimizor.veCRVDifferenceThreshold(), 1, "1");
     }
 
+    function test_SetConvexDifferenceThreshold() public useFork(forkId1) {
+        uint256 before = optimizor.convexDifferenceThreshold();
+
+        optimizor.setConvexDifferenceThreshold(1);
+
+        assertNotEq(optimizor.convexDifferenceThreshold(), before, "0");
+        assertEq(optimizor.convexDifferenceThreshold(), 1, "1");
+    }
+
     // --- Execute
     function test_Execute() public useFork(forkId1) {
         (bool success, bytes memory data) =
