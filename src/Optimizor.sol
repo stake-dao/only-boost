@@ -232,10 +232,7 @@ contract Optimizor is Auth {
     /// @param liquidityGauge Address of the liquidity gauge
     /// @param veCRVBalance Amount of veCRV hold by Stake DAO Liquid Locker
     /// @return opt Optimal amount of LP token that must be held by the locker
-    function _getOptimalAmount(address liquidityGauge, uint256 veCRVBalance)
-        internal
-        returns (uint256 opt)
-    {
+    function _getOptimalAmount(address liquidityGauge, uint256 veCRVBalance) internal returns (uint256 opt) {
         uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
         if (
             // 1. Optimize calculation is activated
@@ -246,8 +243,6 @@ contract Optimizor is Auth {
             && absDiff(cacheVeCRVLockerBalance, veCRVBalance) < veCRVBalance.mulWadDown(veCRVDifferenceThreshold)
             // 4. The cached Convex balance is within the acceptability threshold
             && absDiff(cacheConvexBalance, balanceConvex) < balanceConvex.mulWadDown(convexDifferenceThreshold)
-        
-    
         ) {
             // Use cached optimal amount
             opt = lastOpti[liquidityGauge].value;
@@ -342,6 +337,12 @@ contract Optimizor is Auth {
     /// @param newVeCRVDifferenceThreshold New veCRV Difference Threshold
     function setVeCRVDifferenceThreshold(uint256 newVeCRVDifferenceThreshold) external requiresAuth {
         veCRVDifferenceThreshold = newVeCRVDifferenceThreshold;
+    }
+
+    /// @notice Set Convex Difference Threshold
+    /// @param newConvexDifferenceThreshold New Convex Difference Threshold
+    function setConvexDifferenceThreshold(uint256 newConvexDifferenceThreshold) external requiresAuth {
+        convexDifferenceThreshold = newConvexDifferenceThreshold;
     }
 
     /// @notice Set new Curve Strategy
