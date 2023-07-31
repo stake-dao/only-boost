@@ -114,6 +114,12 @@ contract CrvDepositor is Auth {
         strategy = CurveStrategy(_strategy);
     }
 
+    /// @notice Extend unlock time on the locker
+    /// @param unlock_time New epoch time for unlocking
+    function increaseUnlockTime(uint256 unlock_time) external requiresAuth {
+        strategy.increaseUnlockTime(unlock_time);
+    }
+
     //////////////////////////////////////////////////////
     /// --- MUTATIVE FUNCTIONS
     //////////////////////////////////////////////////////
