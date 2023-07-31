@@ -24,8 +24,7 @@ contract CurveStrategyInvariantsForkTest is BaseTest {
         rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
         curveStrategy = new CurveStrategy(address(this), rolesAuthority);
         fallbackConvexCurve = new FallbackConvexCurve(address(this), rolesAuthority, address(curveStrategy));
-        optimizor =
-        new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
+        optimizor = new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock(CRV3);
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock(CNC_ETH);
         liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock(STETH_ETH);

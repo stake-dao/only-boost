@@ -17,7 +17,6 @@ import {CrvDepositor} from "src/CrvDepositor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
 import {CurveVaultFactory} from "src/CurveVaultFactory.sol";
-import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 // --- Mocks
@@ -50,7 +49,7 @@ contract BaseTest is Test {
     CrvDepositor public crvDepositor;
     CurveStrategy public curveStrategy;
     RolesAuthority public rolesAuthority;
-    FallbackConvexFrax public fallbackConvexFrax;
+    CurveVaultFactory public curveVaultFactory;
     FallbackConvexCurve public fallbackConvexCurve;
 
     // --- Mocks
@@ -281,12 +280,9 @@ contract BaseTest is Test {
         vm.label(address(rolesAuthority), "RolesAuthority");
         vm.label(address(curveStrategy), "NewCurveStrategy");
         vm.label(address(curveStrategy.optimizor()), "Optimizor");
-        vm.label(address(fallbackConvexFrax), "FallbackConvexFrax");
         vm.label(address(fallbackConvexCurve), "FallbackConvexCurve");
         vm.label(address(locker), "Locker");
-        vm.label(address(BOOSTER_CONVEX_FRAX), "BoosterConvexFrax");
         vm.label(address(BOOSTER_CONVEX_CURVE), "BoosterConvexCurve");
-        vm.label(address(POOL_REGISTRY_CONVEX_FRAX), "PoolRegistryConvexFrax");
 
         // Mocks
         _labelNonZeroAddress(address(accumulatorMock), "AccumulatorMock");

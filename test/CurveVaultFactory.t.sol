@@ -28,11 +28,9 @@ contract CurveVaultFactoryTest is BaseTest {
 
         // Fallbacks
         fallbackConvexCurve = new FallbackConvexCurve(MS_STAKEDAO, rolesAuthority, address(curveStrategy)); // Convex Curve
-        fallbackConvexFrax = new FallbackConvexFrax(MS_STAKEDAO, rolesAuthority, address(curveStrategy)); // Convex Frax
 
         // Optimizor
-        optimizor =
-        new Optimizor(MS_STAKEDAO, rolesAuthority, address(curveStrategy), address(fallbackConvexCurve), address(fallbackConvexFrax));
+        optimizor = new Optimizor(MS_STAKEDAO, rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
 
         vm.stopPrank();
 
@@ -90,16 +88,6 @@ contract CurveVaultFactoryTest is BaseTest {
         // 6. Grant `setAllPidsOptimized` role from Fallback to Vault Factory
         vm.prank(MS_STAKEDAO);
         rolesAuthority.setUserRole(address(curveVaultFactory), 6, true);
-
-        // 7. Create roles for `setAllPidsOptimized` on Frax Fallback
-        vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(
-            7, address(fallbackConvexFrax), BaseFallback.setAllPidsOptimized.selector, true
-        );
-
-        // 7. Grant `setAllPidsOptimized` role from Fallback to Vault Factory
-        vm.prank(MS_STAKEDAO);
-        rolesAuthority.setUserRole(address(curveVaultFactory), 7, true);
 
         _labelContract();
     }

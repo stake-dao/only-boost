@@ -110,6 +110,7 @@ contract CrvDepositorTest is BaseTest {
         uint256 endBefore = IVeCRV(VE_CRV).locked(LOCKER).end;
         uint256 endAfter = endBefore + 7 days;
 
+        skip(30 weeks); // To avoid being above the max lock time
         vm.prank(MS_STAKEDAO);
         crvDepositor.increaseUnlockTime(endAfter);
 
