@@ -79,6 +79,12 @@ contract BaseFallback is Auth {
     event ClaimedRewards(address rewardToken, uint256 amountClaimed);
 
     //////////////////////////////////////////////////////
+    /// --- ERRORS
+    //////////////////////////////////////////////////////
+    /// @notice Error emitted when token is not active
+    error NOT_VALID_PID();
+
+    //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
 
@@ -116,7 +122,7 @@ contract BaseFallback is Auth {
         uint256 extraRewardsLength = rewardsTokens.length;
         // Transfer extra rewards to strategy if any
         if (extraRewardsLength > 0) {
-            for (uint8 i = 0; i < extraRewardsLength;) {
+            for (uint256 i; i < extraRewardsLength;) {
                 // Cache extra rewards token balance
                 amountsRewards[i] = _distributeRewardToken(token, rewardsTokens[i], claimer);
 
@@ -180,11 +186,13 @@ contract BaseFallback is Auth {
         uint256 claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, 10_000);
 
         // send
-        ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
-        IAccumulator(accumulator).depositToken(rewardToken, accumulatorPart);
-        ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
-        ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
-        ERC20(rewardToken).safeTransfer(claimer, claimerPart);
+        if (accumulatorPart > 0) {
+            ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
+            IAccumulator(accumulator).depositToken(rewardToken, accumulatorPart);
+        }
+        if (multisigFee > 0) ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
+        if (veSDTPart > 0) ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
+        if (claimerPart > 0) ERC20(rewardToken).safeTransfer(claimer, claimerPart);
 
         // Return remaining
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
@@ -220,5 +228,5 @@ contract BaseFallback is Auth {
 
     function getRewardsTokens(address token) public view virtual returns (address[] memory) {}
 
-    function getPid(address token) external view virtual returns (PidsInfo memory) {}
+    function getPid(address token) public view virtual returns (PidsInfo memory) {}
 }

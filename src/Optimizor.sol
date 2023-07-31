@@ -10,16 +10,16 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 // --- Core Contracts
 import {CurveStrategy} from "src/CurveStrategy.sol";
-import {FallbackConvexFrax} from "src/FallbackConvexFrax.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 // --- Interfaces
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
+import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 
 /// @title Optimizor
 /// @author Stake DAO
 /// @notice External module for Stake DAO Strategy to optimize the deposit and withdraw between LiquidLockers and Fallbacks
-/// @dev Inherits from Solmate `Auth` implementatio
+/// @dev Inherits from Solmate `Auth` implementation
 contract Optimizor is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -52,7 +52,7 @@ contract Optimizor is Auth {
     address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
 
     /// @notice Convex CVX Vote-escrow contract
-    address public constant LOCKER_CVX = 0xD18140b4B819b895A3dba5442F959fA44994AF50;
+    address public constant LOCKER_CVX = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
     /// @notice Convex CRV Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80;
@@ -75,9 +75,6 @@ contract Optimizor is Auth {
     /// @notice Stake DAO Curve Strategy
     CurveStrategy public curveStrategy;
 
-    /// @notice Stake DAO Fallback Convex Frax
-    FallbackConvexFrax public fallbackConvexFrax;
-
     /// @notice Stake DAO Fallback Convex Curve
     FallbackConvexCurve public fallbackConvexCurve;
 
@@ -86,73 +83,57 @@ contract Optimizor is Auth {
     address[] public fallbacks;
 
     // --- Bools
-    /// @notice Pause Convex Frax Deposit
-    bool public isConvexFraxPaused;
-
-    /// @notice Kill Convex Frax Deposit and Withdraw
-    bool public isConvexFraxKilled;
-
     /// @notice Use last optimization value
     bool public useLastOpti;
 
     // --- Uints
-    /// @notice Extra boost for Convex Frax, 1e16 = 1%
-    uint256 public extraConvexFraxBoost = 25e16;
-
     /// @notice veCRV difference threshold to trigger a new optimal amount calculation, 5e16 = 5%
     uint256 public veCRVDifferenceThreshold = 5e16;
+
+    /// @notice Convex difference threshold to trigger a new optimal amount calculation, 5e16 = 5%
+    uint256 public convexDifferenceThreshold = 5e16;
 
     /// @notice Cached veCRV value for Stake DAO Liquidity Locker
     uint256 public cacheVeCRVLockerBalance;
 
+    /// @notice Cached Convex balance
+    uint256 public cacheConvexBalance;
+
     /// @notice Cache period for optimization
     uint256 public cachePeriod = 7 days;
 
-    /// @notice Timestamp of the Convex Frax pause
-    uint256 public convexFraxPausedTimestamp;
+    /// @notice Adjustment factor for CVX / vlCVX
+    uint256 public adjustmentFactor = 1e18;
 
     // --- Mappings
     /// @notice Map liquidityGauge => CachedOptimization
     mapping(address => CachedOptimization) public lastOpti;
 
-    /// @notice Map liquidityGauge for Metapool => CachedOptimization
-    mapping(address => CachedOptimization) public lastOptiMetapool;
+    ////////////////////////////////////////////////////////////////
+    /// --- EVENTS
+    ///////////////////////////////////////////////////////////////
+    /// @notice Event emitted when the adjustment factor is updated
+    /// @param newAdjustmentFactor The new adjustment factor
+    event AdjustmentFactorUpdated(uint256 newAdjustmentFactor);
 
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
-    /// @notice Error emitted when not enough time has passed
-    error TOO_SOON();
-
-    /// @notice Error emitted when trying to kill Convex Frax but not paused
-    error NOT_PAUSED();
 
     /// @notice Error emitted when amount is wrong
     error WRONG_AMOUNT();
 
-    /// @notice Error emitted when trying to pause Convex Frax but already paused
-    error ALREADY_PAUSED();
-
-    /// @notice Error emitted when trying to kill Convex Frax but already killed
-    error ALREADY_KILLED();
-
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
-    constructor(
-        address owner,
-        Authority authority,
-        address _curveStrategy,
-        address _fallbackConvexCurve,
-        address _fallbackConvexFrax
-    ) Auth(owner, authority) {
-        fallbackConvexFrax = FallbackConvexFrax(_fallbackConvexFrax);
+    constructor(address owner, Authority authority, address _curveStrategy, address _fallbackConvexCurve)
+        Auth(owner, authority)
+    {
         fallbackConvexCurve = FallbackConvexCurve(_fallbackConvexCurve);
         curveStrategy = CurveStrategy(_curveStrategy);
 
         fallbacks.push(LOCKER);
         fallbacks.push(address(fallbackConvexCurve));
-        fallbacks.push(address(fallbackConvexFrax));
     }
 
     //////////////////////////////////////////////////////
@@ -161,9 +142,8 @@ contract Optimizor is Auth {
 
     /// @notice Return the optimal amount of LP token that must be held by Stake DAO Liquidity Locker
     /// @param liquidityGauge Addres of the liquidity gauge
-    /// @param isMeta if the underlying pool is a metapool
     /// @return Optimal amount of LP token
-    function optimalAmount(address liquidityGauge, uint256 veCRVStakeDAO, bool isMeta) public view returns (uint256) {
+    function optimalAmount(address liquidityGauge, uint256 veCRVStakeDAO) public view returns (uint256) {
         // veCRV
         uint256 veCRVConvex = ERC20(LOCKER_CRV).balanceOf(LOCKER_CONVEX);
         uint256 veCRVTotal = ERC20(LOCKER_CRV).totalSupply(); // New
@@ -174,19 +154,19 @@ contract Optimizor is Auth {
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply() * 1e7;
+        uint256 vlCVXTotal = ICVXLocker(LOCKER_CVX).lockedSupply();
 
         // Additional boost
-        uint256 boost = 1e18 * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
+        uint256 boost = adjustmentFactor * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
-        // Additional boost for Convex FRAX
-        boost = isMeta ? boost + extraConvexFraxBoost : boost;
+        // Fees
+        uint256 feeDiff = boost + FEES_STAKEDAO > FEES_CONVEX ? FEES_STAKEDAO + boost - FEES_CONVEX : 0;
 
         // Result
         return (
             3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
                 / (
-                    (2 * (FEES_STAKEDAO + boost - FEES_CONVEX) * balanceConvex * veCRVTotal) / totalSupply
+                    (2 * (feeDiff) * balanceConvex * veCRVTotal) / totalSupply
                         + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
                 )
         );
@@ -208,53 +188,41 @@ contract Optimizor is Auth {
         requiresAuth
         returns (address[] memory, uint256[] memory)
     {
-        // Check if the lp token has pool on ConvexCurve or ConvexFrax
+        // Check if the lp token has pool on ConvexCurve
         bool statusCurve = fallbackConvexCurve.isActive(token);
-        bool statusFrax = fallbackConvexFrax.isActive(token);
 
-        uint256[] memory amounts = new uint256[](3);
+        uint256[] memory amounts = new uint256[](2);
 
         // Cache Stake DAO Liquid Locker veCRV balance
         uint256 veCRVLocker = ERC20(LOCKER_CRV).balanceOf(LOCKER);
 
-        // If Metapool and available on Convex Frax
-        if (statusFrax && !isConvexFraxPaused) {
-            // Get the optimal amount of lps that must be held by the locker
-            uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker, true);
-
-            // Get the balance of the locker on the liquidity gauge
-            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
-
-            // Stake DAO Curve
-            amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
-            // Convex Curve
-            // amounts[1] = 0;
-            // Convex Frax
-            amounts[2] = amount - amounts[0];
-        }
         // If available on Convex Curve
-        else if (statusCurve) {
-            // Get the optimal amount of lps that must be held by the locker
-            uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker, false);
+        if (statusCurve) {
+            // If Convex Curve has max boost, no need to optimize
+            if (
+                ILiquidityGauge(liquidityGauge).working_balances(LOCKER_CONVEX)
+                    == ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX)
+            ) {
+                amounts[1] = amount;
+            } else {
+                // Get the optimal amount of lps that must be held by the locker
+                uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker);
 
-            // Get the balance of the locker on the liquidity gauge
-            uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
+                // Get the balance of the locker on the liquidity gauge
+                uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
 
-            // Stake DAO Curve
-            amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
-            // Convex Curve
-            amounts[1] = amount - amounts[0];
-            // Convex Frax
-            // amounts[2] = 0;
+                // Stake DAO Curve
+                amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
+                // Convex Curve
+                amounts[1] = amount - amounts[0];
+            }
         }
-        // If not available on Convex Curve or Convex Frax
+        // If not available on Convex Curve
         else {
             // Stake DAO Curve
             amounts[0] = amount;
             // Convex Curve
             // amounts[1] = 0;
-            // Convex Frax
-            // amounts[2] = 0;
         }
 
         return (fallbacks, amounts);
@@ -263,41 +231,45 @@ contract Optimizor is Auth {
     /// @notice Calcul the optimal amount of lps that must be held by the locker or use the cached value
     /// @param liquidityGauge Address of the liquidity gauge
     /// @param veCRVBalance Amount of veCRV hold by Stake DAO Liquid Locker
-    /// @param isMeta If the underlying pool is a metapool
     /// @return opt Optimal amount of LP token that must be held by the locker
-    function _getOptimalAmount(address liquidityGauge, uint256 veCRVBalance, bool isMeta)
-        internal
-        returns (uint256 opt)
-    {
+    function _getOptimalAmount(address liquidityGauge, uint256 veCRVBalance) internal returns (uint256 opt) {
+        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
         if (
             // 1. Optimize calculation is activated
             useLastOpti
             // 2. The cached optimal amount is not too old
-            && (
-                (isMeta ? lastOptiMetapool[liquidityGauge].timestamp : lastOpti[liquidityGauge].timestamp) + cachePeriod
-                    > block.timestamp
-            )
+            && (lastOpti[liquidityGauge].timestamp + cachePeriod > block.timestamp)
             // 3. The cached veCRV balance of Stake DAO is below the acceptability threshold
             && absDiff(cacheVeCRVLockerBalance, veCRVBalance) < veCRVBalance.mulWadDown(veCRVDifferenceThreshold)
+            // 4. The cached Convex balance is within the acceptability threshold
+            && absDiff(cacheConvexBalance, balanceConvex) < balanceConvex.mulWadDown(convexDifferenceThreshold)
         ) {
             // Use cached optimal amount
-            opt = isMeta ? lastOptiMetapool[liquidityGauge].value : lastOpti[liquidityGauge].value;
+            opt = lastOpti[liquidityGauge].value;
         } else {
             // Calculate optimal amount
-            opt = optimalAmount(liquidityGauge, veCRVBalance, isMeta);
+            opt = optimalAmount(liquidityGauge, veCRVBalance);
 
-            // Cache veCRV balance of Stake DAO, no need if already the same
-            if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;
+            // Cache only if needed
+            if (useLastOpti) {
+                // Cache veCRV balance of Stake DAO, no need if already the same
+                if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;
 
-            // Cache optimal amount and timestamp
-            if (isMeta) {
-                // Update the cache for Metapool
-                lastOptiMetapool[liquidityGauge] = CachedOptimization(opt, block.timestamp);
-            } else {
+                // Cache Convex balance, no need if already the same
+                if (cacheConvexBalance != balanceConvex) cacheConvexBalance = balanceConvex;
+
                 // Update the cache for Classic Pool
                 lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
         }
+    }
+
+    /// @notice Adjust the conversion factor for CVX / vlCVX
+    /// @param _adjustmentFactor The new adjustment factor
+    /// @dev Only the admin can call this
+    function setAdjustmentFactor(uint256 _adjustmentFactor) external requiresAuth {
+        adjustmentFactor = _adjustmentFactor;
+        emit AdjustmentFactorUpdated(_adjustmentFactor);
     }
 
     /// @notice Return the amount that need to be withdrawn from StakeDAO Liquid Locker and from each fallback
@@ -315,39 +287,13 @@ contract Optimizor is Auth {
         // Cache the balance of all fallbacks
         uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER);
         uint256 balanceOfConvexCurve = FallbackConvexCurve(fallbacks[1]).balanceOf(token);
-        uint256 balanceOfConvexFrax = isConvexFraxKilled ? 0 : FallbackConvexFrax(fallbacks[2]).balanceOf(token);
 
         // Initialize the result
-        uint256[] memory amounts = new uint256[](3);
+        uint256[] memory amounts = new uint256[](2);
 
         // === Situation n°1 === //
-        // If available on Convex Frax
-        if (balanceOfConvexFrax > 0) {
-            // Withdraw as much as possible from Convex Frax
-            amounts[2] = min(amount, balanceOfConvexFrax);
-            // Update the amount to withdraw
-            amount -= amounts[2];
-
-            // If there is still amount to withdraw
-            if (amount > 0) {
-                // Withdraw as much as possible from Stake DAO Curve
-                amounts[0] = min(amount, balanceOfStakeDAO);
-                // Update the amount to withdraw
-                amount -= amounts[0];
-
-                // If there is still amount to withdraw, but this situation should happen only rarely
-                // Because there should not have deposit both on convex curve and convex frax
-                if (amount > 0 && balanceOfConvexCurve > 0) {
-                    // Withdraw as much as possible from Convex Curve
-                    amounts[1] = min(amount, balanceOfConvexCurve);
-                    // Update the amount to withdraw
-                    amount -= amounts[1];
-                }
-            }
-        }
-        // === Situation n°2 === //
         // If available on Convex Curve
-        else if (balanceOfConvexCurve > 0) {
+        if (balanceOfConvexCurve > 0) {
             // Withdraw as much as possible from Convex Curve
             amounts[1] = min(amount, balanceOfConvexCurve);
             // Update the amount to withdraw
@@ -361,8 +307,8 @@ contract Optimizor is Auth {
                 amount -= amounts[0];
             }
         }
-        // === Situation n°3 === //
-        // If not available on Convex Curve or Convex Frax
+        // === Situation n°2 === //
+        // If not available on Convex Curve
         else {
             // Withdraw as much as possible from Stake DAO Curve
             amounts[0] = min(amount, balanceOfStakeDAO);
@@ -387,16 +333,16 @@ contract Optimizor is Auth {
         cachePeriod = newCachePeriod;
     }
 
-    /// @notice Set Extra Convex Frax Boost %
-    /// @param newExtraConvexFraxBoost New Extra Convex Frax Boost %
-    function setExtraConvexFraxBoost(uint256 newExtraConvexFraxBoost) external requiresAuth {
-        extraConvexFraxBoost = newExtraConvexFraxBoost;
-    }
-
     /// @notice Set veCRV Difference Threshold
     /// @param newVeCRVDifferenceThreshold New veCRV Difference Threshold
     function setVeCRVDifferenceThreshold(uint256 newVeCRVDifferenceThreshold) external requiresAuth {
         veCRVDifferenceThreshold = newVeCRVDifferenceThreshold;
+    }
+
+    /// @notice Set Convex Difference Threshold
+    /// @param newConvexDifferenceThreshold New Convex Difference Threshold
+    function setConvexDifferenceThreshold(uint256 newConvexDifferenceThreshold) external requiresAuth {
+        convexDifferenceThreshold = newConvexDifferenceThreshold;
     }
 
     /// @notice Set new Curve Strategy
@@ -406,57 +352,8 @@ contract Optimizor is Auth {
     }
 
     //////////////////////////////////////////////////////
-    /// --- REMOVE CONVEX FRAX
+    /// --- VIEWS
     //////////////////////////////////////////////////////
-
-    /// @notice Pause the deposit on Convex Frax
-    function pauseConvexFraxDeposit() external requiresAuth {
-        // Revert if already paused
-        if (isConvexFraxPaused) revert ALREADY_PAUSED();
-
-        // Pause
-        isConvexFraxPaused = true;
-        // Set the timestamp
-        convexFraxPausedTimestamp = block.timestamp;
-    }
-
-    /// @notice Kill the deposit on Convex Frax
-    function killConvexFrax() external requiresAuth {
-        // Revert if not paused
-        if (!isConvexFraxPaused) revert NOT_PAUSED();
-        // Revert if already killed
-        if (isConvexFraxKilled) revert ALREADY_KILLED();
-        // Revert if not enough time has passed
-        if ((convexFraxPausedTimestamp + fallbackConvexFrax.lockingIntervalSec()) > block.timestamp) {
-            revert TOO_SOON();
-        }
-
-        // Kill
-        isConvexFraxKilled = true;
-
-        // Cache len
-        uint256 len = fallbackConvexFrax.lastPidsCount();
-
-        for (uint256 i = 0; i < len;) {
-            // Check balanceOf on the fallback
-            uint256 balance = fallbackConvexFrax.balanceOf(i);
-
-            if (balance > 0) {
-                // Get LP token
-                (address token,) = fallbackConvexFrax.getLP(i);
-                // Withdraw from convex frax
-                fallbackConvexFrax.withdraw(token, balance);
-
-                // Follow optimized deposit logic
-                curveStrategy.depositForOptimizor(token, balance);
-            }
-
-            // No need to check if overflow, because len is uint256
-            unchecked {
-                ++i;
-            }
-        }
-    }
 
     /// @notice Get the fallback addresses
     function getFallbacks() external view returns (address[] memory) {
