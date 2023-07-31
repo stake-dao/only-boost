@@ -961,6 +961,15 @@ contract CurveStrategyTest is BaseTest {
         assertEq(ILocker(LOCKER).strategy(), address(0x123), "1");
     }
 
+    function test_IncreaseUnlockTime() public useFork(forkId1) {
+        uint256 endBefore = IVeCRV(VE_CRV).locked(LOCKER).end;
+        uint256 endAfter = endBefore + 7 days;
+
+        curveStrategy.increaseUnlockTime(endAfter);
+
+        assertEq(IVeCRV(VE_CRV).locked(LOCKER).end, endAfter, "0");
+    }
+
     //////////////////////////////////////////////////////
     /// --- FALLBACKS
     //////////////////////////////////////////////////////

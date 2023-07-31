@@ -57,6 +57,14 @@ contract CrvDepositorTest is BaseTest {
         vm.prank(MS_STAKEDAO);
         rolesAuthority.setUserRole(address(crvDepositor), 1, true);
 
+        // 2. Create roles for `increaseUnlockTime` on Curve Strategy
+        vm.prank(MS_STAKEDAO);
+        rolesAuthority.setRoleCapability(2, address(curveStrategy), CurveStrategy.increaseUnlockTime.selector, true);
+
+        // 2. Grant `increaseUnlockTime` role from Curve Strategy to crvDepositor
+        vm.prank(MS_STAKEDAO);
+        rolesAuthority.setUserRole(address(crvDepositor), 2, true);
+
         _labelContract();
     }
 
@@ -96,5 +104,15 @@ contract CrvDepositorTest is BaseTest {
 
     function test_Deposit_Lock_NoStake_WithIncentives() public {
         // TODO: Test with incentives
+    }
+
+    function test_IncreaseUnlockTime() public {
+        uint256 endBefore = IVeCRV(VE_CRV).locked(LOCKER).end;
+        uint256 endAfter = endBefore + 7 days;
+
+        vm.prank(MS_STAKEDAO);
+        crvDepositor.increaseUnlockTime(endAfter);
+
+        assertEq(IVeCRV(VE_CRV).locked(LOCKER).end, endAfter, "0");
     }
 }
