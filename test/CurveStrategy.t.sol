@@ -652,14 +652,6 @@ contract CurveStrategyTest is BaseTest {
         assertEq(curveStrategy.claimAll(), !before, "1");
     }
 
-    function test_ToggleClaimOnWithdraw() public useFork(forkId1) {
-        bool before = fallbackConvexCurve.claimOnWithdraw();
-
-        fallbackConvexCurve.toggleClaimOnWithdraw();
-
-        assertEq(fallbackConvexCurve.claimOnWithdraw(), !before, "1");
-    }
-
     function test_SetVeCRVDifferenceThreshold() public useFork(forkId1) {
         uint256 before = optimizor.veCRVDifferenceThreshold();
 
