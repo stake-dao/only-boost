@@ -25,13 +25,6 @@ contract FallbackConvexCurve is BaseFallback {
         IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
 
     //////////////////////////////////////////////////////
-    /// --- VARIABLES
-    //////////////////////////////////////////////////////
-
-    /// @notice Flag to check if rewards should be claimed on withdraw
-    bool public claimOnWithdraw;
-
-    //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
     /// @notice Error emitted when deposit fails
@@ -80,11 +73,6 @@ contract FallbackConvexCurve is BaseFallback {
         lastPidsCount = len;
     }
 
-    /// @notice Toggle claim on withdraw on or off
-    function toggleClaimOnWithdraw() external requiresAuth {
-        claimOnWithdraw = !claimOnWithdraw;
-    }
-
     /// @notice Main gateway to deposit LP token into ConvexCurve
     /// @dev Only callable by the strategy
     /// @param token Address of LP token to deposit
@@ -105,16 +93,11 @@ contract FallbackConvexCurve is BaseFallback {
     function withdraw(address token, uint256 amount) external override requiresAuth {
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(getPid(token).pid);
-        // Withdraw from ConvexCurve gauge and claim rewards if toggle is on
-        IBaseRewardsPool(crvRewards).withdrawAndUnwrap(amount, claimOnWithdraw);
+        // Withdraw from ConvexCurve gauge without claiming rewards
+        IBaseRewardsPool(crvRewards).withdrawAndUnwrap(amount, false);
 
         // Transfer the amount
         ERC20(token).safeTransfer(curveStrategy, amount);
-
-        if (claimOnWithdraw) {
-            address[] memory rewardsTokens = getRewardsTokens(token);
-            _handleRewards(token, rewardsTokens, address(0));
-        }
 
         emit Withdrawn(token, amount);
     }
