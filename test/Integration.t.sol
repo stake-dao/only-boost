@@ -71,14 +71,6 @@ contract IntegrationTest is BaseTest {
         // 3. Grant `deposit` role from Fallback Convex Curve to Curve Strategy
         vm.prank(MS_STAKEDAO);
         rolesAuthority.setUserRole(address(curveStrategy), 3, true);
-
-        // 4. Create roles for `deposit` on Fallback Convex Frax
-        vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(4, address(fallbackConvexFrax), BaseFallback.deposit.selector, true);
-
-        // 4. Grant `deposit` role from Fallback Convex Frax to Curve Strategy
-        vm.prank(MS_STAKEDAO);
-        rolesAuthority.setUserRole(address(curveStrategy), 4, true);
     }
 
     function test_Integration_3Pool() public {
@@ -100,12 +92,14 @@ contract IntegrationTest is BaseTest {
 
         // Get LL LP Balance
         uint256 balanceBefore = ERC20(gauges[token]).balanceOf(LOCKER);
+        require(vaults[token] != address(0), "Vault not set");
+        uint256 balanceVault = IVault(vaults[token]).available();
 
         // Set new strategy
         vm.prank(MS_STAKEDAO);
         IVault(vaults[token]).setCurveStrategy(address(curveStrategy));
 
-        assertEq(balanceBefore, _totalBalance(token));
+        assertEq(balanceBefore + balanceVault, _totalBalance(token));
     }
 
     function test_Integration_Manipulate_Cache() public {

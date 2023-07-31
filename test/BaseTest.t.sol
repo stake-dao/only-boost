@@ -570,7 +570,6 @@ contract BaseTest is Test {
     }
 
     function _totalBalance(address token) internal view returns (uint256) {
-        return ERC20(gauges[token]).balanceOf(LOCKER) + fallbackConvexCurve.balanceOf(token)
-            + fallbackConvexFrax.balanceOf(token) + fallbackConvexFrax.balanceOfLocked(fallbackConvexFrax.getPid(token).pid);
+        return ERC20(gauges[token]).balanceOf(LOCKER) + fallbackConvexCurve.balanceOf(token);
     }
 }
