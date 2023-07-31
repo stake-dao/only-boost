@@ -77,6 +77,9 @@ contract CurveStrategy is Auth {
     /// @notice Curve DAO ERC20 CRV Token
     address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
+    /// @notice Curve DAO Vote-escrowed CRV
+    address public constant VE_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
+
     // --- Uints
     /// @notice Base for fees calculation, represents 100% in base fee
     uint256 public constant BASE_FEE = 10000;
@@ -542,6 +545,39 @@ contract CurveStrategy is Auth {
     function sendToAccumulator(address token, uint256 amount) external requiresAuth {
         ERC20(token).safeApprove(address(accumulator), amount);
         accumulator.depositToken(token, amount);
+    }
+
+    //////////////////////////////////////////////////////
+    /// --- LOCKER MANAGEMENT
+    //////////////////////////////////////////////////////
+
+    /// @notice Increase CRV amount locked
+    /// @param value Amount of CRV to lock
+    function increaseAmount(uint256 value) external requiresAuth {
+        LOCKER.increaseAmount(value);
+    }
+
+    /// @notice Extend unlock time on the locker
+    /// @param unlock_time New epoch time for unlocking
+    function increaseUnlockTime(uint256 unlock_time) external requiresAuth {
+        LOCKER.execute(VE_CRV, 0, abi.encodeWithSignature("increase_unlock_time(uint256)", unlock_time));
+    }
+
+    /// @notice Release all CRV locked
+    function release() external requiresAuth {
+        LOCKER.release();
+    }
+
+    /// @notice Set the governance address
+    /// @param _governance Address of the new governance
+    function setGovernance(address _governance) external requiresAuth {
+        LOCKER.setGovernance(_governance);
+    }
+
+    /// @notice Set the strategy address
+    /// @param _strategy Address of the new strategy
+    function setStrategy(address _strategy) external requiresAuth {
+        LOCKER.setStrategy(_strategy);
     }
 
     //////////////////////////////////////////////////////

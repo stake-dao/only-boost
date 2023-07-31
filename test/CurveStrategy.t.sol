@@ -679,6 +679,66 @@ contract CurveStrategyTest is BaseTest {
         assertEq(abi.decode(data, (address)), address(CRV), "1");
     }
 
+    // --- Locker Management
+    function test_IncreaseAmount() public useFork(forkId1) {
+        uint256 amount = 1000;
+        deal(address(CRV), address(this), amount);
+
+        CRV.transfer(LOCKER, amount);
+
+        IVeCRV.LockedBalance memory balBefore = IVeCRV(VE_CRV).locked(LOCKER);
+
+        curveStrategy.increaseAmount(amount);
+
+        IVeCRV.LockedBalance memory balAfter = IVeCRV(VE_CRV).locked(LOCKER);
+
+        assertGe(balAfter.amount, balBefore.amount, "0");
+    }
+
+    function test_ReleaseCRV() public useFork(forkId1) {
+        skip(4 * 52 weeks);
+
+        uint256 balBefore = CRV.balanceOf(LOCKER);
+
+        curveStrategy.release();
+
+        assertGt(CRV.balanceOf(LOCKER), balBefore, "0");
+    }
+
+    function test_SetGovernance_Locker() public useFork(forkId1) {
+        vm.prank(ILocker(LOCKER).governance());
+        ILocker(LOCKER).setGovernance(address(curveStrategy));
+
+        address before = ILocker(LOCKER).governance();
+        assertNotEq(before, address(0x123), "0");
+
+        curveStrategy.setGovernance(address(0x123));
+
+        assertEq(ILocker(LOCKER).governance(), address(0x123), "1");
+    }
+
+    function test_SetStrategy_Locker() public useFork(forkId1) {
+        vm.prank(ILocker(LOCKER).governance());
+        ILocker(LOCKER).setGovernance(address(curveStrategy));
+
+        address before = ILocker(LOCKER).strategy();
+        assertNotEq(before, address(0x123), "0");
+
+        curveStrategy.setStrategy(address(0x123));
+
+        assertEq(ILocker(LOCKER).strategy(), address(0x123), "1");
+    }
+
+    function test_IncreaseUnlockTime() public useFork(forkId1) {
+        uint256 endBefore = IVeCRV(VE_CRV).locked(LOCKER).end;
+        uint256 endAfter = endBefore + 7 days;
+
+        skip(30 weeks); // To avoid being above the max lock time
+        curveStrategy.increaseUnlockTime(endAfter);
+
+        assertEq(IVeCRV(VE_CRV).locked(LOCKER).end, endAfter, "0");
+    }
+
     //////////////////////////////////////////////////////
     /// --- FALLBACKS
     //////////////////////////////////////////////////////

@@ -13,8 +13,10 @@ import {RolesAuthority} from "solmate/auth/authorities/RolesAuthority.sol";
 
 // --- Contracts
 import {Optimizor} from "src/Optimizor.sol";
+import {CrvDepositor} from "src/CrvDepositor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
+import {CurveVaultFactory} from "src/CurveVaultFactory.sol";
 import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
 
 // --- Mocks
@@ -23,10 +25,16 @@ import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
 
 // --- Interfaces
 import {IVault} from "src/interfaces/IVault.sol";
+import {IVeCRV} from "src/interfaces/IVeCRV.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
+import {ISdToken} from "src/interfaces/ISdToken.sol";
+import {ICurveVault} from "src/interfaces/ICurveVault.sol";
+import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
 import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
+import {ILiquidityGaugeStrat} from "src/interfaces/ILiquidityGaugeStrat.sol";
+import {ICurveLiquidityGauge} from "src/interfaces/ICurveLiquidityGauge.sol";
 import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
 
 contract BaseTest is Test {
@@ -38,8 +46,10 @@ contract BaseTest is Test {
     //////////////////////////////////////////////////////
     // --- Contracts
     Optimizor public optimizor;
+    CrvDepositor public crvDepositor;
     CurveStrategy public curveStrategy;
     RolesAuthority public rolesAuthority;
+    CurveVaultFactory public curveVaultFactory;
     FallbackConvexCurve public fallbackConvexCurve;
 
     // --- Mocks
@@ -86,6 +96,7 @@ contract BaseTest is Test {
     address public constant GAUGE_UZD_FRAXBP = 0xBdCA4F610e7101Cc172E2135ba025737B99AbD30;
     address public constant GAUGE_COIL_FRAXBP = 0x06B30D5F2341C2FB3F6B48b109685997022Bd272;
     address public constant GAUGE_ALUSD_FRAXBP = 0x740BA8aa0052E07b925908B380248cb03f3DE5cB;
+    address public constant GAUGE_SWETH_FXETH = 0xE6A9fd148Ad624a5A8700c6366e23E3cD308DFcB;
 
     // --- Stake DAO Vault address
     IVault public constant VAULT_3CRV = IVault(0xb9205784b05fbe5b5298792A24C2CB844B7dc467);
@@ -94,6 +105,7 @@ contract BaseTest is Test {
     IVault public constant VAULT_UZD_FRAXBP = IVault(0xbc61f6973cE564eFFB16Cd79B5BC3916eaD592E2);
 
     // --- Lockers address
+    address public constant VE_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
     address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
     address public constant LOCKER_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80; // Convex CRV Locker
     address public constant LOCKER_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2; // CRV Locker
@@ -235,33 +247,33 @@ contract BaseTest is Test {
 
     function _labelAddress() internal {
         // Classic Tokens
-        vm.label(address(CRV), "CRV");
-        vm.label(address(CNC), "CNC");
-        vm.label(address(LDO), "LDO");
-        vm.label(address(CVX), "CVX");
-        vm.label(address(FXS), "FXS");
+        _labelNonZeroAddress(address(CRV), "CRV");
+        _labelNonZeroAddress(address(CNC), "CNC");
+        _labelNonZeroAddress(address(LDO), "LDO");
+        _labelNonZeroAddress(address(CVX), "CVX");
+        _labelNonZeroAddress(address(FXS), "FXS");
 
         // LP Tokens
-        vm.label(address(CRV3), "CRV3");
-        vm.label(address(EUR3), "EUR3");
-        vm.label(address(CNC_ETH), "CNC_ETH");
-        vm.label(address(STETH_ETH), "STETH_ETH");
-        vm.label(address(COIL_FRAXBP), "COIL_FRAXBP");
-        vm.label(address(ALUSD_FRAXBP), "ALUSD_FRAXBP");
+        _labelNonZeroAddress(address(CRV3), "CRV3");
+        _labelNonZeroAddress(address(EUR3), "EUR3");
+        _labelNonZeroAddress(address(CNC_ETH), "CNC_ETH");
+        _labelNonZeroAddress(address(STETH_ETH), "STETH_ETH");
+        _labelNonZeroAddress(address(COIL_FRAXBP), "COIL_FRAXBP");
+        _labelNonZeroAddress(address(ALUSD_FRAXBP), "ALUSD_FRAXBP");
 
         // Gauge addresses
-        vm.label(GAUGE_CRV3, "GAUGE_CRV3");
-        vm.label(GAUGE_EUR3, "GAUGE_EUR3");
-        vm.label(GAUGE_CNC_ETH, "GAUGE_CNC_ETH");
-        vm.label(GAUGE_STETH_ETH, "GAUGE_STETH_ETH");
-        vm.label(GAUGE_COIL_FRAXBP, "GAUGE_COIL_FRAXBP");
-        vm.label(GAUGE_ALUSD_FRAXBP, "GAUGE_ALUSD_FRAXBP");
+        _labelNonZeroAddress(GAUGE_CRV3, "GAUGE_CRV3");
+        _labelNonZeroAddress(GAUGE_EUR3, "GAUGE_EUR3");
+        _labelNonZeroAddress(GAUGE_CNC_ETH, "GAUGE_CNC_ETH");
+        _labelNonZeroAddress(GAUGE_STETH_ETH, "GAUGE_STETH_ETH");
+        _labelNonZeroAddress(GAUGE_COIL_FRAXBP, "GAUGE_COIL_FRAXBP");
+        _labelNonZeroAddress(GAUGE_ALUSD_FRAXBP, "GAUGE_ALUSD_FRAXBP");
 
         // Vaults
-        vm.label(address(VAULT_3CRV), "VAULT_3CRV");
+        _labelNonZeroAddress(address(VAULT_3CRV), "VAULT_3CRV");
 
-        vm.label(MS_STAKEDAO, "MS_STAKEDAO");
-        vm.label(DEPLOYER_007, "DEPLOYER_007");
+        _labelNonZeroAddress(MS_STAKEDAO, "MS_STAKEDAO");
+        _labelNonZeroAddress(DEPLOYER_007, "DEPLOYER_007");
     }
 
     function _labelContract() internal {
@@ -270,16 +282,18 @@ contract BaseTest is Test {
         vm.label(address(curveStrategy.optimizor()), "Optimizor");
         vm.label(address(fallbackConvexCurve), "FallbackConvexCurve");
         vm.label(address(locker), "Locker");
-        vm.label(address(BOOSTER_CONVEX_FRAX), "BoosterConvexFrax");
         vm.label(address(BOOSTER_CONVEX_CURVE), "BoosterConvexCurve");
-        vm.label(address(POOL_REGISTRY_CONVEX_FRAX), "PoolRegistryConvexFrax");
 
         // Mocks
-        vm.label(address(accumulatorMock), "AccumulatorMock");
-        vm.label(address(liquidityGaugeMockCRV3), "LiquidityGaugeMockCRV3");
-        vm.label(address(liquidityGaugeMockCNC_ETH), "LiquidityGaugeMockCNC_ETH");
-        vm.label(address(liquidityGaugeMockSTETH_ETH), "LiquidityGaugeMockSTETH_ETH");
-        vm.label(address(liquidityGaugeMockALUSD_FRAXBP), "LiquidityGaugeMockALUSD_FRAXBP");
+        _labelNonZeroAddress(address(accumulatorMock), "AccumulatorMock");
+        _labelNonZeroAddress(address(liquidityGaugeMockCRV3), "LiquidityGaugeMockCRV3");
+        _labelNonZeroAddress(address(liquidityGaugeMockCNC_ETH), "LiquidityGaugeMockCNC_ETH");
+        _labelNonZeroAddress(address(liquidityGaugeMockSTETH_ETH), "LiquidityGaugeMockSTETH_ETH");
+        _labelNonZeroAddress(address(liquidityGaugeMockALUSD_FRAXBP), "LiquidityGaugeMockALUSD_FRAXBP");
+    }
+
+    function _labelNonZeroAddress(address _address, string memory _str) internal {
+        if (_address != address(0)) vm.label(_address, _str);
     }
 
     function _addCOIL_FRAXBPOnConvexFrax() internal {
