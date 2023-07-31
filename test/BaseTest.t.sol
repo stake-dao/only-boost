@@ -568,4 +568,9 @@ contract BaseTest is Test {
 
         return (amountStakeDAO, amountConvex);
     }
+
+    function _totalBalance(address token) internal view returns (uint256) {
+        return ERC20(gauges[token]).balanceOf(LOCKER) + fallbackConvexCurve.balanceOf(token)
+            + fallbackConvexFrax.balanceOf(token) + fallbackConvexFrax.balanceOfLocked(fallbackConvexFrax.getPid(token).pid);
+    }
 }
