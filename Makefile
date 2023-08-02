@@ -16,6 +16,9 @@ install:
 test:
 	forge test
 
+snapshot:
+	forge snapshot
+
 test-f-%:
 	@FOUNDRY_MATCH_TEST=$* make test
 

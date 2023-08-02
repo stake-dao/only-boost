@@ -387,14 +387,16 @@ contract CurveStrategy is Auth {
             LOCKER.execute(CRV, 0, abi.encodeWithSignature("transfer(address,uint256)", address(this), crvMinted));
         if (!success) revert CALL_FAILED();
 
+        address rewardDistributor = rewardDistributors[gauge];
+
         // Distribute CRV to fees recipients and gauges
         uint256 crvNetRewards = _sendFee(gauge, CRV, crvMinted);
-        ERC20(CRV).safeApprove(rewardDistributors[gauge], crvNetRewards);
-        ILiquidityGauge(rewardDistributors[gauge]).deposit_reward_token(CRV, crvNetRewards);
+        ERC20(CRV).safeApprove(rewardDistributor, crvNetRewards);
+        ILiquidityGauge(rewardDistributor).deposit_reward_token(CRV, crvNetRewards);
         emit Claimed(gauge, CRV, crvMinted);
 
         // Distribute SDT to the related gauge
-        ISdtDistributorV2(sdtDistributor).distribute(rewardDistributors[gauge]);
+        ISdtDistributorV2(sdtDistributor).distribute(rewardDistributor);
 
         // Claim rewards only for lg type 0 and if there is at least one reward token added
         if (lGaugeType[gauge] == 0 && ILiquidityGauge(gauge).reward_tokens(0) != address(0)) {
@@ -451,8 +453,8 @@ contract CurveStrategy is Auth {
                     );
                     if (!success) revert CALL_FAILED();
                 }
-                ERC20(rewardToken).safeApprove(rewardDistributors[gauge], rewardsBalance);
-                ILiquidityGauge(rewardDistributors[gauge]).deposit_reward_token(rewardToken, rewardsBalance);
+                ERC20(rewardToken).safeApprove(rewardDistributor, rewardsBalance);
+                ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, rewardsBalance);
                 emit Claimed(gauge, rewardToken, rewardsBalance);
             }
         }
@@ -468,6 +470,8 @@ contract CurveStrategy is Auth {
         // Get fallbacks addresses
         // If no optimizor setted, this will revert
         address[] memory fallbacks = optimizor.getFallbacks();
+    
+        address rewardDistributor = rewardDistributors[gauge];
 
         // Cache the fallbacks length
         uint256 len = fallbacks.length;
@@ -485,8 +489,8 @@ contract CurveStrategy is Auth {
                 // Skip if no reward obtained
                 if (amounts[j] == 0) continue;
                 // Approve and deposit the reward to the multi gauge
-                ERC20(rewardsTokens[j]).safeApprove(rewardDistributors[gauge], amounts[j]);
-                ILiquidityGauge(rewardDistributors[gauge]).deposit_reward_token(rewardsTokens[j], amounts[j]);
+                ERC20(rewardsTokens[j]).safeApprove(rewardDistributor, amounts[j]);
+                ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardsTokens[j], amounts[j]);
             }
         }
     }
