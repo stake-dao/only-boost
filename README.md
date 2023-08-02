@@ -1,7 +1,7 @@
 
-# <h1 align="center">Votemarket</h1>
+# <h1 align="center">Only Boost</h1>
 
-This repo contains the implementation of veBooster white paper. Smart contracts related to the CRV Liquid Locker to optimize distribution of funds between Stake DAO and Convex Curve / Convex Frax in order to maximizing boost.
+This repo contains the implementation of OnlyBoost white paper. Smart contracts related to the CRV Liquid Locker to optimize distribution of funds between Stake DAO and Convex Curve / Convex Frax in order to maximizing boost.
 
 
 ## Installation
@@ -29,9 +29,9 @@ Run all tests:
     make test
 ```
     
-## What is veBooster
+## What is OnlyBoost
 
-veBooster is a set of smart contract designed to maximize the boost on the Curve LP with Stake DAO using Convex Curve and Convex Frax as fallback, when boost is not optimal anymore on Stake DAO. 
+OnlyBoost is a set of smart contract designed to maximize the boost on the Curve LP with Stake DAO using Convex Curve and Convex Frax as fallback, when boost is not optimal anymore on Stake DAO. 
 
 The splitting logic is the following: 
 -  First deposit as much as possible through Stake DAO Liquid Locker, as long as the boost remains optimal. 
