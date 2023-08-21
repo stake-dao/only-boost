@@ -45,15 +45,15 @@ contract CurveStrategy is Auth {
 
     // --- Enums
     /// @notice Enum to store fee types
-    /// @param PERFFEE Performance fee
-    /// @param VESDTFEE veSDT fee
-    /// @param ACCUMULATORFEE Accumulator fee
-    /// @param CLAIMERREWARD Claimer reward fee
+    /// @param PERF_FEE Performance fee
+    /// @param VESDT_FEE veSDT fee
+    /// @param ACCUMULATOR_FEE Accumulator fee
+    /// @param CLAIMER_REWARD Claimer reward fee
     enum MANAGEFEE {
-        PERFFEE,
-        VESDTFEE,
-        ACCUMULATORFEE,
-        CLAIMERREWARD
+        PERF_FEE,
+        VESDT_FEE,
+        ACCUMULATOR_FEE,
+        CLAIMER_REWARD
     }
 
     //////////////////////////////////////////////////////
@@ -470,7 +470,7 @@ contract CurveStrategy is Auth {
         // Get fallbacks addresses
         // If no optimizor setted, this will revert
         address[] memory fallbacks = optimizor.getFallbacks();
-    
+
         address rewardDistributor = rewardDistributors[gauge];
 
         // Cache the fallbacks length
@@ -701,23 +701,24 @@ contract CurveStrategy is Auth {
     function manageFee(MANAGEFEE manageFee_, address gauge, uint256 newFee) external requiresAuth {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
-        if (manageFee_ == MANAGEFEE.PERFFEE) {
+        Fees storage feesInfo = feesInfos[gauge];
+
+        if (manageFee_ == MANAGEFEE.PERF_FEE) {
             // 0
-            feesInfos[gauge].perfFee = newFee;
-        } else if (manageFee_ == MANAGEFEE.VESDTFEE) {
+            feesInfo.perfFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.VESDT_FEE) {
             // 1
-            feesInfos[gauge].veSDTFee = newFee;
-        } else if (manageFee_ == MANAGEFEE.ACCUMULATORFEE) {
+            feesInfo.veSDTFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.ACCUMULATOR_FEE) {
             //2
-            feesInfos[gauge].accumulatorFee = newFee;
-        } else if (manageFee_ == MANAGEFEE.CLAIMERREWARD) {
+            feesInfo.accumulatorFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.CLAIMER_REWARD) {
             // 3
-            feesInfos[gauge].claimerRewardFee = newFee;
+            feesInfo.claimerRewardFee = newFee;
         }
-        if (
-            feesInfos[gauge].perfFee + feesInfos[gauge].veSDTFee + feesInfos[gauge].accumulatorFee
-                + feesInfos[gauge].claimerRewardFee > BASE_FEE
-        ) revert FEE_TOO_HIGH();
+        if (feesInfo.perfFee + feesInfo.veSDTFee + feesInfo.accumulatorFee + feesInfo.claimerRewardFee > BASE_FEE) {
+            revert FEE_TOO_HIGH();
+        }
 
         emit FeeManaged(uint256(manageFee_), gauge, newFee);
     }

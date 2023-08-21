@@ -613,12 +613,12 @@ contract CurveStrategyTest is BaseTest {
 
     function test_ManageFee_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
         vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, address(0), 10);
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERF_FEE, address(0), 10);
     }
 
     function test_RevertWhen_FeeTooHigh_ManageFee() public useFork(forkId1) {
         vm.expectRevert(CurveStrategy.FEE_TOO_HIGH.selector);
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, gauges[address(ALUSD_FRAXBP)], 10001);
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERF_FEE, gauges[address(ALUSD_FRAXBP)], 10001);
     }
 
     function test_SetCurveStrategy() public useFork(forkId1) {

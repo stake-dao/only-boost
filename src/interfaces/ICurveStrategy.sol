@@ -11,10 +11,10 @@ interface ICurveStrategy {
     }
 
     enum MANAGEFEE {
-        PERFFEE,
-        VESDTFEE,
-        ACCUMULATORFEE,
-        CLAIMERREWARD
+        PERF_FEE,
+        VESDT_FEE,
+        ACCUMULATOR_FEE,
+        CLAIMER_REWARD
     }
 
     function gauges(address gauge) external view returns (address);

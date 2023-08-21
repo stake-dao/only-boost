@@ -152,10 +152,10 @@ contract CurveVaultFactory {
         curveStrategy.toggleVault(vaultImplAddress);
         curveStrategy.setGauge(vaultLpToken, _crvGaugeAddress);
         curveStrategy.setMultiGauge(_crvGaugeAddress, gaugeImplAddress);
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, _crvGaugeAddress, 200); //%2 default
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDTFEE, _crvGaugeAddress, 500); //%5 default
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATORFEE, _crvGaugeAddress, 800); //%8 default
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMERREWARD, _crvGaugeAddress, 50); //%0.5 default
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERF_FEE, _crvGaugeAddress, 200); //%2 default
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDT_FEE, _crvGaugeAddress, 500); //%5 default
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATOR_FEE, _crvGaugeAddress, 800); //%8 default
+        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMER_REWARD, _crvGaugeAddress, 50); //%0.5 default
         curveStrategy.setLGtype(_crvGaugeAddress, liquidityGaugeType);
         ILiquidityGaugeStrat(gaugeImplAddress).add_reward(CRV, address(curveStrategy));
         ILiquidityGaugeStrat(gaugeImplAddress).set_claimer(CLAIM_REWARDS);

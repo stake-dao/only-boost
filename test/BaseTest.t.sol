@@ -217,10 +217,10 @@ contract BaseTest is Test {
             address token = tokens[i];
             if (token == address(0)) break;
 
-            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERFFEE, gauges[address(token)], FEE_PERF);
-            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDTFEE, gauges[address(token)], FEE_VESDT);
-            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATORFEE, gauges[address(token)], FEE_ACCU);
-            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMERREWARD, gauges[address(token)], FEE_CLAIM);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERF_FEE, gauges[address(token)], FEE_PERF);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDT_FEE, gauges[address(token)], FEE_VESDT);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATOR_FEE, gauges[address(token)], FEE_ACCU);
+            curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMER_REWARD, gauges[address(token)], FEE_CLAIM);
         }
 
         // Grant public access to claim function for curve strategy
