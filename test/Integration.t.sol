@@ -29,7 +29,7 @@ contract IntegrationTest is BaseTest {
         curveStrategy = new CurveStrategy(MS_STAKEDAO, rolesAuthority);
 
         // Fallbacks
-        fallbackConvexCurve = new FallbackConvexCurve(MS_STAKEDAO, rolesAuthority, address(curveStrategy)); // Convex Curve
+        fallbackConvexCurve = new ConvexFallback(MS_STAKEDAO, rolesAuthority, address(curveStrategy)); // Convex Curve
 
         // Optimizor
         optimizor = new Optimizor(MS_STAKEDAO, rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));

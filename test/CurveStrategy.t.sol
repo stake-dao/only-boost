@@ -27,7 +27,7 @@ contract CurveStrategyTest is BaseTest {
         // Deployment contracts
         rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
         curveStrategy = new CurveStrategy(address(this), rolesAuthority);
-        fallbackConvexCurve = new FallbackConvexCurve(address(this), rolesAuthority, address(curveStrategy));
+        fallbackConvexCurve = new ConvexFallback(address(this), rolesAuthority, address(curveStrategy));
         optimizor = new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock(CRV3);
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock(CNC_ETH);
@@ -51,7 +51,7 @@ contract CurveStrategyTest is BaseTest {
     // --- Deployment
     function test_DeploymentAddresses() public useFork(forkId1) {
         assertTrue(address(optimizor) != address(0), "1");
-        assertTrue(fallbackConvexCurve != FallbackConvexCurve(address(0)), "3");
+        assertTrue(fallbackConvexCurve != ConvexFallback(address(0)), "3");
         assertTrue(optimizor.fallbacksLength() != 0, "4");
         assertTrue(fallbackConvexCurve.lastPidsCount() != 0, "6");
     }

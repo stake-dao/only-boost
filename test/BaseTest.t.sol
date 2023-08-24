@@ -17,7 +17,7 @@ import {CrvDepositor} from "src/CrvDepositor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
 import {CurveStrategy} from "src/CurveStrategy.sol";
 import {CurveVaultFactory} from "src/CurveVaultFactory.sol";
-import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
+import {ConvexFallback} from "src/ConvexFallback.sol";
 
 // --- Mocks
 import {AccumulatorMock} from "src/mocks/AccumulatorMock.sol";
@@ -50,7 +50,7 @@ contract BaseTest is Test {
     CurveStrategy public curveStrategy;
     RolesAuthority public rolesAuthority;
     CurveVaultFactory public curveVaultFactory;
-    FallbackConvexCurve public fallbackConvexCurve;
+    ConvexFallback public fallbackConvexCurve;
 
     // --- Mocks
     AccumulatorMock public accumulatorMock;
@@ -235,11 +235,9 @@ contract BaseTest is Test {
 
         // Grant access to deposit/withdraw/claim function for fallback convex curve to curveStrategy
         fallbackConvexCurve.setAuthority(rolesAuthority);
-        rolesAuthority.setRoleCapability(1, address(fallbackConvexCurve), FallbackConvexCurve.deposit.selector, true);
-        rolesAuthority.setRoleCapability(2, address(fallbackConvexCurve), FallbackConvexCurve.withdraw.selector, true);
-        rolesAuthority.setRoleCapability(
-            3, address(fallbackConvexCurve), FallbackConvexCurve.claimRewards.selector, true
-        );
+        rolesAuthority.setRoleCapability(1, address(fallbackConvexCurve), ConvexFallback.deposit.selector, true);
+        rolesAuthority.setRoleCapability(2, address(fallbackConvexCurve), ConvexFallback.withdraw.selector, true);
+        rolesAuthority.setRoleCapability(3, address(fallbackConvexCurve), ConvexFallback.claimRewards.selector, true);
         rolesAuthority.setUserRole(address(curveStrategy), 1, true);
         rolesAuthority.setUserRole(address(curveStrategy), 2, true);
         rolesAuthority.setUserRole(address(curveStrategy), 3, true);
@@ -280,7 +278,7 @@ contract BaseTest is Test {
         vm.label(address(rolesAuthority), "RolesAuthority");
         vm.label(address(curveStrategy), "NewCurveStrategy");
         vm.label(address(curveStrategy.optimizor()), "Optimizor");
-        vm.label(address(fallbackConvexCurve), "FallbackConvexCurve");
+        vm.label(address(fallbackConvexCurve), "ConvexFallback");
         vm.label(address(locker), "Locker");
         vm.label(address(BOOSTER_CONVEX_CURVE), "BoosterConvexCurve");
 

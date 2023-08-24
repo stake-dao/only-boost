@@ -9,7 +9,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 // --- Core Contracts
 import {CurveStrategy} from "src/CurveStrategy.sol";
-import {FallbackConvexCurve} from "src/FallbackConvexCurve.sol";
+import {ConvexFallback} from "src/ConvexFallback.sol";
 
 // --- Interfaces
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
@@ -75,7 +75,7 @@ contract Optimizor is Auth {
     CurveStrategy public curveStrategy;
 
     /// @notice Stake DAO Fallback Convex Curve
-    FallbackConvexCurve public fallbackConvexCurve;
+    ConvexFallback public fallbackConvexCurve;
 
     // --- Addresses
     /// @notice List of fallbacks
@@ -125,10 +125,10 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
-    constructor(address owner, Authority authority, address _curveStrategy, address _fallbackConvexCurve)
+    constructor(address owner, Authority authority, address _curveStrategy, address _convexFallback)
         Auth(owner, authority)
     {
-        fallbackConvexCurve = FallbackConvexCurve(_fallbackConvexCurve);
+        fallbackConvexCurve = ConvexFallback(_convexFallback);
         curveStrategy = CurveStrategy(_curveStrategy);
 
         fallbacks.push(LOCKER);
@@ -285,7 +285,7 @@ contract Optimizor is Auth {
     {
         // Cache the balance of all fallbacks
         uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER);
-        uint256 balanceOfConvexCurve = FallbackConvexCurve(fallbacks[1]).balanceOf(token);
+        uint256 balanceOfConvexCurve = ConvexFallback(fallbacks[1]).balanceOf(token);
 
         // Initialize the result
         uint256[] memory amounts = new uint256[](2);
