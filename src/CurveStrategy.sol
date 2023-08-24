@@ -76,7 +76,7 @@ contract CurveStrategy is Auth {
 
     // --- Uints
     /// @notice Base for fees calculation, represents 100% in base fee
-    uint256 public constant BASE_FEE = 10000;
+    uint256 public constant BASE_FEE = 10_000;
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
@@ -454,13 +454,14 @@ contract CurveStrategy is Auth {
                     rewardsBalance = ERC20(rewardToken).balanceOf(address(LOCKER)) - rewardsBalanceBeforeLocker[i];
 
                     // Transfer the freshly rewards from the locker to here
-                    (success,) = LOCKER.execute(
+                    (bool transferSuccessful,) = LOCKER.execute(
                         rewardToken,
                         0,
                         abi.encodeWithSignature("transfer(address,uint256)", address(this), rewardsBalance)
                     );
-                    if (!success) revert CALL_FAILED();
+                    if (!transferSuccessful) revert CALL_FAILED();
                 }
+
                 ERC20(rewardToken).safeApprove(rewardDistributor, rewardsBalance);
                 ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, rewardsBalance);
                 emit Claimed(gauge, rewardToken, rewardsBalance);
