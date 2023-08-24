@@ -225,7 +225,7 @@ contract BaseTest is Test {
 
         // Grant public access to claim function for curve strategy
         rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.claim.selector, true);
-        rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.claim3Crv.selector, true);
+        rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.claimNativeRewards.selector, true);
 
         // Grant access to deposit/withdraw function for optimizor to curveStrategy
         rolesAuthority.setRoleCapability(1, address(optimizor), Optimizor.optimizeDeposit.selector, true);
@@ -301,6 +301,7 @@ contract BaseTest is Test {
         // https://etherscan.io/tx/0xbcc25272dad48329ed963991f156b929b28ee171e4ad157e2d9b749f3d85eb7b
         // Add all the stuff for ConvexFrax
         vm.prank(0x947B7742C403f20e5FaCcDAc5E092C943E7D0277); // Convex Deployer
+
         BOOSTER_CONVEX_FRAX.addPool(
             0x7D54C53e6940E88a7ac1970490DAFbBF85D982f4,
             0x39cd4db6460d8B5961F73E997E86DdbB7Ca4D5F6,

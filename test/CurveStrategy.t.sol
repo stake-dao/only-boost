@@ -326,7 +326,7 @@ contract CurveStrategyTest is BaseTest {
 
         // === CLAIM 3CRV PROCESS === //
         // No need to notify all, because it will call back the same exact process
-        curveStrategy.claim3Crv(true);
+        curveStrategy.claimNativeRewards(true);
 
         // === ASSERTIONS === //
         //Assertion 1: Check test accumulator received token
@@ -339,13 +339,13 @@ contract CurveStrategyTest is BaseTest {
         // Mock call to StakeDAO Locker
         vm.mockCall(
             address(LOCKER),
-            abi.encodeWithSignature("execute(address,uint256,bytes)", curveStrategy.CRV_FEE_D(), 0, data),
+            abi.encodeWithSignature("execute(address,uint256,bytes)", curveStrategy.feeDistributor(), 0, data),
             abi.encode(false, 0x0)
         );
 
         // Because no time has been skipped, there is no rewards to claim
         vm.expectRevert(CurveStrategy.CLAIM_FAILED.selector);
-        curveStrategy.claim3Crv(true);
+        curveStrategy.claimNativeRewards(true);
     }
 
     function test_Claim3CRV_RevertWhen_CALL_FAILED() public useFork(forkId1) {
@@ -363,7 +363,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Because no time has been skipped, there is no rewards to claim
         vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
-        curveStrategy.claim3Crv(true);
+        curveStrategy.claimNativeRewards(true);
     }
 
     // --- Migrate LP
@@ -642,6 +642,22 @@ contract CurveStrategyTest is BaseTest {
         curveStrategy.setSdtDistributor(address(0x1));
 
         assertEq(address(curveStrategy.sdtDistributor()), address(0x1), "1");
+    }
+
+    function test_SetCurveRewardToken() public useFork(forkId1) {
+        assertTrue(address(curveStrategy.curveRewardToken()) != address(0x1), "0");
+
+        curveStrategy.setCurveRewardToken(address(0x1));
+
+        assertEq(address(curveStrategy.curveRewardToken()), address(0x1), "1");
+    }
+
+    function test_SetNewFeeDistributor() public useFork(forkId1) {
+        assertTrue(address(curveStrategy.feeDistributor()) != address(0x1), "0");
+
+        curveStrategy.setFeeDistributor(address(0x1));
+
+        assertEq(address(curveStrategy.feeDistributor()), address(0x1), "1");
     }
 
     function test_toggleClaimAll() public useFork(forkId1) {

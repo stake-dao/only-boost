@@ -68,12 +68,6 @@ contract CurveStrategy is Auth {
     /// @notice Curve DAO CRV Minter
     address public constant CRV_MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
 
-    /// @notice Curve DAO CRV Fee Distributor
-    address public constant CRV_FEE_D = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc;
-
-    /// @notice Curve DAO 3Pool LP Token
-    address public constant CRV3 = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
-
     /// @notice Curve DAO ERC20 CRV Token
     address public constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
@@ -104,6 +98,12 @@ contract CurveStrategy is Auth {
 
     /// @notice Stake DAO veSDT Proxy
     address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E;
+
+    /// @notice Curve DAO CRV Fee Distributor
+    address public feeDistributor = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc;
+
+    /// @notice Reward Token for veCRV holders.
+    address public curveRewardToken = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
 
     // --- Bools
     /// @notice Flag for claiming rewards from fallbacks on `claim()`
@@ -142,15 +142,23 @@ contract CurveStrategy is Auth {
     /// @param _accumulator Address of the new Stake DAO CRV Accumulator
     event AccumulatorSet(address _accumulator);
 
+    /// @notice Emitted when a new Stake DAO CRV Fee Distributor is set
+    /// @param _feeDistributor Address of the new Stake DAO CRV Distributor
+    event FeeDistributorSet(address _feeDistributor);
+
+    /// @notice Emitted when a new Curve Reward Token distributed by the Fee Distributor is set.
+    /// @param _curveRewardToken Address of the new Stake DAO CRV Reward Token distributed by the Fee Distributor
+    event CurveRewardTokenSet(address _curveRewardToken);
+
     /// @notice Emitted when a new Curve liquidity gauge is set
     /// @param _gauge Address of the new Curve liquidity gauge
     /// @param _token Address of the LP token
     event GaugeSet(address _gauge, address _token);
 
-    /// @notice Emitted when CRV3 is claimed
-    /// @param amount Amount of CRV3 claimed
+    /// @notice Emitted when curveRewardToken is claimed
+    /// @param amount Amount of curveRewardToken claimed
     /// @param notified Flag for notifying Stake DAO CRV Accumulator
-    event Crv3Claimed(uint256 amount, bool notified);
+    event CurveRewardsClaimed(uint256 amount, bool notified);
 
     /// @notice Emitted when a Stake DAO vault is toggled
     /// @param _vault Address of the Stake DAO vault
@@ -497,25 +505,27 @@ contract CurveStrategy is Auth {
 
     /// @notice Claim 3crv from the curve fee Distributor and send it to the accumulator
     /// @param notify If true, notify the accumulator
-    function claim3Crv(bool notify) external requiresAuth {
+    function claimNativeRewards(bool notify) external requiresAuth {
         // Claim 3crv from the curve fee Distributor, it will send 3crv to the crv locker
-        (bool success,) = LOCKER.execute(CRV_FEE_D, 0, abi.encodeWithSignature("claim()"));
+        (bool success,) = LOCKER.execute(feeDistributor, 0, abi.encodeWithSignature("claim()"));
         if (!success) revert CLAIM_FAILED();
 
         // Cache amount to send to accumulator
-        uint256 amountToSend = ERC20(CRV3).balanceOf(address(LOCKER));
+        uint256 amountToSend = ERC20(curveRewardToken).balanceOf(address(LOCKER));
         if (amountToSend == 0) return;
 
         // Send 3crv from the LOCKER to the accumulator
         (success,) = LOCKER.execute(
-            CRV3, 0, abi.encodeWithSignature("transfer(address,uint256)", address(accumulator), amountToSend)
+            curveRewardToken,
+            0,
+            abi.encodeWithSignature("transfer(address,uint256)", address(accumulator), amountToSend)
         );
         if (!success) revert CALL_FAILED();
 
         if (notify) {
             accumulator.notifyAll();
         }
-        emit Crv3Claimed(amountToSend, notify);
+        emit CurveRewardsClaimed(amountToSend, notify);
     }
 
     /// @notice Internal process to send fees from rewards
@@ -669,6 +679,22 @@ contract CurveStrategy is Auth {
         if (newAccumulator == address(0)) revert ADDRESS_NULL();
         accumulator = IAccumulator(newAccumulator);
         emit AccumulatorSet(newAccumulator);
+    }
+
+    /// @notice Set new RewardToken FeeDistributor new address
+    /// @param newCurveRewardToken Address of new Accumulator
+    function setCurveRewardToken(address newCurveRewardToken) external requiresAuth {
+        if (newCurveRewardToken == address(0)) revert ADDRESS_NULL();
+        curveRewardToken = newCurveRewardToken;
+        emit CurveRewardTokenSet(newCurveRewardToken);
+    }
+
+    /// @notice Set FeeDistributor new address
+    /// @param newFeeDistributor Address of new Accumulator
+    function setFeeDistributor(address newFeeDistributor) external requiresAuth {
+        if (newFeeDistributor == address(0)) revert ADDRESS_NULL();
+        feeDistributor = newFeeDistributor;
+        emit FeeDistributorSet(newFeeDistributor);
     }
 
     /// @notice Set RewardsReceiver new address
