@@ -89,6 +89,12 @@ contract CurveVaultFactoryTest is BaseTest {
         vm.prank(MS_STAKEDAO);
         rolesAuthority.setUserRole(address(curveVaultFactory), 6, true);
 
+        // Give strategy roles from depositor to new strategy
+        locker = ILocker(LOCKER);
+
+        vm.prank(locker.governance());
+        locker.setStrategy(address(curveStrategy));
+
         _labelContract();
     }
 

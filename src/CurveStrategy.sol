@@ -294,10 +294,6 @@ contract CurveStrategy is Auth {
     function _depositIntoLiquidLocker(address token, address gauge, uint256 amount) internal {
         ERC20(token).safeTransfer(address(LOCKER), amount);
 
-        // Approve LOCKER to spend token
-        LOCKER.execute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, 0));
-        LOCKER.execute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, amount));
-
         // Locker deposit token
         (bool success,) = LOCKER.execute(gauge, 0, abi.encodeWithSignature("deposit(uint256)", amount));
         if (!success) revert CALL_FAILED();
@@ -399,7 +395,6 @@ contract CurveStrategy is Auth {
 
         // Distribute CRV to fees recipients and gauges
         uint256 crvNetRewards = _sendFee(gauge, CRV, crvMinted);
-        ERC20(CRV).safeApprove(rewardDistributor, crvNetRewards);
         ILiquidityGauge(rewardDistributor).deposit_reward_token(CRV, crvNetRewards);
         emit Claimed(gauge, CRV, crvMinted);
 
@@ -462,7 +457,8 @@ contract CurveStrategy is Auth {
                     if (!transferSuccessful) revert CALL_FAILED();
                 }
 
-                ERC20(rewardToken).safeApprove(rewardDistributor, rewardsBalance);
+                _approveIfNeeded(rewardDistributor, rewardToken);
+
                 ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, rewardsBalance);
                 emit Claimed(gauge, rewardToken, rewardsBalance);
             }
@@ -498,7 +494,7 @@ contract CurveStrategy is Auth {
                 // Skip if no reward obtained
                 if (amounts[j] == 0) continue;
                 // Approve and deposit the reward to the multi gauge
-                ERC20(rewardsTokens[j]).safeApprove(rewardDistributor, amounts[j]);
+                _approveIfNeeded(rewardDistributor, rewardsTokens[j]);
                 ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardsTokens[j], amounts[j]);
             }
         }
@@ -544,7 +540,7 @@ contract CurveStrategy is Auth {
 
         // send
         if (accumulatorPart > 0) {
-            ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
+            _approveIfNeeded(address(accumulator), rewardToken);
             accumulator.depositToken(rewardToken, accumulatorPart);
         }
         if (multisigFee > 0) ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
@@ -558,7 +554,7 @@ contract CurveStrategy is Auth {
     /// @param token Address of token to send to the accumulator
     /// @param amount Amount of token to send to the accumulator
     function sendToAccumulator(address token, uint256 amount) external requiresAuth {
-        ERC20(token).safeApprove(address(accumulator), amount);
+        _approveIfNeeded(address(accumulator), token);
         accumulator.depositToken(token, amount);
     }
 
@@ -644,7 +640,14 @@ contract CurveStrategy is Auth {
     /// @param gauge Address of liquidity gauge corresponding to `token`
     function setGauge(address token, address gauge) external requiresAuth {
         if (token == address(0)) revert ADDRESS_NULL();
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
         gauges[token] = gauge;
+
+        /// Approve trough the locker.
+        LOCKER.execute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, 0));
+        LOCKER.execute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, type(uint256).max));
+
         emit GaugeSet(gauge, token);
     }
 
@@ -659,11 +662,14 @@ contract CurveStrategy is Auth {
 
     /// @notice Set rewardDistributor for a Liquidity gauge
     /// @param gauge Address of Liquidity gauge
-    /// @param multiGauge Address of rewardDistributor
-    function setMultiGauge(address gauge, address multiGauge) external requiresAuth {
-        if (gauge == address(0) || multiGauge == address(0)) revert ADDRESS_NULL();
-        rewardDistributors[gauge] = multiGauge;
-        emit MultiGaugeSet(gauge, multiGauge);
+    /// @param rewardDistributor Address of rewardDistributor
+    function setMultiGauge(address gauge, address rewardDistributor) external requiresAuth {
+        if (gauge == address(0) || rewardDistributor == address(0)) revert ADDRESS_NULL();
+        rewardDistributors[gauge] = rewardDistributor;
+
+        ERC20(CRV).safeApprove(rewardDistributor, type(uint256).max);
+
+        emit MultiGaugeSet(gauge, rewardDistributor);
     }
 
     /// @notice Set VeSDTFeeProxy new address
@@ -781,5 +787,11 @@ contract CurveStrategy is Auth {
     /// @return veSDTFeeProxy_ Address of the VeSDTFeeProxy
     function getFeesAndReceiver(address gauge) public view returns (Fees memory, address, address, address) {
         return (feesInfos[gauge], address(accumulator), rewardsReceiver, veSDTFeeProxy);
+    }
+
+    function _approveIfNeeded(address spender, address token) internal {
+        if (ERC20(token).allowance(address(this), spender) == 0) {
+            ERC20(token).safeApprove(spender, type(uint256).max);
+        }
     }
 }

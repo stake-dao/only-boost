@@ -171,7 +171,6 @@ contract BaseTest is Test {
     function _afterDeployment() internal {
         curveStrategy.setOptimizor(address(optimizor));
         // Setup contracts
-        locker = ILocker(LOCKER);
         BOOSTER_CONVEX_CURVE = IBoosterConvexCurve(fallbackConvexCurve.BOOSTER_CONVEX_CURVE());
 
         _labelContract();

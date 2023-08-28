@@ -24,6 +24,8 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function _setup() internal {
+        locker = ILocker(LOCKER);
+
         // Deployment contracts
         rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
         curveStrategy = new CurveStrategy(address(this), rolesAuthority);
@@ -36,12 +38,12 @@ contract CurveStrategyTest is BaseTest {
         accumulatorMock = new AccumulatorMock();
         // End deployment contracts
 
-        // Setup contract
-        _afterDeployment();
-
         // Give strategy roles from depositor to new strategy
         vm.prank(locker.governance());
         locker.setStrategy(address(curveStrategy));
+
+        // Setup contract
+        _afterDeployment();
     }
 
     //////////////////////////////////////////////////////
