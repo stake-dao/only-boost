@@ -236,7 +236,6 @@ contract BaseTest is Test {
         fallbackConvexCurve.setAuthority(rolesAuthority);
         rolesAuthority.setRoleCapability(1, address(fallbackConvexCurve), ConvexFallback.deposit.selector, true);
         rolesAuthority.setRoleCapability(2, address(fallbackConvexCurve), ConvexFallback.withdraw.selector, true);
-        rolesAuthority.setRoleCapability(3, address(fallbackConvexCurve), ConvexFallback.claimRewards.selector, true);
         rolesAuthority.setUserRole(address(curveStrategy), 1, true);
         rolesAuthority.setUserRole(address(curveStrategy), 2, true);
         rolesAuthority.setUserRole(address(curveStrategy), 3, true);
