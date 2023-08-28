@@ -32,6 +32,32 @@ contract BaseFallback is Auth {
         bool isInitialized;
     }
 
+    // --- Structs
+    /// @notice Struct to store fees
+    /// @param perfFee Fee collected as performance fee
+    /// @param accumulatorFee Fee collected for accumulator
+    /// @param veSDTFee Fee collected for veSDT holders
+    /// @param claimerRewardFee Fee collected for reward claimer
+    struct Fees {
+        uint256 perfFee;
+        uint256 accumulatorFee;
+        uint256 veSDTFee;
+        uint256 claimerRewardFee;
+    }
+
+    // --- Enums
+    /// @notice Enum to store fee types
+    /// @param PERF_FEE Performance fee
+    /// @param VESDT_FEE veSDT fee
+    /// @param ACCUMULATOR_FEE Accumulator fee
+    /// @param CLAIMER_REWARD Claimer reward fee
+    enum MANAGEFEE {
+        PERF_FEE,
+        VESDT_FEE,
+        ACCUMULATOR_FEE,
+        CLAIMER_REWARD
+    }
+
     //////////////////////////////////////////////////////
     /// --- CONSTANTS
     //////////////////////////////////////////////////////
@@ -55,9 +81,22 @@ contract BaseFallback is Auth {
     /// @notice Number of pools on ConvexCurve or ConvexFrax
     uint256 public lastPidsCount;
 
+    // --- Addresses
+    /// @notice Stake DAO Rewards Receiver
+    address public rewardsReceiver = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
+
+    /// @notice Interface for Stake DAO CRV Accumulator
+    address public accumulator = address(0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A);
+
+    /// @notice Stake DAO veSDT Proxy
+    address public veSDTFeeProxy = 0x9592Ec0605CE232A4ce873C650d2Aa01c79cb69E;
+
     // --- Mappings
     /// @notice LP token address -> pool ids from ConvexCurve or ConvexFrax
     mapping(address => PidsInfo) public pids;
+
+    /// @notice Map Stake DAO liquidity gauge -> Fees struct
+    mapping(address => Fees) public feesInfos;
 
     //////////////////////////////////////////////////////
     /// --- EVENTS
@@ -78,15 +117,39 @@ contract BaseFallback is Auth {
     /// @param amountClaimed Amount of reward token claimed
     event ClaimedRewards(address rewardToken, uint256 amountClaimed);
 
+    /// @notice Emitted when a reward receiver is set
+    /// @param _rewardsReceiver Address of the new rewards receiver
+    event RewardsReceiverSet(address _rewardsReceiver);
+
+    /// @notice Emitted when a new veSDT Proxy contract is set
+    /// @param _veSDTProxy Address of the new veSDT Proxy contract
+    event VeSDTProxySet(address _veSDTProxy);
+
+    /// @notice Emitted when a new Stake DAO CRV Accumulator is set
+    /// @param _accumulator Address of the new Stake DAO CRV Accumulator
+    event AccumulatorSet(address _accumulator);
+
+    /// @notice Emitted when fee are updated
+    /// @param _manageFee New management fee
+    /// @param _gauge Address of the Curve DAO liquidity gauge
+    /// @param _fee New performance fee
+    event FeeManaged(uint256 _manageFee, address _gauge, uint256 _fee);
+
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
 
-    /// @notice Error emitted when token is not active
-    error NOT_VALID_PID();
+    /// @notice Error emitted when input address is null
+    error ADDRESS_NULL();
 
     /// @notice Error emitted when caller is not strategy
     error NOT_STRATEGY();
+
+    /// @notice Error emitted when token is not active
+    error NOT_VALID_PID();
+
+    /// @notice Error emitted when sum of fees is above 100%
+    error FEE_TOO_HIGH();
 
     //////////////////////////////////////////////////////
     /// --- MODIFIERS
@@ -188,26 +251,34 @@ contract BaseFallback is Auth {
         internal
         returns (uint256)
     {
-        // Fetch fees amount and fees receiver from curve strategy
-        (ICurveStrategy.Fees memory fee, address accumulator, address rewardsReceiver, address veSDTFeeProxy) =
-            ICurveStrategy(curveStrategy).getFeesAndReceiver(gauge);
+        Fees storage fee = feesInfos[gauge];
 
-        // calculate the amount for each fee recipient
-        uint256 multisigFee = rewardsBalance.mulDivDown(fee.perfFee, 10_000);
-        uint256 accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, 10_000);
-        uint256 veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, 10_000);
-        uint256 claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, 10_000);
+        uint256 veSDTPart;
+        uint256 multisigFee;
+        uint256 claimerPart;
+        uint256 accumulatorPart;
 
-        // send
-        if (accumulatorPart > 0) {
+        if (fee.perfFee > 0) {
+            multisigFee = rewardsBalance.mulDivDown(fee.perfFee, 10_000);
+            ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
+        }
+
+        if (fee.accumulatorFee > 0) {
+            accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, 10_000);
             ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
             IAccumulator(accumulator).depositToken(rewardToken, accumulatorPart);
         }
-        if (multisigFee > 0) ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
-        if (veSDTPart > 0) ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
-        if (claimerPart > 0) ERC20(rewardToken).safeTransfer(claimer, claimerPart);
 
-        // Return remaining
+        if (fee.veSDTFee > 0) {
+            veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, 10_000);
+            ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
+        }
+
+        if (fee.claimerRewardFee > 0) {
+            claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, 10_000);
+            ERC20(rewardToken).safeTransfer(claimer, claimerPart);
+        }
+
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
@@ -215,6 +286,59 @@ contract BaseFallback is Auth {
     /// @param _curveStrategy Address of curve strategy
     function setCurveStrategy(address _curveStrategy) external requiresAuth {
         curveStrategy = _curveStrategy;
+    }
+
+    /// @notice Set VeSDTFeeProxy new address
+    /// @param newVeSDTProxy Address of new VeSDTFeeProxy
+    function setVeSDTProxy(address newVeSDTProxy) external requiresAuth {
+        if (newVeSDTProxy == address(0)) revert ADDRESS_NULL();
+        veSDTFeeProxy = newVeSDTProxy;
+        emit VeSDTProxySet(newVeSDTProxy);
+    }
+
+    /// @notice Set Accumulator new address
+    /// @param newAccumulator Address of new Accumulator
+    function setAccumulator(address newAccumulator) external requiresAuth {
+        if (newAccumulator == address(0)) revert ADDRESS_NULL();
+        accumulator = newAccumulator;
+        emit AccumulatorSet(newAccumulator);
+    }
+
+    /// @notice Set RewardsReceiver new address
+    /// @param newRewardsReceiver Address of new RewardsReceiver
+    function setRewardsReceiver(address newRewardsReceiver) external requiresAuth {
+        if (newRewardsReceiver == address(0)) revert ADDRESS_NULL();
+        rewardsReceiver = newRewardsReceiver;
+        emit RewardsReceiverSet(newRewardsReceiver);
+    }
+
+    /// @notice Set fees for a Liquidity gauge
+    /// @param manageFee_ Enum for the fee to set
+    /// @param gauge Address of Liquidity gauge
+    /// @param newFee New fee to set
+    function manageFee(MANAGEFEE manageFee_, address gauge, uint256 newFee) external requiresAuth {
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        Fees storage feesInfo = feesInfos[gauge];
+
+        if (manageFee_ == MANAGEFEE.PERF_FEE) {
+            // 0
+            feesInfo.perfFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.VESDT_FEE) {
+            // 1
+            feesInfo.veSDTFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.ACCUMULATOR_FEE) {
+            //2
+            feesInfo.accumulatorFee = newFee;
+        } else if (manageFee_ == MANAGEFEE.CLAIMER_REWARD) {
+            // 3
+            feesInfo.claimerRewardFee = newFee;
+        }
+        if (feesInfo.perfFee + feesInfo.veSDTFee + feesInfo.accumulatorFee + feesInfo.claimerRewardFee > 10_000) {
+            revert FEE_TOO_HIGH();
+        }
+
+        emit FeeManaged(uint256(manageFee_), gauge, newFee);
     }
 
     //////////////////////////////////////////////////////
