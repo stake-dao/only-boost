@@ -341,7 +341,7 @@ contract BaseTest is Test {
 
         // === CLAIM PROCESS === //
         vm.prank(ALICE);
-        curveStrategy.claim(address(token));
+        curveStrategy.claim(address(token), true);
     }
 
     function _optimizedDepositReturnedValueAfter4And7Days(ERC20 token) internal {

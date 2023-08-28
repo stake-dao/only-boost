@@ -105,10 +105,6 @@ contract CurveStrategy is Auth {
     /// @notice Reward Token for veCRV holders.
     address public curveRewardToken = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
 
-    // --- Bools
-    /// @notice Flag for claiming rewards from fallbacks on `claim()`
-    bool public claimAll = true;
-
     // --- Mappings
     // Following mappings need to be initialized on the deployment to match with the previous strategy contract
     /// @notice Map vaults address -> is vault active
@@ -369,7 +365,7 @@ contract CurveStrategy is Auth {
     /// @notice Main gateway to claim all reward obtained from this strategy
     /// @notice Claim both reward from Liquid Locker position and fallback positions
     /// @param token Address of LP token to claim reward from
-    function claim(address token) external requiresAuth {
+    function claim(address token, bool claimAll) external requiresAuth {
         // Get the gauge address
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
@@ -645,11 +641,6 @@ contract CurveStrategy is Auth {
         if (vault == address(0)) revert ADDRESS_NULL();
         vaults[vault] = !vaults[vault];
         emit VaultToggled(vault, vaults[vault]);
-    }
-
-    /// @notice Toggle claim all flag
-    function toggleClaimAll() external requiresAuth {
-        claimAll = !claimAll;
     }
 
     /// @notice Set gauge address for a LP token

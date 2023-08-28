@@ -249,7 +249,7 @@ contract CurveStrategyTest is BaseTest {
 
     function test_Claim_RevertWhen_ADDRESS_NULL() public useFork(forkId1) {
         vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
-        curveStrategy.claim(address(CVX));
+        curveStrategy.claim(address(CVX), true);
     }
 
     function test_Claim_RevertWhen_ADDRESS_NULL_OnFallbacks() public useFork(forkId1) {
@@ -274,7 +274,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Because no time has been skipped, there is no rewards to claim
         vm.expectRevert(CurveStrategy.MINT_FAILED.selector);
-        curveStrategy.claim(address(CRV3));
+        curveStrategy.claim(address(CRV3), true);
     }
 
     function test_Claim_RevertWhen_CALL_FAILED_TransferCRV() public useFork(forkId1) {
@@ -294,7 +294,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Because no time has been skipped, there is no rewards to claim
         vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
-        curveStrategy.claim(address(CRV3));
+        curveStrategy.claim(address(CRV3), true);
     }
 
     function test_Claim_RevertWhen_CALL_FAILED_TransferExtraReward() public useFork(forkId1) {
@@ -314,7 +314,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Because no time has been skipped, there is no rewards to claim
         vm.expectRevert(CurveStrategy.CALL_FAILED.selector);
-        curveStrategy.claim(address(STETH_ETH));
+        curveStrategy.claim(address(STETH_ETH), true);
     }
 
     // --- Claim 3CRV
@@ -660,14 +660,6 @@ contract CurveStrategyTest is BaseTest {
         curveStrategy.setFeeDistributor(address(0x1));
 
         assertEq(address(curveStrategy.feeDistributor()), address(0x1), "1");
-    }
-
-    function test_toggleClaimAll() public useFork(forkId1) {
-        bool before = curveStrategy.claimAll();
-
-        curveStrategy.toggleClaimAll();
-
-        assertEq(curveStrategy.claimAll(), !before, "1");
     }
 
     function test_SetVeCRVDifferenceThreshold() public useFork(forkId1) {
