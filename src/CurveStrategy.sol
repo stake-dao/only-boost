@@ -374,7 +374,7 @@ contract CurveStrategy is Auth {
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
-        if (claimAll) claimFallbacks(token);
+        if (claimAll) _claimFallbacks(token);
 
         // Get the CRV amount before claim
         uint256 crvBeforeClaim = ERC20(CRV).balanceOf(address(LOCKER));
@@ -468,6 +468,10 @@ contract CurveStrategy is Auth {
     /// @notice Claim rewards from all fallbacks
     /// @param token Address of LP token to claim reward from
     function claimFallbacks(address token) public requiresAuth {
+        _claimFallbacks(token);
+    }
+
+    function _claimFallbacks(address token) internal {
         // Get the gauge address
         address gauge = gauges[token];
         if (gauge == address(0)) revert ADDRESS_NULL();
