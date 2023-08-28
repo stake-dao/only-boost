@@ -81,8 +81,21 @@ contract BaseFallback is Auth {
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
+
     /// @notice Error emitted when token is not active
     error NOT_VALID_PID();
+
+    /// @notice Error emitted when caller is not strategy
+    error NOT_STRATEGY();
+
+    //////////////////////////////////////////////////////
+    /// --- MODIFIERS
+    //////////////////////////////////////////////////////
+
+    modifier onlyStrategy() {
+        if (msg.sender != curveStrategy) revert NOT_STRATEGY();
+        _;
+    }
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR

@@ -537,10 +537,10 @@ contract CurveStrategy is Auth {
     function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
         Fees storage fee = feesInfos[gauge];
 
-        uint256 multisigFee;
-        uint256 accumulatorPart;
         uint256 veSDTPart;
+        uint256 multisigFee;
         uint256 claimerPart;
+        uint256 accumulatorPart;
 
         if (fee.perfFee > 0) {
             multisigFee = rewardsBalance.mulDivDown(fee.perfFee, BASE_FEE);

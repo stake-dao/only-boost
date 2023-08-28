@@ -111,7 +111,7 @@ contract ConvexFallback is BaseFallback {
     function claimRewards(address token, address claimer)
         external
         override
-        requiresAuth
+        onlyStrategy
         returns (address[] memory, uint256[] memory)
     {
         // Cache rewardsTokens
