@@ -536,7 +536,6 @@ contract CurveStrategy is Auth {
     /// @return Amount of reward token remaining
     function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
         Fees storage fee = feesInfos[gauge];
-        // calculate the amount for each fee recipient
 
         uint256 multisigFee;
         uint256 accumulatorPart;
