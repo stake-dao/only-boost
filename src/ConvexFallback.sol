@@ -119,7 +119,7 @@ contract ConvexFallback is BaseFallback {
         // Cache the pid
         PidsInfo memory pidInfo = pids[token];
         // Only claim if the pid is initialized and there is a position
-        if (!pidInfo.isInitialized || (balanceOf(token) == 0)) return (new address[](0), new uint256[](0));
+        if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0));
 
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidInfo.pid);
