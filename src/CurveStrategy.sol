@@ -535,21 +535,35 @@ contract CurveStrategy is Auth {
     /// @param rewardsBalance Amount of reward token
     /// @return Amount of reward token remaining
     function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
-        Fees memory fee = feesInfos[gauge];
+        Fees storage fee = feesInfos[gauge];
         // calculate the amount for each fee recipient
-        uint256 multisigFee = rewardsBalance.mulDivDown(fee.perfFee, BASE_FEE);
-        uint256 accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, BASE_FEE);
-        uint256 veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, BASE_FEE);
-        uint256 claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, BASE_FEE);
 
-        // send
-        if (accumulatorPart > 0) {
+        uint256 multisigFee;
+        uint256 accumulatorPart;
+        uint256 veSDTPart;
+        uint256 claimerPart;
+
+        if (fee.perfFee > 0) {
+            multisigFee = rewardsBalance.mulDivDown(fee.perfFee, BASE_FEE);
+            ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
+        }
+
+        if (fee.accumulatorFee > 0) {
+            accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, BASE_FEE);
             ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
             accumulator.depositToken(rewardToken, accumulatorPart);
         }
-        if (multisigFee > 0) ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
-        if (veSDTPart > 0) ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
-        if (claimerPart > 0) ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
+
+        if (fee.veSDTFee > 0) {
+            veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, BASE_FEE);
+            ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
+        }
+
+        if (fee.claimerRewardFee > 0) {
+            claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, BASE_FEE);
+            ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
+        }
+
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
     }
 
