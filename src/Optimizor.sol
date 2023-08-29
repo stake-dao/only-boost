@@ -125,7 +125,7 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
-    constructor(address owner, Authority authority, address _curveStrategy, address _convexFallback)
+    constructor(address owner, Authority authority, address payable _curveStrategy, address _convexFallback)
         Auth(owner, authority)
     {
         fallbackConvexCurve = ConvexFallback(_convexFallback);
@@ -241,7 +241,8 @@ contract Optimizor is Auth {
             // 3. The cached veCRV balance of Stake DAO is below the acceptability threshold
             && absDiff(cacheVeCRVLockerBalance, veCRVBalance) < veCRVBalance.mulWadDown(veCRVDifferenceThreshold)
             // 4. The cached Convex balance is within the acceptability threshold
-            && absDiff(cachedConvexBalances[liquidityGauge], balanceConvex) < balanceConvex.mulWadDown(convexDifferenceThreshold)
+            && absDiff(cachedConvexBalances[liquidityGauge], balanceConvex)
+                < balanceConvex.mulWadDown(convexDifferenceThreshold)
         ) {
             // Use cached optimal amount
             opt = cachedOptimizations[liquidityGauge].value;
@@ -255,7 +256,9 @@ contract Optimizor is Auth {
                 if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;
 
                 // Cache Convex balance, no need if already the same
-                if (cachedConvexBalances[liquidityGauge] != balanceConvex) cachedConvexBalances[liquidityGauge] = balanceConvex;
+                if (cachedConvexBalances[liquidityGauge] != balanceConvex) {
+                    cachedConvexBalances[liquidityGauge] = balanceConvex;
+                }
 
                 // Update the cache for Classic Pool
                 cachedOptimizations[liquidityGauge] = CachedOptimization(opt, block.timestamp);

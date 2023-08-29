@@ -29,8 +29,9 @@ contract CurveStrategyTest is BaseTest {
         // Deployment contracts
         rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
         curveStrategy = new CurveStrategy(address(this), rolesAuthority);
-        fallbackConvexCurve = new ConvexFallback(address(this), rolesAuthority, address(curveStrategy));
-        optimizor = new Optimizor(address(this), rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
+        fallbackConvexCurve = new ConvexFallback(address(this), rolesAuthority, payable(address(curveStrategy)));
+        optimizor =
+            new Optimizor(address(this), rolesAuthority, payable(address(curveStrategy)), address(fallbackConvexCurve));
         liquidityGaugeMockCRV3 = new LiquidityGaugeMock(CRV3);
         liquidityGaugeMockCNC_ETH = new LiquidityGaugeMock(CNC_ETH);
         liquidityGaugeMockSTETH_ETH = new LiquidityGaugeMock(STETH_ETH);
@@ -40,7 +41,7 @@ contract CurveStrategyTest is BaseTest {
 
         // Give strategy roles from depositor to new strategy
         vm.prank(locker.governance());
-        locker.setStrategy(address(curveStrategy));
+        locker.setStrategy(payable(address(curveStrategy)));
 
         // Setup contract
         _afterDeployment();
@@ -101,7 +102,7 @@ contract CurveStrategyTest is BaseTest {
         // Give some tokens to this contract
         deal(address(CVX), address(this), 1);
         // Approve CurveStrategy to spend CVX
-        CVX.safeApprove(address(curveStrategy), 1);
+        CVX.safeApprove(payable(address(curveStrategy)), 1);
 
         // Should revert because no gauge for CVX
         vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
@@ -112,7 +113,7 @@ contract CurveStrategyTest is BaseTest {
         // Give some tokens to this contract
         deal(address(CRV3), address(this), 1);
         // Approve CurveStrategy to spend CRV3
-        CRV3.safeApprove(address(curveStrategy), 1);
+        CRV3.safeApprove(payable(address(curveStrategy)), 1);
 
         bytes memory data = abi.encodeWithSignature("deposit(uint256)", 1);
 
@@ -185,7 +186,7 @@ contract CurveStrategyTest is BaseTest {
     }
 
     function test_Withdraw_RevertWhen_CALL_FAILED() public useFork(forkId1) {
-        bytes memory data = abi.encodeWithSignature("transfer(address,uint256)", address(curveStrategy), 1);
+        bytes memory data = abi.encodeWithSignature("transfer(address,uint256)", payable(address(curveStrategy)), 1);
 
         // Mock call to StakeDAO Locker
         vm.mockCall(
@@ -281,7 +282,7 @@ contract CurveStrategyTest is BaseTest {
         _deposit(CRV3, 1000e18, 1);
         skip(1 weeks);
 
-        //bytes memory data = abi.encodeWithSignature("transfer(address,uint256)", address(curveStrategy));
+        //bytes memory data = abi.encodeWithSignature("transfer(address,uint256)", payable(address(curveStrategy)));
 
         // Mock call to StakeDAO Locker
         // Here 0 and Data are not specified because amount claimed is unknown.
@@ -301,7 +302,7 @@ contract CurveStrategyTest is BaseTest {
         _deposit(STETH_ETH, 100e18, 1);
         skip(1 weeks);
 
-        //bytes memory data = abi.encodeWithSignature("transfer(address,uint256)", address(curveStrategy));
+        //bytes memory data = abi.encodeWithSignature("transfer(address,uint256)", payable(address(curveStrategy)));
 
         // Mock call to StakeDAO Locker
         // Here 0 and Data are not specified because amount claimed is unknown.
@@ -445,7 +446,7 @@ contract CurveStrategyTest is BaseTest {
     // --- SendToAccumulator
     function test_SendToAccumulator() public useFork(forkId1) {
         // Send 1_000 ALUSD_FRAXBP to the curve strategy
-        deal(address(ALUSD_FRAXBP), address(curveStrategy), 1_000e18);
+        deal(address(ALUSD_FRAXBP), payable(address(curveStrategy)), 1_000e18);
 
         // Set the accumulator address using mock contract
         curveStrategy.setAccumulator(address(accumulatorMock));
@@ -702,7 +703,7 @@ contract CurveStrategyTest is BaseTest {
 
     function test_SetGovernance_Locker() public useFork(forkId1) {
         vm.prank(ILocker(LOCKER).governance());
-        ILocker(LOCKER).setGovernance(address(curveStrategy));
+        ILocker(LOCKER).setGovernance(payable(address(curveStrategy)));
 
         address before = ILocker(LOCKER).governance();
         assertNotEq(before, address(0x123), "0");
@@ -714,7 +715,7 @@ contract CurveStrategyTest is BaseTest {
 
     function test_SetStrategy_Locker() public useFork(forkId1) {
         vm.prank(ILocker(LOCKER).governance());
-        ILocker(LOCKER).setGovernance(address(curveStrategy));
+        ILocker(LOCKER).setGovernance(payable(address(curveStrategy)));
 
         address before = ILocker(LOCKER).strategy();
         assertNotEq(before, address(0x123), "0");

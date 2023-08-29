@@ -29,10 +29,11 @@ contract IntegrationTest is BaseTest {
         curveStrategy = new CurveStrategy(MS_STAKEDAO, rolesAuthority);
 
         // Fallbacks
-        fallbackConvexCurve = new ConvexFallback(MS_STAKEDAO, rolesAuthority, address(curveStrategy)); // Convex Curve
+        fallbackConvexCurve = new ConvexFallback(MS_STAKEDAO, rolesAuthority, payable(address(curveStrategy))); // Convex Curve
 
         // Optimizor
-        optimizor = new Optimizor(MS_STAKEDAO, rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
+        optimizor =
+            new Optimizor(MS_STAKEDAO, rolesAuthority, payable(address(curveStrategy)), address(fallbackConvexCurve));
         vm.stopPrank();
 
         // --- Setters --- //
@@ -42,7 +43,7 @@ contract IntegrationTest is BaseTest {
 
         // Set New Curve Strategy as `strategy` on Locker
         vm.prank(locker.governance());
-        locker.setStrategy(address(curveStrategy));
+        locker.setStrategy(payable(address(curveStrategy)));
 
         // --- Handle Authority --- //
         // 1. Create roles for `optimizeDeposit` on Optimizor
@@ -51,11 +52,11 @@ contract IntegrationTest is BaseTest {
 
         // 1. Grant `optimizeDeposit` role from Optimizor to Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setUserRole(address(curveStrategy), 1, true);
+        rolesAuthority.setUserRole(payable(address(curveStrategy)), 1, true);
 
         // 2. Create roles for `deposit` on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(2, address(curveStrategy), CurveStrategy.deposit.selector, true);
+        rolesAuthority.setRoleCapability(2, payable(address(curveStrategy)), CurveStrategy.deposit.selector, true);
 
         // 2. Grant `deposit` role from Curve Strategy to Vault
         vm.startPrank(MS_STAKEDAO);
@@ -70,7 +71,7 @@ contract IntegrationTest is BaseTest {
 
         // 3. Grant `deposit` role from Fallback Convex Curve to Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setUserRole(address(curveStrategy), 3, true);
+        rolesAuthority.setUserRole(payable(address(curveStrategy)), 3, true);
     }
 
     function test_Integration_3Pool() public {
@@ -97,7 +98,7 @@ contract IntegrationTest is BaseTest {
 
         // Set new strategy
         vm.prank(MS_STAKEDAO);
-        IVault(vaults[token]).setCurveStrategy(address(curveStrategy));
+        IVault(vaults[token]).setCurveStrategy(payable(address(curveStrategy)));
 
         assertEq(balanceBefore + balanceVault, _totalBalance(token));
     }
@@ -117,7 +118,7 @@ contract IntegrationTest is BaseTest {
         // Set gauges on Curve Strategy and set the new strategy
         vm.startPrank(MS_STAKEDAO);
         curveStrategy.setGauge(address(token), gauges[address(token)]);
-        VAULT_3CRV.setCurveStrategy(address(curveStrategy));
+        VAULT_3CRV.setCurveStrategy(payable(address(curveStrategy)));
         optimizor.toggleUseLastOptimization();
         vm.stopPrank();
 

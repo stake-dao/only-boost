@@ -223,22 +223,24 @@ contract BaseTest is Test {
         }
 
         // Grant public access to claim function for curve strategy
-        rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.claim.selector, true);
-        rolesAuthority.setPublicCapability(address(curveStrategy), CurveStrategy.claimNativeRewards.selector, true);
+        rolesAuthority.setPublicCapability(payable(address(curveStrategy)), CurveStrategy.claim.selector, true);
+        rolesAuthority.setPublicCapability(
+            payable(address(curveStrategy)), CurveStrategy.claimNativeRewards.selector, true
+        );
 
         // Grant access to deposit/withdraw function for optimizor to curveStrategy
         rolesAuthority.setRoleCapability(1, address(optimizor), Optimizor.optimizeDeposit.selector, true);
         rolesAuthority.setRoleCapability(2, address(optimizor), Optimizor.optimizeWithdraw.selector, true);
-        rolesAuthority.setUserRole(address(curveStrategy), 1, true);
-        rolesAuthority.setUserRole(address(curveStrategy), 2, true);
+        rolesAuthority.setUserRole(payable(address(curveStrategy)), 1, true);
+        rolesAuthority.setUserRole(payable(address(curveStrategy)), 2, true);
 
         // Grant access to deposit/withdraw/claim function for fallback convex curve to curveStrategy
         fallbackConvexCurve.setAuthority(rolesAuthority);
         rolesAuthority.setRoleCapability(1, address(fallbackConvexCurve), ConvexFallback.deposit.selector, true);
         rolesAuthority.setRoleCapability(2, address(fallbackConvexCurve), ConvexFallback.withdraw.selector, true);
-        rolesAuthority.setUserRole(address(curveStrategy), 1, true);
-        rolesAuthority.setUserRole(address(curveStrategy), 2, true);
-        rolesAuthority.setUserRole(address(curveStrategy), 3, true);
+        rolesAuthority.setUserRole(payable(address(curveStrategy)), 1, true);
+        rolesAuthority.setUserRole(payable(address(curveStrategy)), 2, true);
+        rolesAuthority.setUserRole(payable(address(curveStrategy)), 3, true);
     }
 
     function _labelAddress() internal {
@@ -274,7 +276,7 @@ contract BaseTest is Test {
 
     function _labelContract() internal {
         vm.label(address(rolesAuthority), "RolesAuthority");
-        vm.label(address(curveStrategy), "NewCurveStrategy");
+        vm.label(payable(address(curveStrategy)), "NewCurveStrategy");
         vm.label(address(curveStrategy.optimizor()), "Optimizor");
         vm.label(address(fallbackConvexCurve), "ConvexFallback");
         vm.label(address(locker), "Locker");
@@ -323,7 +325,7 @@ contract BaseTest is Test {
         assert(token.balanceOf(address(this)) == totalAmount);
 
         // Approve token to strategy
-        token.safeApprove(address(curveStrategy), totalAmount);
+        token.safeApprove(payable(address(curveStrategy)), totalAmount);
 
         // Deposit token
         curveStrategy.deposit(address(token), totalAmount);

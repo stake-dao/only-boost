@@ -794,4 +794,6 @@ contract CurveStrategy is Auth {
     function getFeesAndReceiver(address gauge) public view returns (Fees memory, address, address, address) {
         return (feesInfos[gauge], address(accumulator), rewardsReceiver, veSDTFeeProxy);
     }
+
+    receive() external payable {}
 }

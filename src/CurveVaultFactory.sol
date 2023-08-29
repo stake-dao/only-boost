@@ -104,7 +104,7 @@ contract CurveVaultFactory {
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
 
-    constructor(address _curveStrategy) {
+    constructor(address payable _curveStrategy) {
         curveStrategy = CurveStrategy(_curveStrategy);
     }
 
@@ -159,7 +159,7 @@ contract CurveVaultFactory {
         curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMER_REWARD, _crvGaugeAddress, 50); //%0.5 default
         curveStrategy.setLGtype(_crvGaugeAddress, liquidityGaugeType);
 
-        ILiquidityGaugeStrat(gaugeImplAddress).add_reward(CRV, address(curveStrategy));
+        ILiquidityGaugeStrat(gaugeImplAddress).add_reward(CRV, payable(address(curveStrategy)));
         ILiquidityGaugeStrat(gaugeImplAddress).set_claimer(CLAIM_REWARDS);
         ILiquidityGaugeStrat(gaugeImplAddress).commit_transfer_ownership(GOVERNANCE);
 
@@ -205,7 +205,7 @@ contract CurveVaultFactory {
             cloneVault(_impl, _lpToken, keccak256(abi.encodePacked(_governance, _name, _symbol, curveStrategy)));
 
         // Init Vault
-        ICurveVault(deployed).init(_lpToken, address(this), _name, _symbol, address(curveStrategy));
+        ICurveVault(deployed).init(_lpToken, address(this), _name, _symbol, payable(address(curveStrategy)));
 
         // Return vault address
         return address(deployed);

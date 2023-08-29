@@ -70,7 +70,7 @@ contract CrvDepositor is Auth {
         address _locker,
         address _minter,
         address _owner,
-        address _strategy,
+        address payable _strategy,
         Authority _authority
     ) Auth(_owner, _authority) {
         TOKEN = ERC20(_token);
@@ -110,7 +110,7 @@ contract CrvDepositor is Auth {
 
     /// @notice Set the new strategy
     /// @param _strategy New Strategy address
-    function setStrategy(address _strategy) external requiresAuth {
+    function setStrategy(address payable _strategy) external requiresAuth {
         strategy = CurveStrategy(_strategy);
     }
 

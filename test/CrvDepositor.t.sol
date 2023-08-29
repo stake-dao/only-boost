@@ -27,7 +27,7 @@ contract CrvDepositorTest is BaseTest {
 
         // CRV Depositor
         crvDepositor =
-            new CrvDepositor(address(CRV), LOCKER, address(SD_CRV), MS_STAKEDAO, address(curveStrategy), rolesAuthority);
+        new CrvDepositor(address(CRV), LOCKER, address(SD_CRV), MS_STAKEDAO, payable(address(curveStrategy)), rolesAuthority);
 
         vm.stopPrank();
 
@@ -46,12 +46,14 @@ contract CrvDepositorTest is BaseTest {
 
         // Give strategy roles from depositor to new strategy
         vm.prank(ILocker(LOCKER).governance());
-        ILocker(LOCKER).setStrategy(address(curveStrategy));
+        ILocker(LOCKER).setStrategy(payable(address(curveStrategy)));
 
         // --- Roles --- //
         // 1. Create roles for `increaseAmount` on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(1, address(curveStrategy), CurveStrategy.increaseAmount.selector, true);
+        rolesAuthority.setRoleCapability(
+            1, payable(address(curveStrategy)), CurveStrategy.increaseAmount.selector, true
+        );
 
         // 1. Grant `increaseAmount` role from Curve Strategy to crvDepositor
         vm.prank(MS_STAKEDAO);
@@ -59,7 +61,9 @@ contract CrvDepositorTest is BaseTest {
 
         // 2. Create roles for `increaseUnlockTime` on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(2, address(curveStrategy), CurveStrategy.increaseUnlockTime.selector, true);
+        rolesAuthority.setRoleCapability(
+            2, payable(address(curveStrategy)), CurveStrategy.increaseUnlockTime.selector, true
+        );
 
         // 2. Grant `increaseUnlockTime` role from Curve Strategy to crvDepositor
         vm.prank(MS_STAKEDAO);

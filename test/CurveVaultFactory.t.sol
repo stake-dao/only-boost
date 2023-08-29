@@ -24,13 +24,14 @@ contract CurveVaultFactoryTest is BaseTest {
         curveStrategy = new CurveStrategy(MS_STAKEDAO, rolesAuthority);
 
         // Curve Vault Factory
-        curveVaultFactory = new CurveVaultFactory(address(curveStrategy));
+        curveVaultFactory = new CurveVaultFactory(payable(address(curveStrategy)));
 
         // Fallbacks
-        fallbackConvexCurve = new ConvexFallback(MS_STAKEDAO, rolesAuthority, address(curveStrategy)); // Convex Curve
+        fallbackConvexCurve = new ConvexFallback(MS_STAKEDAO, rolesAuthority, payable(address(curveStrategy))); // Convex Curve
 
         // Optimizor
-        optimizor = new Optimizor(MS_STAKEDAO, rolesAuthority, address(curveStrategy), address(fallbackConvexCurve));
+        optimizor =
+            new Optimizor(MS_STAKEDAO, rolesAuthority, payable(address(curveStrategy)), address(fallbackConvexCurve));
 
         vm.stopPrank();
 
@@ -41,7 +42,7 @@ contract CurveVaultFactoryTest is BaseTest {
 
         // 1. Create roles for `toggleVault` on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(1, address(curveStrategy), CurveStrategy.toggleVault.selector, true);
+        rolesAuthority.setRoleCapability(1, payable(address(curveStrategy)), CurveStrategy.toggleVault.selector, true);
 
         // 1. Grant `toggleVault` role from Curve Strategy to Vault Factory
         vm.prank(MS_STAKEDAO);
@@ -49,7 +50,7 @@ contract CurveVaultFactoryTest is BaseTest {
 
         // 2. Create roles for `setGauge` on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(2, address(curveStrategy), CurveStrategy.setGauge.selector, true);
+        rolesAuthority.setRoleCapability(2, payable(address(curveStrategy)), CurveStrategy.setGauge.selector, true);
 
         // 2. Grant `setGauge` role from Curve Strategy to Vault Factory
         vm.prank(MS_STAKEDAO);
@@ -57,7 +58,7 @@ contract CurveVaultFactoryTest is BaseTest {
 
         // 3. Create roles for `manageFee` on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(3, address(curveStrategy), CurveStrategy.manageFee.selector, true);
+        rolesAuthority.setRoleCapability(3, payable(address(curveStrategy)), CurveStrategy.manageFee.selector, true);
 
         // 3. Grant `manageFee` role from Curve Strategy to Vault Factory
         vm.prank(MS_STAKEDAO);
@@ -65,7 +66,7 @@ contract CurveVaultFactoryTest is BaseTest {
 
         // 4. Create roles for `setMultiGauge` on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(4, address(curveStrategy), CurveStrategy.setMultiGauge.selector, true);
+        rolesAuthority.setRoleCapability(4, payable(address(curveStrategy)), CurveStrategy.setMultiGauge.selector, true);
 
         // 4. Grant `setMultiGauge` role from Curve Strategy to Vault Factory
         vm.prank(MS_STAKEDAO);
@@ -73,7 +74,7 @@ contract CurveVaultFactoryTest is BaseTest {
 
         // 5. Create roles for `setLGtype` on Curve Strategy
         vm.prank(MS_STAKEDAO);
-        rolesAuthority.setRoleCapability(5, address(curveStrategy), CurveStrategy.setLGtype.selector, true);
+        rolesAuthority.setRoleCapability(5, payable(address(curveStrategy)), CurveStrategy.setLGtype.selector, true);
 
         // 5. Grant `setLGtype` role from Curve Strategy to Vault Factory
         vm.prank(MS_STAKEDAO);
@@ -93,7 +94,7 @@ contract CurveVaultFactoryTest is BaseTest {
         locker = ILocker(LOCKER);
 
         vm.prank(locker.governance());
-        locker.setStrategy(address(curveStrategy));
+        locker.setStrategy(payable(address(curveStrategy)));
 
         _labelContract();
     }

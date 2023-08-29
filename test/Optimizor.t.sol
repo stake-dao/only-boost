@@ -16,8 +16,9 @@ contract OptimizorTest is BaseTest {
         vm.rollFork(FORK_BLOCK_NUMBER_1);
 
         // Deploy Optimizor
-        fallbackConvexCurve = new ConvexFallback(address(this), rolesAuthority, address(curveStrategy));
-        optimizor = new Optimizor(address(this), Authority(address(0)), address(0), address(fallbackConvexCurve));
+        fallbackConvexCurve = new ConvexFallback(address(this), rolesAuthority, payable(address(curveStrategy)));
+        optimizor =
+            new Optimizor(address(this), Authority(address(0)), payable(address(0)), address(fallbackConvexCurve));
         // End for deployment
     }
 
