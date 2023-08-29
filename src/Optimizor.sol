@@ -131,8 +131,8 @@ contract Optimizor is Auth {
         fallbackConvexCurve = ConvexFallback(_convexFallback);
         curveStrategy = CurveStrategy(_curveStrategy);
 
-        fallbacks.push(LOCKER);
         fallbacks.push(address(fallbackConvexCurve));
+        fallbacks.push(LOCKER);
     }
 
     //////////////////////////////////////////////////////
@@ -202,7 +202,7 @@ contract Optimizor is Auth {
                 ILiquidityGauge(liquidityGauge).working_balances(LOCKER_CONVEX)
                     == ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX)
             ) {
-                amounts[1] = amount;
+                amounts[0] = amount;
             } else {
                 // Get the optimal amount of lps that must be held by the locker
                 uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker);
@@ -211,17 +211,15 @@ contract Optimizor is Auth {
                 uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
 
                 // Stake DAO Curve
-                amounts[0] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
+                amounts[1] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
                 // Convex Curve
-                amounts[1] = amount - amounts[0];
+                amounts[0] = amount - amounts[1];
             }
         }
         // If not available on Convex Curve
         else {
             // Stake DAO Curve
-            amounts[0] = amount;
-            // Convex Curve
-            // amounts[1] = 0;
+            amounts[1] = amount;
         }
 
         return (fallbacks, amounts);
@@ -288,7 +286,7 @@ contract Optimizor is Auth {
     {
         // Cache the balance of all fallbacks
         uint256 balanceOfStakeDAO = ERC20(liquidityGauge).balanceOf(LOCKER);
-        uint256 balanceOfConvexCurve = ConvexFallback(fallbacks[1]).balanceOf(token);
+        uint256 balanceOfConvexCurve = fallbackConvexCurve.balanceOf(token);
 
         // Initialize the result
         uint256[] memory amounts = new uint256[](2);
@@ -297,25 +295,25 @@ contract Optimizor is Auth {
         // If available on Convex Curve
         if (balanceOfConvexCurve > 0) {
             // Withdraw as much as possible from Convex Curve
-            amounts[1] = min(amount, balanceOfConvexCurve);
+            amounts[0] = min(amount, balanceOfConvexCurve);
             // Update the amount to withdraw
-            amount -= amounts[1];
+            amount -= amounts[0];
 
             // If there is still amount to withdraw
             if (amount > 0) {
                 // Withdraw as much as possible from Stake DAO Curve
-                amounts[0] = min(amount, balanceOfStakeDAO);
+                amounts[1] = min(amount, balanceOfStakeDAO);
                 // Update the amount to withdraw
-                amount -= amounts[0];
+                amount -= amounts[1];
             }
         }
         // === Situation n°2 === //
         // If not available on Convex Curve
         else {
             // Withdraw as much as possible from Stake DAO Curve
-            amounts[0] = min(amount, balanceOfStakeDAO);
+            amounts[1] = min(amount, balanceOfStakeDAO);
             // Update the amount to withdraw
-            amount -= amounts[0];
+            amount -= amounts[1];
         }
 
         // If there is still some amount to withdraw, it means that optimizor miss calculated

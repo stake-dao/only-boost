@@ -52,8 +52,8 @@ contract OptimizorTest is BaseTest {
         // Assertions
         assertEq(results.length, 2, "1");
         assertEq(recipients.length, 2, "2");
-        assertEq(results[0], amountStakeDAO, "3");
-        assertEq(results[1], amountFallbackCurve, "4");
+        assertEq(results[1], amountStakeDAO, "3");
+        assertEq(results[0], amountFallbackCurve, "4");
     }
 
     function test_RescueToken() public {
