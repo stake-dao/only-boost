@@ -55,7 +55,9 @@ contract CurveStrategyTest is BaseTest {
     function test_DeploymentAddresses() public useFork(forkId1) {
         assertTrue(address(optimizor) != address(0), "1");
         assertTrue(fallbackConvexCurve != ConvexFallback(address(0)), "3");
-        assertTrue(optimizor.fallbacksLength() != 0, "4");
+
+        address[] memory fallbacks = optimizor.getFallbacks();
+        assertTrue(fallbacks.length != 0, "4");
         assertTrue(fallbackConvexCurve.lastPidsCount() != 0, "6");
     }
 
