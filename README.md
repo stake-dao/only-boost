@@ -70,7 +70,7 @@ The optimizor has 2 main roles, one for deposit, one for withdraw and an option 
 
 - Amounts are calculated using the previous optimization formula. For gas saving, a cached value can be used. It will be used if the 3 following conditions are true: 
 
-    - `useLastOpti` boolean is true.
+    - `cacheEnabled` boolean is true.
     - if last cached timestamp for this gauge is older than `cachePeriod` (7 days by default).
     - if the cached veCRV balance of Stake DAO Liquid Locker is below the acceptability threshold `veCRVDifferenceThreshold` (5% by default).
 

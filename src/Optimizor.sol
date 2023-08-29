@@ -83,7 +83,7 @@ contract Optimizor is Auth {
 
     // --- Bools
     /// @notice Use last optimization value
-    bool public useLastOpti;
+    bool public cacheEnabled;
 
     // --- Uints
     /// @notice veCRV difference threshold to trigger a new optimal amount calculation, 5e16 = 5%
@@ -106,7 +106,7 @@ contract Optimizor is Auth {
 
     // --- Mappings
     /// @notice Map liquidityGauge => CachedOptimization
-    mapping(address => CachedOptimization) public lastOpti;
+    mapping(address => CachedOptimization) public cachedOptimizations;
 
     ////////////////////////////////////////////////////////////////
     /// --- EVENTS
@@ -235,22 +235,22 @@ contract Optimizor is Auth {
         uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
         if (
             // 1. Optimize calculation is activated
-            useLastOpti
+            cacheEnabled
             // 2. The cached optimal amount is not too old
-            && (lastOpti[liquidityGauge].timestamp + cachePeriod > block.timestamp)
+            && (cachedOptimizations[liquidityGauge].timestamp + cachePeriod > block.timestamp)
             // 3. The cached veCRV balance of Stake DAO is below the acceptability threshold
             && absDiff(cacheVeCRVLockerBalance, veCRVBalance) < veCRVBalance.mulWadDown(veCRVDifferenceThreshold)
             // 4. The cached Convex balance is within the acceptability threshold
             && absDiff(cacheConvexBalance, balanceConvex) < balanceConvex.mulWadDown(convexDifferenceThreshold)
         ) {
             // Use cached optimal amount
-            opt = lastOpti[liquidityGauge].value;
+            opt = cachedOptimizations[liquidityGauge].value;
         } else {
             // Calculate optimal amount
             opt = optimalAmount(liquidityGauge, veCRVBalance);
 
             // Cache only if needed
-            if (useLastOpti) {
+            if (cacheEnabled) {
                 // Cache veCRV balance of Stake DAO, no need if already the same
                 if (cacheVeCRVLockerBalance != veCRVBalance) cacheVeCRVLockerBalance = veCRVBalance;
 
@@ -258,7 +258,7 @@ contract Optimizor is Auth {
                 if (cacheConvexBalance != balanceConvex) cacheConvexBalance = balanceConvex;
 
                 // Update the cache for Classic Pool
-                lastOpti[liquidityGauge] = CachedOptimization(opt, block.timestamp);
+                cachedOptimizations[liquidityGauge] = CachedOptimization(opt, block.timestamp);
             }
         }
     }
@@ -323,7 +323,7 @@ contract Optimizor is Auth {
 
     /// @notice Toggle the flag for using the last optimization
     function toggleUseLastOptimization() external requiresAuth {
-        useLastOpti = !useLastOpti;
+        cacheEnabled = !cacheEnabled;
     }
 
     /// @notice Set the cache period

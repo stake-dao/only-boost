@@ -462,11 +462,11 @@ contract CurveStrategyTest is BaseTest {
 
     // --- Optimizor
     function test_ToggleUseLastOptimization() public useFork(forkId1) {
-        assertEq(optimizor.useLastOpti(), false, "0");
+        assertEq(optimizor.cacheEnabled(), false, "0");
 
         optimizor.toggleUseLastOptimization();
 
-        assertEq(optimizor.useLastOpti(), true, "1");
+        assertEq(optimizor.cacheEnabled(), true, "1");
     }
 
     function test_SetCachePeriod() public useFork(forkId1) {
@@ -483,7 +483,7 @@ contract CurveStrategyTest is BaseTest {
 
         // --- Test for non Metapool
         // Get last optimization value
-        (uint256 valueBefore, uint256 tsBefore) = optimizor.lastOpti(gauges[address(CRV3)]);
+        (uint256 valueBefore, uint256 tsBefore) = optimizor.cachedOptimizations(gauges[address(CRV3)]);
         // Get veCRVStakeDAO balance
         uint256 veCRVStakeDAO = ERC20(LOCKER_CRV).balanceOf(LOCKER);
         // Calculate optimization
@@ -493,7 +493,7 @@ contract CurveStrategyTest is BaseTest {
         optimizor.optimizeDeposit(address(CRV3), gauges[address(CRV3)], 1_000_000e18);
 
         // Get last optimization value
-        (uint256 valueAfter, uint256 tsAfter) = optimizor.lastOpti(gauges[address(CRV3)]);
+        (uint256 valueAfter, uint256 tsAfter) = optimizor.cachedOptimizations(gauges[address(CRV3)]);
 
         // Assertions
         assertEq(valueBefore, 0, "4");
