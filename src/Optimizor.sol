@@ -364,11 +364,6 @@ contract Optimizor is Auth {
         return fallbacks;
     }
 
-    /// @notice Get the number of fallbacks
-    function fallbacksLength() external view returns (uint256) {
-        return fallbacks.length;
-    }
-
     /// @notice Rescue lost ERC20 tokens from contract
     /// @param token Addresss of token to rescue
     /// @param to Address to send rescued tokens to
