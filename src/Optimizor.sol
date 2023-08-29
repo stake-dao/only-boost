@@ -188,17 +188,16 @@ contract Optimizor is Auth {
         // Cache Stake DAO Liquid Locker veCRV balance
         uint256 veCRVLocker = ERC20(LOCKER_CRV).balanceOf(LOCKER);
 
+        uint256 _balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
+
         // If available on Convex Curve
         if (statusCurve) {
             // If Convex Curve has max boost, no need to optimize
-            if (
-                ILiquidityGauge(liquidityGauge).working_balances(LOCKER_CONVEX)
-                    == ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX)
-            ) {
+            if (ILiquidityGauge(liquidityGauge).working_balances(LOCKER_CONVEX) == _balanceConvex) {
                 amounts[0] = amount;
             } else {
                 // Get the optimal amount of lps that must be held by the locker
-                uint256 opt = _getOptimalAmount(liquidityGauge, veCRVLocker);
+                uint256 opt = _getOptimalAmount(liquidityGauge, _balanceConvex, veCRVLocker);
 
                 // Get the balance of the locker on the liquidity gauge
                 uint256 gaugeBalance = ERC20(liquidityGauge).balanceOf(address(LOCKER));
@@ -220,10 +219,13 @@ contract Optimizor is Auth {
 
     /// @notice Calcul the optimal amount of lps that must be held by the locker or use the cached value
     /// @param liquidityGauge Address of the liquidity gauge
+    /// param balanceConvex Balance of the liquidity gauge on Convex Curve
     /// @param veCRVBalance Amount of veCRV hold by Stake DAO Liquid Locker
     /// @return opt Optimal amount of LP token that must be held by the locker
-    function _getOptimalAmount(address liquidityGauge, uint256 veCRVBalance) internal returns (uint256 opt) {
-        uint256 balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
+    function _getOptimalAmount(address liquidityGauge, uint256 balanceConvex, uint256 veCRVBalance)
+        internal
+        returns (uint256 opt)
+    {
         if (
             // 1. Optimize calculation is activated
             cacheEnabled
