@@ -61,10 +61,10 @@ contract Optimizor is Auth {
 
     // --- Uints
     /// @notice Fees on Convex
-    uint256 public constant FEES_CONVEX = 17e16;
+    uint256 public convexFee = 17e16;
 
     /// @notice Fees on StakeDAO
-    uint256 public constant FEES_STAKEDAO = 16e16;
+    uint256 public stakedaoFee = 16e16;
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
@@ -72,10 +72,10 @@ contract Optimizor is Auth {
 
     // --- Contracts
     /// @notice Stake DAO Curve Strategy
-    CurveStrategy public curveStrategy;
+    CurveStrategy public immutable curveStrategy;
 
     /// @notice Stake DAO Fallback Convex Curve
-    ConvexFallback public fallbackConvexCurve;
+    ConvexFallback public immutable fallbackConvexCurve;
 
     // --- Addresses
     /// @notice List of fallbacks
@@ -159,14 +159,14 @@ contract Optimizor is Auth {
         uint256 boost = adjustmentFactor * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
 
         // Fees
-        uint256 feeDiff = boost + FEES_STAKEDAO > FEES_CONVEX ? FEES_STAKEDAO + boost - FEES_CONVEX : 0;
+        uint256 feeDiff = boost + stakedaoFee > convexFee ? stakedaoFee + boost - convexFee : 0;
 
         // Result
         return (
-            3 * (1e18 - FEES_STAKEDAO) * balanceConvex * veCRVStakeDAO
+            3 * (1e18 - stakedaoFee) * balanceConvex * veCRVStakeDAO
                 / (
                     (2 * (feeDiff) * balanceConvex * veCRVTotal) / totalSupply
-                        + 3 * veCRVConvex * (1e18 + boost - FEES_CONVEX)
+                        + 3 * veCRVConvex * (1e18 + boost - convexFee)
                 )
         );
     }
@@ -344,10 +344,12 @@ contract Optimizor is Auth {
         convexDifferenceThreshold = newConvexDifferenceThreshold;
     }
 
-    /// @notice Set new Curve Strategy
-    /// @param newCurveStrategy New Curve Strategy address
-    function setCurveStrategy(address newCurveStrategy) external requiresAuth {
-        curveStrategy = CurveStrategy(newCurveStrategy);
+    /// @notice Set fees percentage.
+    /// @param _stakeDaoFees Fees percentage for StakeDAO
+    /// @param _convexFees Fees percentage for Convex
+    function setFees(uint256 _stakeDaoFees, uint256 _convexFees) external requiresAuth {
+        stakedaoFee = _stakeDaoFees;
+        convexFee = _convexFees;
     }
 
     //////////////////////////////////////////////////////

@@ -623,21 +623,6 @@ contract CurveStrategyTest is BaseTest {
         curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERF_FEE, gauges[address(ALUSD_FRAXBP)], 10001);
     }
 
-    function test_SetCurveStrategy() public useFork(forkId1) {
-        address before = address(fallbackConvexCurve.curveStrategy());
-
-        fallbackConvexCurve.setCurveStrategy(address(0x1));
-
-        assertNotEq(address(fallbackConvexCurve.curveStrategy()), before, "0");
-        assertEq(address(fallbackConvexCurve.curveStrategy()), address(0x1), "1");
-
-        before = address(optimizor.curveStrategy());
-
-        optimizor.setCurveStrategy(address(0x1));
-        assertNotEq(address(optimizor.curveStrategy()), before, "2");
-        assertEq(address(optimizor.curveStrategy()), address(0x1), "3");
-    }
-
     function test_SetSdtDistributor() public useFork(forkId1) {
         assertTrue(address(curveStrategy.sdtDistributor()) != address(0x1), "0");
 
