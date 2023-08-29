@@ -77,10 +77,6 @@ contract Optimizor is Auth {
     /// @notice Stake DAO Fallback Convex Curve
     ConvexFallback public immutable fallbackConvexCurve;
 
-    // --- Addresses
-    /// @notice List of fallbacks
-    address[] public fallbacks;
-
     // --- Bools
     /// @notice Use last optimization value
     bool public cacheEnabled;
@@ -130,9 +126,6 @@ contract Optimizor is Auth {
     {
         fallbackConvexCurve = ConvexFallback(_convexFallback);
         curveStrategy = CurveStrategy(_curveStrategy);
-
-        fallbacks.push(address(fallbackConvexCurve));
-        fallbacks.push(LOCKER);
     }
 
     //////////////////////////////////////////////////////
@@ -222,7 +215,7 @@ contract Optimizor is Auth {
             amounts[1] = amount;
         }
 
-        return (fallbacks, amounts);
+        return (getFallbacks(), amounts);
     }
 
     /// @notice Calcul the optimal amount of lps that must be held by the locker or use the cached value
@@ -319,7 +312,7 @@ contract Optimizor is Auth {
         // If there is still some amount to withdraw, it means that optimizor miss calculated
         if (amount != 0) revert WRONG_AMOUNT();
 
-        return (fallbacks, amounts);
+        return (getFallbacks(), amounts);
     }
 
     /// @notice Toggle the flag for using the last optimization
@@ -358,8 +351,10 @@ contract Optimizor is Auth {
     //////////////////////////////////////////////////////
 
     /// @notice Get the fallback addresses
-    function getFallbacks() external view returns (address[] memory) {
-        return fallbacks;
+    function getFallbacks() public view returns (address[] memory _fallbacks) {
+        _fallbacks = new address[](2);
+        _fallbacks[0] = address(fallbackConvexCurve);
+        _fallbacks[1] = LOCKER;
     }
 
     /// @notice Rescue lost ERC20 tokens from contract
