@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0
-
 pragma solidity 0.8.20;
 
 // --- Solmate Contracts
@@ -21,7 +20,6 @@ import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 /// @title CurveStrategy
 /// @author Stake DAO
 /// @notice Strategy for Curve LP tokens
-/// @dev Inherits from Solmate `Auth` implementatio
 contract CurveStrategy is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;

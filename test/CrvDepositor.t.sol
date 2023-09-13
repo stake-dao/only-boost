@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0
-
 pragma solidity 0.8.20;
 
 import "test/BaseTest.t.sol";
@@ -12,9 +11,6 @@ contract CrvDepositorTest is BaseTest {
 
     function setUp() public {
         _labelAddress();
-
-        // --- Fork --- //
-        vm.rollFork(FORK_BLOCK_NUMBER_1);
 
         // --- Deploy Contracts --- //
         vm.startPrank(MS_STAKEDAO);

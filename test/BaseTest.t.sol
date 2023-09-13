@@ -44,6 +44,7 @@ contract BaseTest is Test {
     //////////////////////////////////////////////////////
     /// --- CONTRACTS & MOCKS & INTERFACES
     //////////////////////////////////////////////////////
+
     // --- Contracts
     Optimizor public optimizor;
     CrvDepositor public crvDepositor;
@@ -126,13 +127,7 @@ contract BaseTest is Test {
     uint256 public constant MAX = type(uint256).max;
 
     // --- Fork block numbers
-    uint256 public constant FORK_BLOCK_NUMBER_1 = 17700000;
-    uint256 public constant FORK_BLOCK_NUMBER_2 = 17326000; // DO NOT TOUCH IT !!
-    uint256 public constant FORK_BLOCK_NUMBER_3 = 17323000; // DO NOT TOUCH IT !!
-
-    uint256 public forkId1;
-    uint256 public forkId2;
-    uint256 public forkId3;
+    uint256 public constant FORK_BLOCK_NUMBER_1 = 18127824;
 
     //////////////////////////////////////////////////////
     /// --- VARIABLES
@@ -294,19 +289,6 @@ contract BaseTest is Test {
         if (_address != address(0)) vm.label(_address, _str);
     }
 
-    function _addCOIL_FRAXBPOnConvexFrax() internal {
-        // This need to be call at block.number 17326000, using following tx
-        // https://etherscan.io/tx/0xbcc25272dad48329ed963991f156b929b28ee171e4ad157e2d9b749f3d85eb7b
-        // Add all the stuff for ConvexFrax
-        vm.prank(0x947B7742C403f20e5FaCcDAc5E092C943E7D0277); // Convex Deployer
-
-        BOOSTER_CONVEX_FRAX.addPool(
-            0x7D54C53e6940E88a7ac1970490DAFbBF85D982f4,
-            0x39cd4db6460d8B5961F73E997E86DdbB7Ca4D5F6,
-            0xa5B6f8Ec4122c5Fe0dBc4Ead8Bfe66A412aE427C
-        );
-    }
-
     //////////////////////////////////////////////////////
     /// --- TESTS SECTIONS
     //////////////////////////////////////////////////////
@@ -322,7 +304,7 @@ contract BaseTest is Test {
         // Deal token to this contract
         deal(address(token), address(this), totalAmount);
         // Sometimes deal cheatcode doesn't work, so we check balance
-        assert(token.balanceOf(address(this)) == totalAmount);
+        assertEq(token.balanceOf(address(this)), totalAmount);
 
         // Approve token to strategy
         token.safeApprove(payable(address(curveStrategy)), totalAmount);
@@ -557,6 +539,7 @@ contract BaseTest is Test {
     //////////////////////////////////////////////////////
     /// --- CALULATIONS
     //////////////////////////////////////////////////////
+
     function _calculDepositAmount(ERC20 token, uint256 amountStakeDAO, uint256 amountConvex)
         internal
         view

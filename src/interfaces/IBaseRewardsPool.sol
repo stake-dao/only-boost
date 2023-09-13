@@ -3,6 +3,7 @@
 pragma solidity 0.8.20;
 
 interface IBaseRewardsPool {
+    function rewardToken() external view returns (address);
     function extraRewardsLength() external view returns (uint256);
     function extraRewards(uint256 index) external view returns (address);
     function withdrawAndUnwrap(uint256 amount, bool claim) external returns (bool);

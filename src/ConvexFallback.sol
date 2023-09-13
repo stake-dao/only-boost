@@ -5,6 +5,8 @@ pragma solidity 0.8.20;
 // --- Core Contracts
 import "./BaseFallback.sol";
 
+import "forge-std/Test.sol";
+
 // --- Interfaces
 import {IBaseRewardsPool} from "src/interfaces/IBaseRewardsPool.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
@@ -116,6 +118,7 @@ contract ConvexFallback is BaseFallback {
     {
         // Cache rewardsTokens
         address[] memory rewardsTokens = getRewardsTokens(token);
+
         // Cache the pid
         PidsInfo memory pidInfo = pids[token];
         // Only claim if the pid is initialized and there is a position
@@ -156,6 +159,7 @@ contract ConvexFallback is BaseFallback {
 
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(pidInfo.pid);
+
         // Check if there is extra rewards
         uint256 extraRewardsLength = IBaseRewardsPool(crvRewards).extraRewardsLength();
 
@@ -163,11 +167,20 @@ contract ConvexFallback is BaseFallback {
         tokens[0] = address(CRV);
         tokens[1] = address(CVX);
 
+        address _token;
+
         // If there is extra rewards, add them to the array
         if (extraRewardsLength > 0) {
             for (uint256 i; i < extraRewardsLength;) {
                 // Add the extra reward token to the array
-                tokens[i + 2] = IBaseRewardsPool(crvRewards).extraRewards(i);
+                _token = IBaseRewardsPool(crvRewards).extraRewards(i);
+
+                /// Try Catch to see if the token is a valid ERC20
+                try ERC20(_token).decimals() returns (uint8) {
+                    tokens[i + 2] = _token;
+                } catch {
+                    tokens[i + 2] = IBaseRewardsPool(_token).rewardToken();
+                }
 
                 // No need to check for overflow, since i can't be bigger than 2**256 - 1
                 unchecked {
