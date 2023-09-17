@@ -23,7 +23,7 @@ interface ILiquidityGauge {
 
     function reward_data(address _tokenReward) external view returns (Reward memory);
 
-    function balanceOf(address) external returns (uint256);
+    function balanceOf(address) external view returns (uint256);
 
     function claimable_reward(address _user, address _reward_token) external view returns (uint256);
 

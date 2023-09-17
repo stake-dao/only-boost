@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
-
 pragma solidity 0.8.20;
 
 // --- Core Contracts
 import "./BaseFallback.sol";
-
-import "forge-std/Test.sol";
 
 // --- Interfaces
 import {IBaseRewardsPool} from "src/interfaces/IBaseRewardsPool.sol";
@@ -65,7 +62,6 @@ contract ConvexFallback is BaseFallback {
             // Map the LP token to the pool infos
             pids[token] = PidsInfo(i, true);
 
-            // No need to check for overflow, since i can't be bigger than 2**256 - 1
             unchecked {
                 ++i;
             }
@@ -79,7 +75,7 @@ contract ConvexFallback is BaseFallback {
     /// @dev Only callable by the strategy
     /// @param token Address of LP token to deposit
     /// @param amount Amount of LP token to deposit
-    function deposit(address token, uint256 amount) external override requiresAuth {
+    function deposit(address token, uint256 amount) external override onlyStrategy {
         // Approve the amount
         ERC20(token).safeApprove(address(BOOSTER_CONVEX_CURVE), amount);
         // Deposit the amount into pid from ConvexCurve and stake it into gauge (true)
@@ -92,7 +88,7 @@ contract ConvexFallback is BaseFallback {
     /// @dev Only callable by the strategy
     /// @param token Address of LP token to withdraw
     /// @param amount Amount of LP token to withdraw
-    function withdraw(address token, uint256 amount) external override requiresAuth {
+    function withdraw(address token, uint256 amount) external override onlyStrategy {
         // Get cvxLpToken address
         (,,, address crvRewards,,) = BOOSTER_CONVEX_CURVE.poolInfo(getPid(token).pid);
         // Withdraw from ConvexCurve gauge without claiming rewards
@@ -147,10 +143,10 @@ contract ConvexFallback is BaseFallback {
         // Return if the pool is initialized and not shutdown
         return pids[token].isInitialized && !shutdown;
     }
+
     /// @notice Get all the rewards tokens from pid corresponding to `token`
     /// @param token Address of LP token to get rewards tokens
     /// @return Array of rewards tokens address
-
     function getRewardsTokens(address token) public view override returns (address[] memory) {
         // Cache the pid
         PidsInfo memory pidInfo = pids[token];
@@ -168,24 +164,19 @@ contract ConvexFallback is BaseFallback {
         tokens[1] = address(CVX);
 
         address _token;
+        for (uint256 i; i < extraRewardsLength;) {
+            // Add the extra reward token to the array
+            _token = IBaseRewardsPool(crvRewards).extraRewards(i);
 
-        // If there is extra rewards, add them to the array
-        if (extraRewardsLength > 0) {
-            for (uint256 i; i < extraRewardsLength;) {
-                // Add the extra reward token to the array
-                _token = IBaseRewardsPool(crvRewards).extraRewards(i);
+            /// Try Catch to see if the token is a valid ERC20
+            try ERC20(_token).decimals() returns (uint8) {
+                tokens[i + 2] = _token;
+            } catch {
+                tokens[i + 2] = IBaseRewardsPool(_token).rewardToken();
+            }
 
-                /// Try Catch to see if the token is a valid ERC20
-                try ERC20(_token).decimals() returns (uint8) {
-                    tokens[i + 2] = _token;
-                } catch {
-                    tokens[i + 2] = IBaseRewardsPool(_token).rewardToken();
-                }
-
-                // No need to check for overflow, since i can't be bigger than 2**256 - 1
-                unchecked {
-                    ++i;
-                }
+            unchecked {
+                ++i;
             }
         }
 

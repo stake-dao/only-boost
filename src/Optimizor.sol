@@ -115,8 +115,16 @@ contract Optimizor is Auth {
     /// --- ERRORS
     //////////////////////////////////////////////////////
 
+    /// @notice Error emitted when caller is not the strategy
+    error NOT_STRATEGY();
+
     /// @notice Error emitted when amount is wrong
     error WRONG_AMOUNT();
+
+    modifier onlyStrategy() {
+        if (msg.sender != address(curveStrategy)) revert NOT_STRATEGY();
+        _;
+    }
 
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
@@ -174,28 +182,27 @@ contract Optimizor is Auth {
     /// @param liquidityGauge Address of Liquidity Gauge corresponding to LP token
     /// @param amount Amount of LP token to deposit
     /// @return Array of addresses to deposit in, Stake DAO LiquidLocker always first
-    /// @return Array of amounts to deposit in
+    /// @return amounts Array of amounts to deposit in
     function optimizeDeposit(address token, address liquidityGauge, uint256 amount)
         public
-        requiresAuth
-        returns (address[] memory, uint256[] memory)
+        onlyStrategy
+        returns (address[] memory, uint256[] memory amounts)
     {
         // Check if the lp token has pool on ConvexCurve
-        bool statusCurve = fallbackConvexCurve.isActive(token);
+        bool isOnConvex = fallbackConvexCurve.isActive(token);
 
-        uint256[] memory amounts = new uint256[](2);
-
-        // Cache Stake DAO Liquid Locker veCRV balance
-        uint256 veCRVLocker = ERC20(LOCKER_CRV).balanceOf(LOCKER);
+        amounts = new uint256[](2);
 
         uint256 _balanceConvex = ERC20(liquidityGauge).balanceOf(LOCKER_CONVEX);
-
         // If available on Convex Curve
-        if (statusCurve) {
+        if (isOnConvex) {
             // If Convex Curve has max boost, no need to optimize
             if (ILiquidityGauge(liquidityGauge).working_balances(LOCKER_CONVEX) == _balanceConvex) {
                 amounts[0] = amount;
             } else {
+                // Cache Stake DAO Liquid Locker veCRV balance
+                uint256 veCRVLocker = ERC20(LOCKER_CRV).balanceOf(LOCKER);
+
                 // Get the optimal amount of lps that must be held by the locker
                 uint256 opt = _getOptimalAmount(liquidityGauge, _balanceConvex, veCRVLocker);
 
@@ -276,7 +283,7 @@ contract Optimizor is Auth {
     function optimizeWithdraw(address token, address liquidityGauge, uint256 amount)
         public
         view
-        requiresAuth
+        onlyStrategy
         returns (address[] memory, uint256[] memory)
     {
         // Cache the balance of all fallbacks

@@ -271,7 +271,7 @@ contract CurveStrategy is Auth {
 
             // Special process for Stake DAO locker
             if (recipients[i] == address(LOCKER)) {
-                _depositIntoLiquidLocker(token, gauge, optimizedAmounts[i]);
+                _depositIntoLocker(token, gauge, optimizedAmounts[i]);
             }
             // Deposit into other fallback
             else {
@@ -285,7 +285,7 @@ contract CurveStrategy is Auth {
     /// @param token Address of LP token to deposit
     /// @param gauge Address of Liqudity gauge corresponding to LP token
     /// @param amount Amount of LP token to deposit
-    function _depositIntoLiquidLocker(address token, address gauge, uint256 amount) internal {
+    function _depositIntoLocker(address token, address gauge, uint256 amount) internal {
         ERC20(token).safeTransfer(address(LOCKER), amount);
 
         // Locker deposit token

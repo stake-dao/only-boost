@@ -7,20 +7,16 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 contract LiquidityGaugeMock is ERC20 {
     event LiquidityGaugeDeposit(address token, uint256 amount);
 
-    ERC20 public immutable token;
+    address public immutable token;
 
-    constructor(ERC20 _token)
-        ERC20(
-            string(abi.encodePacked("Liquidity Gauge Mock ", _token.name())),
-            string(abi.encodePacked("LGM-", _token.symbol())),
-            _token.decimals()
-        )
+    constructor(address _token)
+        ERC20(string(abi.encodePacked("Liquidity Gauge Mock ")), string(abi.encodePacked("LGM-")), 18)
     {
         token = _token;
     }
 
     function deposit(uint256 amount) external {
-        token.transferFrom(msg.sender, address(this), amount);
+        ERC20(token).transferFrom(msg.sender, address(this), amount);
 
         _mint(msg.sender, amount);
 
