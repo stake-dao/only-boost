@@ -13,3 +13,8 @@ address constant _CNC_ETH = 0xF9835375f6b268743Ea0a54d742Aa156947f8C06;
 address constant _CNC_ETH_GAUGE = 0x5A8fa46ebb404494D718786e55c4E043337B10bF;
 
 contract _CNC_ETH_Deposit_Test is Deposit_Test(_CNC_ETH, _CNC_ETH_GAUGE) {}
+
+address constant _SDT_ETH = 0x6359B6d3e327c497453d4376561eE276c6933323;
+address constant _SDT_ETH_GAUGE = 0x60355587a8D4aa67c2E64060Ab36e566B9bCC000;
+
+contract _SDT_ETH_Deposit_Test is Deposit_Test(_SDT_ETH, _SDT_ETH_GAUGE) {}

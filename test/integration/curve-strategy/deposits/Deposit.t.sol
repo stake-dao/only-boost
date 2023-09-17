@@ -14,7 +14,6 @@ abstract contract Deposit_Test is Base_Test {
 
     function setUp() public override {
         vm.rollFork({blockNumber: 18_127_824});
-
         Base_Test.setUp();
 
         /// Setup Strategy
@@ -31,6 +30,12 @@ abstract contract Deposit_Test is Base_Test {
 
         vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.deposit({token: address(mockToken), amount: 1000e18});
+    }
+
+    function test_RevertWhen_CallerUnauthorized() public {
+        vm.prank(address(0xBEEF));
+        vm.expectRevert("UNAUTHORIZED");
+        curveStrategy.deposit({token: address(asset), amount: 1000e18});
     }
 
     function test_Deposit_AssetNotAvailableOnConvex() public {
@@ -71,15 +76,20 @@ abstract contract Deposit_Test is Base_Test {
 
         uint256 _balance = gauge.balanceOf(address(locker));
 
-        uint256 _expectedSDDeposit = _optimalDeposit - _balance;
+        uint256 _expectedSDDeposit = _optimalDeposit > _balance ? _optimalDeposit - _balance : 0;
         uint256 _expectedFallbackBalance = _optimalDeposit - _expectedSDDeposit;
 
         curveStrategy.deposit({token: address(asset), amount: _optimalDeposit});
 
+        assertEq(asset.balanceOf(LOCKER), 0);
         assertEq(asset.balanceOf(address(this)), 0);
-        assertEq(gauge.balanceOf(LOCKER), _optimalDeposit);
+        assertEq(asset.balanceOf(address(curveStrategy)), 0);
 
+        /// If over the balance, then it shouldn't be deposited on Stake DAO.
+        assertEq(gauge.balanceOf(LOCKER), _optimalDeposit > _balance ? _optimalDeposit : _balance);
         assertGt(convexFallback.balanceOf(address(asset)), 0);
+
+        /// If over the balance, then _expectedFallbackBalance should be equal to the _optimalDeposit.
         assertEq(convexFallback.balanceOf(address(asset)), _expectedFallbackBalance);
     }
 
