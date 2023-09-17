@@ -20,8 +20,8 @@ import {ConvexFallback} from "src/ConvexFallback.sol";
 import {CurveVaultFactory} from "src/CurveVaultFactory.sol";
 
 // --- Mocks
-import {AccumulatorMock} from "src/mocks/AccumulatorMock.sol";
-import {LiquidityGaugeMock} from "src/mocks/LiquidityGaugeMock.sol";
+import {AccumulatorMock} from "test/mocks/AccumulatorMock.sol";
+import {LiquidityGaugeMock} from "test/mocks/LiquidityGaugeMock.sol";
 
 // --- Interfaces
 import {IVault} from "src/interfaces/IVault.sol";
@@ -40,6 +40,14 @@ import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.so
 abstract contract Base_Test is Test {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
+
+    ERC20 public immutable asset;
+    ILiquidityGauge public immutable gauge;
+
+    constructor(address _asset, address _gauge) {
+        asset = ERC20(_asset);
+        gauge = ILiquidityGauge(_gauge);
+    }
 
     //////////////////////////////////////////////////////
     /// --- TEST VARIABLES
@@ -108,5 +116,33 @@ abstract contract Base_Test is Test {
         vm.label(address(convexFallback), "ConvexFallback");
         vm.label(address(curveStrategy), "NewCurveStrategy");
         vm.label(address(BOOSTER_CONVEX_CURVE), "BoosterConvexCurve");
+    }
+
+    function _getDepositAmount(address liquidityGauge) internal view returns (uint256 _optimalDeposit) {
+        // Cache Stake DAO Liquid Locker veCRV balance
+        uint256 veCRVLocker = ERC20(VE_CRV).balanceOf(LOCKER);
+        _optimalDeposit = optimizor.optimalAmount(liquidityGauge, veCRVLocker);
+
+        return _optimalDeposit;
+    }
+
+    function _checkForConvexMaxBoost(address liquidityGauge) internal view returns (bool) {
+        return ILiquidityGauge(liquidityGauge).working_balances(CONVEX_VOTER_PROXY)
+            == ILiquidityGauge(liquidityGauge).balanceOf(CONVEX_VOTER_PROXY);
+    }
+
+    /// @dev _resetSD is set to true to reset the Stake DAO balance in case of already imbalance.
+    function _createDeposit(uint256 _amount, bool _split, bool _resetSD) internal {
+        deal(address(asset), address(this), _amount);
+        if (_resetSD) deal(address(gauge), address(locker), 0);
+        if (_split && _checkForConvexMaxBoost(address(gauge))) {
+            /// Mock Calls to `cancel` max boost.
+            /// This call is made only to check if the user has max boost.
+            vm.mockCall(
+                address(gauge), abi.encodeWithSignature("working_balances(address)", CONVEX_VOTER_PROXY), abi.encode(0)
+            );
+        }
+
+        curveStrategy.deposit({token: address(asset), amount: _amount});
     }
 }

@@ -211,6 +211,7 @@ contract Optimizor is Auth {
 
                 // Stake DAO Curve
                 amounts[1] = opt > gaugeBalance ? min(opt - gaugeBalance, amount) : 0;
+
                 // Convex Curve
                 amounts[0] = amount - amounts[1];
             }

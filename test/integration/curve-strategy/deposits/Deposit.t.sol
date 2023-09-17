@@ -4,13 +4,7 @@ pragma solidity 0.8.20;
 import "test/Base.t.sol";
 
 abstract contract Deposit_Test is Base_Test {
-    ERC20 public immutable asset;
-    ILiquidityGauge public immutable gauge;
-
-    constructor(address _asset, address _gauge) {
-        asset = ERC20(_asset);
-        gauge = ILiquidityGauge(_gauge);
-    }
+    constructor(address _asset, address _gauge) Base_Test(_asset, _gauge) {}
 
     function setUp() public override {
         vm.rollFork({blockNumber: 18_127_824});
@@ -53,6 +47,7 @@ abstract contract Deposit_Test is Base_Test {
         assertEq(asset.balanceOf(LOCKER), 0);
         assertEq(asset.balanceOf(address(this)), 0);
         assertEq(asset.balanceOf(address(curveStrategy)), 0);
+        assertEq(asset.balanceOf(address(convexFallback)), 0);
 
         assertEq(gauge.balanceOf(LOCKER) - _balance, 1000e18);
     }
@@ -84,6 +79,7 @@ abstract contract Deposit_Test is Base_Test {
         assertEq(asset.balanceOf(LOCKER), 0);
         assertEq(asset.balanceOf(address(this)), 0);
         assertEq(asset.balanceOf(address(curveStrategy)), 0);
+        assertEq(asset.balanceOf(address(convexFallback)), 0);
 
         /// If over the balance, then it shouldn't be deposited on Stake DAO.
         assertEq(gauge.balanceOf(LOCKER), _optimalDeposit > _balance ? _optimalDeposit : _balance);
@@ -118,26 +114,15 @@ abstract contract Deposit_Test is Base_Test {
         assertEq(asset.balanceOf(address(this)), _optimalDeposit);
 
         _balance = gauge.balanceOf(address(locker));
-
         curveStrategy.deposit({token: address(asset), amount: _optimalDeposit});
 
         assertEq(asset.balanceOf(address(this)), 0);
+        assertEq(asset.balanceOf(address(curveStrategy)), 0);
+        assertEq(asset.balanceOf(address(convexFallback)), 0);
+
         assertEq(gauge.balanceOf(LOCKER), _balance);
 
         assertGt(convexFallback.balanceOf(address(asset)), 0);
         assertEq(convexFallback.balanceOf(address(asset)), _optimalDeposit);
-    }
-
-    function _getDepositAmount(address liquidityGauge) internal view returns (uint256 _optimalDeposit) {
-        // Cache Stake DAO Liquid Locker veCRV balance
-        uint256 veCRVLocker = ERC20(VE_CRV).balanceOf(LOCKER);
-        _optimalDeposit = optimizor.optimalAmount(liquidityGauge, veCRVLocker);
-
-        return _optimalDeposit;
-    }
-
-    function _checkForConvexMaxBoost(address liquidityGauge) internal view returns (bool) {
-        return ILiquidityGauge(liquidityGauge).working_balances(CONVEX_VOTER_PROXY)
-            == ILiquidityGauge(liquidityGauge).balanceOf(CONVEX_VOTER_PROXY);
     }
 }
