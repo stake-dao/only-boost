@@ -26,8 +26,11 @@ test-c-%:
 	@FOUNDRY_MATCH_CONTRACT=$* make test
 
 coverage:
+	forge coverage --match-path 'test/integration/*'
+
+coverage-lcov:
 	forge coverage --report lcov
-	lcov --remove ./lcov.info -o ./lcov.info.pruned 'test/*'
+	lcov --remove ./lcov.info -o ./lcov.info.pruned 'test/integration/*'
 
 coverage-html:
 	make coverage

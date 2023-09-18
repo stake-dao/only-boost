@@ -54,6 +54,7 @@ abstract contract Base_Test is Test {
     //////////////////////////////////////////////////////
 
     MockERC20 public mockToken;
+    AccumulatorMock public mockAccumulator;
     LiquidityGaugeMock public mockLiquidityGauge;
 
     //////////////////////////////////////////////////////
@@ -107,6 +108,7 @@ abstract contract Base_Test is Test {
 
         /// Initialize Mocks
         mockToken = new MockERC20("Token", "TKN", 18);
+        mockAccumulator = new AccumulatorMock(curveStrategy.curveRewardToken());
         mockLiquidityGauge = new LiquidityGaugeMock(address(mockToken));
 
         /// Label addresses

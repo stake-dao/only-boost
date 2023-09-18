@@ -16,7 +16,6 @@ abstract contract Withdrawal_Test is Base_Test {
         asset.approve(address(curveStrategy), type(uint256).max);
     }
 
-
     function test_RevertWhen_AssetNotAssociatedWithGauge() public {
         vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
         curveStrategy.withdraw({token: address(mockToken), amount: 1000e18});
