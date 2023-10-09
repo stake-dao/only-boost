@@ -273,15 +273,15 @@ abstract contract Strategy {
 
     /// @notice Internal gateway to deposit LP into this strategy
     /// @dev First check the optimal split, then send it to respective recipients
-    /// @param _token Address of LP token to deposit
+    /// @param _asset Address of LP token to deposit
     /// @param amount Amount of LP token to deposit
-    function _deposit(address _token, uint256 amount) internal virtual {
+    function _deposit(address _asset, uint256 amount) internal virtual {
         // Get the gauge address
-        address gauge = gauges[_token];
+        address gauge = gauges[_asset];
         // Revert if the gauge is not set
         if (gauge == address(0)) revert ADDRESS_NULL();
 
-        _depositIntoLocker(_token, gauge, amount);
+        _depositIntoLocker(_asset, gauge, amount);
     }
 
     /// @notice Internal gateway to withdraw LP token from this strategy
