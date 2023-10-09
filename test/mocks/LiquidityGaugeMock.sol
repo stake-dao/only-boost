@@ -15,6 +15,10 @@ contract LiquidityGaugeMock is ERC20 {
         token = _token;
     }
 
+    function reward_tokens(uint256) external pure returns (address) {
+        return address(0);
+    }
+
     function deposit(uint256 amount) external {
         ERC20(token).transferFrom(msg.sender, address(this), amount);
 

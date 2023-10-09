@@ -15,7 +15,7 @@ import {RolesAuthority} from "solmate/auth/authorities/RolesAuthority.sol";
 import {Optimizor} from "src/Optimizor.sol";
 import {CrvDepositor} from "src/CrvDepositor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
-import {CurveStrategy} from "src/CurveStrategy.sol";
+import {Strategy} from "src/Strategy.sol";
 import {ConvexFallback} from "src/ConvexFallback.sol";
 import {CurveVaultFactory} from "src/CurveVaultFactory.sol";
 
@@ -67,7 +67,7 @@ abstract contract Base_Test is Test {
     // --- OnlyBoost
     Optimizor public optimizor;
     CrvDepositor public crvDepositor;
-    CurveStrategy public curveStrategy;
+    Strategy public curveStrategy;
     ConvexFallback public convexFallback;
     CurveVaultFactory public curveVaultFactory;
 
@@ -94,7 +94,7 @@ abstract contract Base_Test is Test {
         rolesAuthority = new RolesAuthority(address(this), Authority(address(0)));
 
         /// OnlyBoost
-        curveStrategy = new CurveStrategy(address(this), rolesAuthority);
+        curveStrategy = new Strategy(address(this), rolesAuthority);
         convexFallback = new ConvexFallback(address(this), rolesAuthority, payable(address(curveStrategy)));
         optimizor =
             new Optimizor(address(this), rolesAuthority, payable(address(curveStrategy)), address(convexFallback));

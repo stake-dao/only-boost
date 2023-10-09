@@ -54,7 +54,7 @@ The optimal amount that should held Stake DAO Liquid Locker is calculated using 
 
 The following architectur has been implemented using 4 main contracts : 
 1. Optimizor
-2. CurveStrategy
+2. Strategy
 3. ConvexFallback
 4. FallbackConvexFrax
 

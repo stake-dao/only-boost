@@ -5,6 +5,7 @@ import "test/Base.t.sol";
 
 import "test/integration/curve-strategy/deposits/Deposit.t.sol";
 import "test/integration/curve-strategy/withdrawals/Withdrawal.t.sol";
+import "test/integration/curve-strategy/get-rewards/GetRewards.t.sol";
 
 address constant _3CRV = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
 address constant _3CRV_GAUGE = 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
@@ -19,6 +20,8 @@ address constant _CNC_ETH_GAUGE = 0x5A8fa46ebb404494D718786e55c4E043337B10bF;
 contract _CNC_ETH_Deposit_Test is Deposit_Test(_CNC_ETH, _CNC_ETH_GAUGE) {}
 
 contract _CNC_ETH_Withdrawal_Test is Withdrawal_Test(_CNC_ETH, _CNC_ETH_GAUGE) {}
+
+contract _CNC_ETH_Get_Rewards_Test is Get_Rewards_Test(_CNC_ETH, _CNC_ETH_GAUGE) {}
 
 address constant _SDT_ETH = 0x6359B6d3e327c497453d4376561eE276c6933323;
 address constant _SDT_ETH_GAUGE = 0x60355587a8D4aa67c2E64060Ab36e566B9bCC000;

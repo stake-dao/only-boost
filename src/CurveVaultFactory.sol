@@ -8,7 +8,7 @@ import {ERC20Upgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts
 // --- Core contracts
 import {Optimizor} from "src/Optimizor.sol";
 import {BaseFallback} from "src/BaseFallback.sol";
-import {CurveStrategy} from "src/CurveStrategy.sol";
+import {Strategy} from "src/Strategy.sol";
 
 // --- Interfaces
 import {ICurveVault} from "src/interfaces/ICurveVault.sol";
@@ -56,7 +56,7 @@ contract CurveVaultFactory {
     ///////////////////////////////////////////////////////////////
 
     /// @notice Curve Strategy contract
-    CurveStrategy public curveStrategy;
+    Strategy public curveStrategy;
 
     /// @notice Stake DAO Curve Vault implementation contract
     address public vaultImpl = 0x9FDd0A0cfD98775565811E081d404309B23ea996;
@@ -105,7 +105,7 @@ contract CurveVaultFactory {
     //////////////////////////////////////////////////////
 
     constructor(address payable _curveStrategy) {
-        curveStrategy = CurveStrategy(_curveStrategy);
+        curveStrategy = Strategy(_curveStrategy);
     }
 
     //////////////////////////////////////////////////////
@@ -152,11 +152,11 @@ contract CurveVaultFactory {
 
         curveStrategy.toggleVault(vaultImplAddress);
         curveStrategy.setGauge(vaultLpToken, _crvGaugeAddress);
-        curveStrategy.setMultiGauge(_crvGaugeAddress, gaugeImplAddress);
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.PERF_FEE, _crvGaugeAddress, 200); //%2 default
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.VESDT_FEE, _crvGaugeAddress, 500); //%5 default
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.ACCUMULATOR_FEE, _crvGaugeAddress, 800); //%8 default
-        curveStrategy.manageFee(CurveStrategy.MANAGEFEE.CLAIMER_REWARD, _crvGaugeAddress, 50); //%0.5 default
+        curveStrategy.setRewardDistributor(_crvGaugeAddress, gaugeImplAddress);
+        curveStrategy.manageFee(Strategy.MANAGEFEE.PERF_FEE, _crvGaugeAddress, 200); //%2 default
+        curveStrategy.manageFee(Strategy.MANAGEFEE.VESDT_FEE, _crvGaugeAddress, 500); //%5 default
+        curveStrategy.manageFee(Strategy.MANAGEFEE.ACCUMULATOR_FEE, _crvGaugeAddress, 800); //%8 default
+        curveStrategy.manageFee(Strategy.MANAGEFEE.CLAIMER_REWARD, _crvGaugeAddress, 50); //%0.5 default
         curveStrategy.setLGtype(_crvGaugeAddress, liquidityGaugeType);
 
         ILiquidityGaugeStrat(gaugeImplAddress).add_reward(CRV, payable(address(curveStrategy)));

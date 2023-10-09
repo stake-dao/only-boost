@@ -62,7 +62,7 @@ contract Get_Native_Rewards_Test is Base_Test {
     function test_ClaimNativeRewards_WrongFeeDistributorImplementation() public {
         curveStrategy.setFeeDistributor(address(wrongFeeDistributorMock));
 
-        vm.expectRevert(CurveStrategy.CLAIM_FAILED.selector);
+        vm.expectRevert(Strategy.CLAIM_FAILED.selector);
         curveStrategy.claimNativeRewards(true);
     }
 }

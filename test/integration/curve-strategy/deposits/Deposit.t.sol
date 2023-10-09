@@ -22,7 +22,7 @@ abstract contract Deposit_Test is Base_Test {
         mockToken.mint(address(this), 1000e18);
         mockToken.approve(address(curveStrategy), 1000e18);
 
-        vm.expectRevert(CurveStrategy.ADDRESS_NULL.selector);
+        vm.expectRevert(Strategy.ADDRESS_NULL.selector);
         curveStrategy.deposit({token: address(mockToken), amount: 1000e18});
     }
 

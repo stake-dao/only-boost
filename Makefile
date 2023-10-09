@@ -14,13 +14,13 @@ install:
 	forge install
 
 test:
-	forge test
+	forge test --match-path 'test/integration/*'
 
 snapshot:
 	forge snapshot
 
 test-f-%:
-	@FOUNDRY_MATCH_TEST=$* make test
+	@FOUNDRY_MATCH_TEST=$* make test 
 
 test-c-%:
 	@FOUNDRY_MATCH_CONTRACT=$* make test

@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 // --- Core Contracts
-import {CurveStrategy} from "src/CurveStrategy.sol";
+import {Strategy} from "src/Strategy.sol";
 
 // --- Interfaces
 import {ISdToken} from "src/interfaces/ISdToken.sol";
@@ -35,7 +35,7 @@ contract CrvDepositor is Auth {
     /// --- VARIABLES
     //////////////////////////////////////////////////////
 
-    CurveStrategy public strategy;
+    Strategy public strategy;
     address public gauge;
     uint256 public lockIncentive = 10; //incentive to users who spend gas to lock token
     uint256 public incentiveToken;
@@ -76,7 +76,7 @@ contract CrvDepositor is Auth {
         TOKEN = ERC20(_token);
         LOCKER = _locker;
         MINTER = _minter;
-        strategy = CurveStrategy(_strategy);
+        strategy = Strategy(_strategy);
     }
 
     //////////////////////////////////////////////////////
@@ -111,7 +111,7 @@ contract CrvDepositor is Auth {
     /// @notice Set the new strategy
     /// @param _strategy New Strategy address
     function setStrategy(address payable _strategy) external requiresAuth {
-        strategy = CurveStrategy(_strategy);
+        strategy = Strategy(_strategy);
     }
 
     /// @notice Extend unlock time on the locker

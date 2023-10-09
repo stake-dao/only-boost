@@ -43,6 +43,7 @@ contract BaseFallback is Auth {
         uint256 accumulatorFee;
         uint256 veSDTFee;
         uint256 claimerRewardFee;
+        uint256 totalFee;
     }
 
     // --- Enums
@@ -252,6 +253,7 @@ contract BaseFallback is Auth {
         returns (uint256)
     {
         Fees storage fee = feesInfos[gauge];
+        if (fee.totalFee == 0) return rewardsBalance;
 
         uint256 veSDTPart;
         uint256 multisigFee;
@@ -334,10 +336,14 @@ contract BaseFallback is Auth {
             // 3
             feesInfo.claimerRewardFee = newFee;
         }
-        if (feesInfo.perfFee + feesInfo.veSDTFee + feesInfo.accumulatorFee + feesInfo.claimerRewardFee > 10_000) {
+
+        uint256 _totalFee = feesInfo.perfFee + feesInfo.veSDTFee + feesInfo.accumulatorFee + feesInfo.claimerRewardFee;
+
+        if (_totalFee > 10_000) {
             revert FEE_TOO_HIGH();
         }
 
+        feesInfo.totalFee = _totalFee;
         emit FeeManaged(uint256(manageFee_), gauge, newFee);
     }
 

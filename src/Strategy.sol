@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
+import "forge-std/Test.sol";
+
 // --- Solmate Contracts
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Auth, Authority} from "solmate/auth/Auth.sol";
@@ -17,10 +19,10 @@ import {IAccumulator} from "src/interfaces/IAccumulator.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 
-/// @title CurveStrategy
+/// @title Strategy
 /// @author Stake DAO
 /// @notice Strategy for Curve LP tokens
-contract CurveStrategy is Auth {
+contract Strategy is Auth {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -332,7 +334,7 @@ contract CurveStrategy is Auth {
 
             // Special process for Stake DAO locker
             if (recipients[i] == address(LOCKER)) {
-                _withdrawFromLiquidLocker(token, gauge, optimizedAmounts[i]);
+                _withdrawFromLocker(token, gauge, optimizedAmounts[i]);
             }
             // Deposit into other fallback
             else {
@@ -345,7 +347,7 @@ contract CurveStrategy is Auth {
     /// @param token Address of LP token to withdraw
     /// @param gauge Address of Liqudity gauge corresponding to LP token
     /// @param amount Amount of LP token to withdraw
-    function _withdrawFromLiquidLocker(address token, address gauge, uint256 amount) internal {
+    function _withdrawFromLocker(address token, address gauge, uint256 amount) internal {
         (bool success,) = LOCKER.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
         if (!success) revert WITHDRAW_FAILED();
 
@@ -371,27 +373,28 @@ contract CurveStrategy is Auth {
         if (claimAll) _claimFallbacks(token);
 
         // Get the CRV amount before claim
-        uint256 crvBeforeClaim = ERC20(CRV).balanceOf(address(LOCKER));
+        uint256 _snapshotBalance = ERC20(CRV).balanceOf(address(LOCKER));
 
         // Claim CRV, within the mint() it calls the user checkpoint
         (bool success,) = LOCKER.execute(CRV_MINTER, 0, abi.encodeWithSignature("mint(address)", gauge));
         if (!success) revert MINT_FAILED();
 
         // Get the CRV amount claimed
-        uint256 crvMinted = ERC20(CRV).balanceOf(address(LOCKER)) - crvBeforeClaim;
+        uint256 _minted = ERC20(CRV).balanceOf(address(LOCKER)) - _snapshotBalance;
 
         // Send CRV here
         (success,) =
-            LOCKER.execute(CRV, 0, abi.encodeWithSignature("transfer(address,uint256)", address(this), crvMinted));
+            LOCKER.execute(CRV, 0, abi.encodeWithSignature("transfer(address,uint256)", address(this), _minted));
+
         if (!success) revert CALL_FAILED();
 
         address rewardDistributor = rewardDistributors[gauge];
 
         // Distribute CRV to fees recipients and gauges
-        uint256 crvNetRewards = _sendFee(gauge, CRV, crvMinted);
-        ERC20(CRV).safeApprove(rewardDistributor, crvNetRewards);
-        ILiquidityGauge(rewardDistributor).deposit_reward_token(CRV, crvNetRewards);
-        emit Claimed(gauge, CRV, crvMinted);
+        _minted = _sendFee(gauge, _minted);
+        ILiquidityGauge(rewardDistributor).deposit_reward_token(CRV, _minted);
+
+        emit Claimed(gauge, CRV, _minted);
 
         // Distribute SDT to the related gauge
         ISdtDistributorV2(sdtDistributor).distribute(rewardDistributor);
@@ -452,7 +455,10 @@ contract CurveStrategy is Auth {
                     if (!transferSuccessful) revert CALL_FAILED();
                 }
 
-                ERC20(rewardToken).safeApprove(rewardDistributor, rewardsBalance);
+                if (rewardToken != CRV) {
+                    ERC20(rewardToken).safeApprove(rewardDistributor, rewardsBalance);
+                }
+
                 ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, rewardsBalance);
                 emit Claimed(gauge, rewardToken, rewardsBalance);
             }
@@ -525,10 +531,9 @@ contract CurveStrategy is Auth {
 
     /// @notice Internal process to send fees from rewards
     /// @param gauge Address of Liqudity gauge corresponding to LP token
-    /// @param rewardToken Address of reward token
     /// @param rewardsBalance Amount of reward token
     /// @return Amount of reward token remaining
-    function _sendFee(address gauge, address rewardToken, uint256 rewardsBalance) internal returns (uint256) {
+    function _sendFee(address gauge, uint256 rewardsBalance) internal returns (uint256) {
         Fees storage fee = feesInfos[gauge];
 
         uint256 veSDTPart;
@@ -538,23 +543,22 @@ contract CurveStrategy is Auth {
 
         if (fee.perfFee > 0) {
             multisigFee = rewardsBalance.mulDivDown(fee.perfFee, BASE_FEE);
-            ERC20(rewardToken).safeTransfer(rewardsReceiver, multisigFee);
+            ERC20(CRV).safeTransfer(rewardsReceiver, multisigFee);
         }
 
         if (fee.accumulatorFee > 0) {
             accumulatorPart = rewardsBalance.mulDivDown(fee.accumulatorFee, BASE_FEE);
-            ERC20(rewardToken).safeApprove(address(accumulator), accumulatorPart);
-            accumulator.depositToken(rewardToken, accumulatorPart);
+            accumulator.depositToken(CRV, accumulatorPart);
         }
 
         if (fee.veSDTFee > 0) {
             veSDTPart = rewardsBalance.mulDivDown(fee.veSDTFee, BASE_FEE);
-            ERC20(rewardToken).safeTransfer(veSDTFeeProxy, veSDTPart);
+            ERC20(CRV).safeTransfer(veSDTFeeProxy, veSDTPart);
         }
 
         if (fee.claimerRewardFee > 0) {
             claimerPart = rewardsBalance.mulDivDown(fee.claimerRewardFee, BASE_FEE);
-            ERC20(rewardToken).safeTransfer(msg.sender, claimerPart);
+            ERC20(CRV).safeTransfer(msg.sender, claimerPart);
         }
 
         return rewardsBalance - multisigFee - accumulatorPart - veSDTPart - claimerPart;
@@ -669,9 +673,13 @@ contract CurveStrategy is Auth {
     /// @notice Set rewardDistributor for a Liquidity gauge
     /// @param gauge Address of Liquidity gauge
     /// @param rewardDistributor Address of rewardDistributor
-    function setMultiGauge(address gauge, address rewardDistributor) external requiresAuth {
+    function setRewardDistributor(address gauge, address rewardDistributor) external requiresAuth {
         if (gauge == address(0) || rewardDistributor == address(0)) revert ADDRESS_NULL();
         rewardDistributors[gauge] = rewardDistributor;
+
+        /// Approve the rewardDistributor to spend CRV.
+        ERC20(CRV).safeApprove(rewardDistributor, 0);
+        ERC20(CRV).safeApprove(rewardDistributor, type(uint256).max);
 
         emit MultiGaugeSet(gauge, rewardDistributor);
     }
@@ -689,6 +697,10 @@ contract CurveStrategy is Auth {
     function setAccumulator(address newAccumulator) external requiresAuth {
         if (newAccumulator == address(0)) revert ADDRESS_NULL();
         accumulator = IAccumulator(newAccumulator);
+
+        /// Approve the Accumulator to spend CRV.
+        ERC20(CRV).safeApprove(newAccumulator, type(uint256).max);
+
         emit AccumulatorSet(newAccumulator);
     }
 

@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 // --- Core Contracts
-import {CurveStrategy} from "src/CurveStrategy.sol";
+import {Strategy} from "src/Strategy.sol";
 import {ConvexFallback} from "src/ConvexFallback.sol";
 
 // --- Interfaces
@@ -72,7 +72,7 @@ contract Optimizor is Auth {
 
     // --- Contracts
     /// @notice Stake DAO Curve Strategy
-    CurveStrategy public immutable curveStrategy;
+    Strategy public immutable curveStrategy;
 
     /// @notice Stake DAO Fallback Convex Curve
     ConvexFallback public immutable fallbackConvexCurve;
@@ -133,7 +133,7 @@ contract Optimizor is Auth {
         Auth(owner, authority)
     {
         fallbackConvexCurve = ConvexFallback(_convexFallback);
-        curveStrategy = CurveStrategy(_curveStrategy);
+        curveStrategy = Strategy(_curveStrategy);
     }
 
     //////////////////////////////////////////////////////
