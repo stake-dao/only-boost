@@ -25,16 +25,12 @@ import {LiquidityGaugeMock} from "test/mocks/LiquidityGaugeMock.sol";
 
 // --- Interfaces
 import {IVault} from "src/interfaces/IVault.sol";
-import {IVeCRV} from "src/interfaces/IVeCRV.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {ISdToken} from "src/interfaces/ISdToken.sol";
 import {ICurveVault} from "src/interfaces/ICurveVault.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
-import {IFraxUnifiedFarm} from "src/interfaces/IFraxUnifiedFarm.sol";
-import {IBoosterConvexFrax} from "src/interfaces/IBoosterConvexFrax.sol";
 import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
 import {ILiquidityGaugeStrat} from "src/interfaces/ILiquidityGaugeStrat.sol";
-import {ICurveLiquidityGauge} from "src/interfaces/ICurveLiquidityGauge.sol";
 import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
 
 abstract contract Base_Test is Test {
