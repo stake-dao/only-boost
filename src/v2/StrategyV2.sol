@@ -504,6 +504,10 @@ abstract contract Strategy {
         ERC20(rewardToken).safeApprove(rewardDistributor, type(uint256).max);
     }
 
+    //////////////////////////////////////////////////////
+    /// --- GOVERNANCE STRATEGY SETTERS
+    //////////////////////////////////////////////////////
+
     /// @notice Set Accumulator new address
     /// @param newAccumulator Address of new Accumulator
     function setAccumulator(address newAccumulator) external onlyGovernance {
