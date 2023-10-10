@@ -28,6 +28,12 @@ abstract contract OnlyBoost is Strategy {
         // Revert if the gauge is not set
         if (gauge == address(0)) revert ADDRESS_NULL();
 
+        if (address(optimizer) == address(0)) {
+            // Deposit into the locker
+            _depositIntoLocker(_asset, gauge, amount);
+            return;
+        }
+
         /// Get the optimal allocation for the deposit.
         (address[] memory recipients, uint256[] memory allocations) =
             optimizer.getOptimalDepositAllocation(_asset, gauge, amount);
@@ -51,6 +57,12 @@ abstract contract OnlyBoost is Strategy {
         // Get the gauge address
         address gauge = gauges[_asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
+
+        if (address(optimizer) == address(0)) {
+            // Deposit into the locker
+            _withdrawFromLocker(_asset, gauge, amount);
+            return;
+        }
 
         // Call the Optimizor contract
         (address[] memory recipients, uint256[] memory allocations) =
@@ -86,4 +98,9 @@ abstract contract OnlyBoost is Strategy {
     function setOptimizer(address _optimizer) external onlyGovernance {
         optimizer = IOnlyBoost(_optimizer);
     }
+
+    /// TODO: Implement
+    //// It should withdraw from all the fallbacks and deposit into the locker
+    ///  Then set the optimizer address to 0
+    function killOptimizer() external onlyGovernance {}
 }
