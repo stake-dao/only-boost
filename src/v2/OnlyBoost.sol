@@ -16,23 +16,22 @@ abstract contract OnlyBoost is Strategy {
     using SafeTransferLib for ERC20;
 
     /// @notice Optimizer address for deposit/withdrawal allocations.
-    IOnlyBoost internal optimizer;
+    IOnlyBoost public optimizer;
 
     constructor(address _owner, address _locker, address _veToken, address _rewardToken, address _minter)
         Strategy(_owner, _locker, _veToken, _rewardToken, _minter)
     {}
 
     function _deposit(address _asset, uint256 amount) internal override {
+        // If optimizer is not set, use default deposit
+        if (address(optimizer) == address(0)) {
+            return super._deposit(_asset, amount);
+        }
+
         // Get the gauge address
         address gauge = gauges[_asset];
         // Revert if the gauge is not set
         if (gauge == address(0)) revert ADDRESS_NULL();
-
-        if (address(optimizer) == address(0)) {
-            // Deposit into the locker
-            _depositIntoLocker(_asset, gauge, amount);
-            return;
-        }
 
         /// Get the optimal allocation for the deposit.
         (address[] memory recipients, uint256[] memory allocations) =
@@ -54,15 +53,14 @@ abstract contract OnlyBoost is Strategy {
     }
 
     function _withdraw(address _asset, uint256 amount) internal override {
+        /// If optimzer, use default withdraw.
+        if (address(optimizer) == address(0)) {
+            return super._withdraw(_asset, amount);
+        }
+
         // Get the gauge address
         address gauge = gauges[_asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
-
-        if (address(optimizer) == address(0)) {
-            // Deposit into the locker
-            _withdrawFromLocker(_asset, gauge, amount);
-            return;
-        }
 
         // Call the Optimizor contract
         (address[] memory recipients, uint256[] memory allocations) =
@@ -76,7 +74,7 @@ abstract contract OnlyBoost is Strategy {
             if (recipients[i] == address(locker)) {
                 _withdrawFromLocker(_asset, gauge, allocations[i]);
             }
-            // Deposit into other fallback
+            // Withdraw from other fallback
             else {
                 IFallback(recipients[i]).withdraw(_asset, allocations[i]);
             }
