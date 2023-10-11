@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-// --- Core Contracts
 import "src/v2/fallbacks/Fallback.sol";
-
-// --- Interfaces
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {IBaseRewardPool} from "src/interfaces/IBaseRewardPool.sol";
 
 /// @title ConvexFallback
 /// @author Stake DAO
-/// @notice Manage LP deposit/withdraw/claim into ConvexCurve
-/// @dev Inherit from `BaseFallback` implementation
+/// @notice Manage LP deposit/withdraw/claim into Convex like platforms.
 contract ConvexFallback is Fallback {
     using SafeTransferLib for ERC20;
 
@@ -24,15 +20,11 @@ contract ConvexFallback is Fallback {
         // Set the booster contract
         booster = IBooster(_booster);
 
-        _updatePoolIDMappings();
-    }
-
-    function updatePoolIDMappings() public {
-        _updatePoolIDMappings();
+        updatePoolIDMappings();
     }
 
     /// @notice Internal process for mapping of pool ids from ConvexCurve to LP token address
-    function _updatePoolIDMappings() internal {
+    function updatePoolIDMappings() public {
         // Cache the length of the pool registry
         uint256 len = booster.poolLength();
 
@@ -75,9 +67,10 @@ contract ConvexFallback is Fallback {
     /// @param amount Amount of LP token to withdraw
     function withdraw(address token, uint256 amount) external override onlyStrategy {
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = booster.poolInfo(getPid(token).pid);
+        (,,, address rewardTokenDistributor,,) = booster.poolInfo(getPid(token).pid);
+
         // Withdraw from ConvexCurve gauge without claiming rewards
-        IBaseRewardPool(crvRewards).withdrawAndUnwrap(amount, false);
+        IBaseRewardPool(rewardTokenDistributor).withdrawAndUnwrap(amount, false);
 
         // Transfer the amount
         ERC20(token).safeTransfer(msg.sender, amount);
@@ -93,13 +86,13 @@ contract ConvexFallback is Fallback {
     function claimRewards(address token, bool _claimExtraRewards)
         external
         onlyStrategy
-        returns (address[] memory rewardTokens, uint256[] memory amounts)
+        returns (address[] memory rewardTokens, uint256[] memory amounts, uint256 _protocolFees)
     {
         /// Check if the pid is initialized.
         Pid memory pidInfo = pids[token];
 
         // Only claim if the pid is initialized and there is a position.
-        if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0));
+        if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0), 0);
 
         /// Get RewardDistributor address.
         (,,, address rewardTokenDistributor,,) = booster.poolInfo(pidInfo.pid);
@@ -116,11 +109,19 @@ contract ConvexFallback is Fallback {
             amounts = new uint256[](2);
         }
 
+        uint256 snapshotBalance;
+
+        /// If there is protocol fees, take a snapshot of the balance before claiming.
+        if (protocolFeesPercent > 0) {
+            snapshotBalance = ERC20(rewardTokens[0]).balanceOf(address(this));
+        }
+
         // Withdraw from ConvexCurve gauge
         IBaseRewardPool(rewardTokenDistributor).getReward(address(this), _claimExtraRewards);
 
         /// Charge Fees
-        amounts[0] = _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
+        (amounts[0], _protocolFees) =
+            _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)) - snapshotBalance);
 
         for (uint256 i = 1; i < rewardTokens.length;) {
             // Get the balance of the reward token

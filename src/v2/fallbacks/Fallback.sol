@@ -120,25 +120,14 @@ abstract contract Fallback {
     /// --- MUTATIVE FUNCTIONS
     //////////////////////////////////////////////////////
 
-    /// @notice Claim protocol fees and send them to the fee receiver.
-    function claimProtocolFees() external {
-        if (feesAccrued == 0) return;
-
-        uint256 _feesAccrued = feesAccrued;
-        feesAccrued = 0;
-
-        ERC20(rewardToken).safeTransfer(feeReceiver, _feesAccrued);
-    }
-
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
-    function _chargeProtocolFees(uint256 _amount) internal returns (uint256) {
-        if (_amount == 0) return 0;
-        if (protocolFeesPercent == 0) return _amount;
+    function _chargeProtocolFees(uint256 _amount) internal view returns (uint256, uint256) {
+        if (_amount == 0) return (0, 0);
+        if (protocolFeesPercent == 0) return (_amount, 0);
 
         uint256 _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);
-        feesAccrued += _feeAccrued;
 
-        return _amount -= _feeAccrued;
+        return (_amount - _feeAccrued, _feeAccrued);
     }
 
     /// @notice Transfer the governance to a new address.
