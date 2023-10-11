@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.20;
 
-interface IBoosterConvexCurve {
+interface IBooster {
     function poolLength() external view returns (uint256);
 
     function poolInfo(uint256 pid)

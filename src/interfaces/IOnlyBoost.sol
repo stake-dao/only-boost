@@ -10,4 +10,6 @@ interface IOnlyBoost {
         external
         view
         returns (address[] memory, uint256[] memory);
+
+    function getFallbacks() external view returns (address[] memory);
 }

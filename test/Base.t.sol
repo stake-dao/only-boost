@@ -29,7 +29,7 @@ import {ILocker} from "src/interfaces/ILocker.sol";
 import {ISdToken} from "src/interfaces/ISdToken.sol";
 import {ICurveVault} from "src/interfaces/ICurveVault.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
-import {IBoosterConvexCurve} from "src/interfaces/IBoosterConvexCurve.sol";
+import {IBooster} from "src/interfaces/IBooster.sol";
 import {ILiquidityGaugeStrat} from "src/interfaces/ILiquidityGaugeStrat.sol";
 import {IPoolRegistryConvexFrax} from "src/interfaces/IPoolRegistryConvexFrax.sol";
 
@@ -74,8 +74,7 @@ abstract contract Base_Test is Test {
     /// --- CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////
 
-    IBoosterConvexCurve public constant BOOSTER_CONVEX_CURVE =
-        IBoosterConvexCurve(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    IBooster public constant BOOSTER_CONVEX_CURVE = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
 
     address public constant LOCKER = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6; // StakeDAO CRV Locker
     address public constant CONVEX_VOTER_PROXY = 0x989AEb4d175e16225E39E87d0D97A3360524AD80;

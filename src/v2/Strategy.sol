@@ -212,11 +212,12 @@ abstract contract Strategy {
         _transferFromLocker(feeRewardToken, accumulator, _claimed);
     }
 
-    function claim(address _asset) external {
-        // Get the gauge address
+    function claim(address _asset) public virtual {
+        /// Get the gauge address.
         address gauge = gauges[_asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
+        /// Cache the rewardDistributor address.
         address rewardDistributor = rewardDistributors[gauge];
 
         /// 1. Claim `rewardToken` from the Gauge.
@@ -233,6 +234,9 @@ abstract contract Strategy {
 
         /// 4. Take Fees from _claimed amount.
         _claimed = _chargeProtocolFees(_claimed);
+
+        /// 5. Distribute Claim Incentive
+        _claimed = _distributeClaimIncentive(_claimed);
 
         /// 5. Distribute the rewardToken.
         ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, _claimed);
@@ -256,15 +260,22 @@ abstract contract Strategy {
     /// @return _amount Amount left after charging protocol fees.
     function _chargeProtocolFees(uint256 _amount) internal returns (uint256) {
         if (_amount == 0) return 0;
+        if (protocolFeesPercent == 0) return _amount;
 
         uint256 _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);
+        feesAccrued += _feeAccrued;
+
+        return _amount -= _feeAccrued;
+    }
+
+    function _distributeClaimIncentive(uint256 _amount) internal returns (uint256) {
+        if (_amount == 0) return 0;
+
         uint256 _claimerIncentive = _amount.mulDivDown(claimIncentiveFee, DENOMINATOR);
 
         ERC20(rewardToken).safeTransfer(msg.sender, _claimerIncentive);
 
-        feesAccrued += _feeAccrued;
-
-        return _amount - _feeAccrued - _claimerIncentive;
+        return _amount - _claimerIncentive;
     }
 
     //////////////////////////////////////////////////////
@@ -379,6 +390,18 @@ abstract contract Strategy {
                 ++i;
             }
         }
+    }
+
+    //////////////////////////////////////////////////////
+    /// --- VIEW FUNCTIONS
+    //////////////////////////////////////////////////////
+
+    function balanceOf(address _asset) public view virtual returns (uint256) {
+        // Get the gauge address
+        address gauge = gauges[_asset];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        return ILiquidityGauge(gauge).balanceOf(address(locker));
     }
 
     //////////////////////////////////////////////////////

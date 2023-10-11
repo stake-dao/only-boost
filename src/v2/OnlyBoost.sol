@@ -53,7 +53,7 @@ abstract contract OnlyBoost is Strategy {
     }
 
     function _withdraw(address _asset, uint256 amount) internal override {
-        /// If optimzer, use default withdraw.
+        /// If optimzer is not set, use default withdraw.
         if (address(optimizer) == address(0)) {
             return super._withdraw(_asset, amount);
         }
@@ -79,6 +79,19 @@ abstract contract OnlyBoost is Strategy {
                 IFallback(recipients[i]).withdraw(_asset, allocations[i]);
             }
         }
+    }
+
+    function claim(address _asset) public override {
+        // If optimizer is not set, use default claim
+        if (address(optimizer) == address(0)) {
+            return super.claim(_asset);
+        }
+    }
+
+    function _claimFallbacks(address _asset, address _rewardDistributor) internal {
+        // Get fallbacks addresses
+        // If no optimizor setted, this will revert
+        address[] memory fallbacks = optimizer.getFallbacks();
     }
 
     /// TO OVERRIDE
