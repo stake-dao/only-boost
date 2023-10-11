@@ -110,14 +110,18 @@ contract ConvexFallback is BaseFallback {
         onlyStrategy
         returns (address[] memory rewardTokens, uint256[] memory amounts)
     {
-        // Cache the pid
+        /// Check if the pid is initialized.
         Pid memory pidInfo = pids[token];
 
-        // Only claim if the pid is initialized and there is a position
+        // Only claim if the pid is initialized and there is a position.
         if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0));
 
+        /// Get RewardDistributor address.
+        (,,, address rewardTokenDistributor,,) = booster.poolInfo(pidInfo.pid);
+
+        /// We can save gas by not claiming extra rewards if we don't need them, there's no extra rewards, or not enough rewards worth to claim.
         if (_claimExtraRewards) {
-            rewardTokens = getRewardTokens(pidInfo.pid);
+            rewardTokens = getRewardTokens(rewardTokenDistributor);
             amounts = new uint256[](rewardTokens.length);
         } else {
             address[] memory tokens = new address[](2);
@@ -126,9 +130,6 @@ contract ConvexFallback is BaseFallback {
 
             amounts = new uint256[](2);
         }
-
-        // Get cvxLpToken address
-        (,,, address rewardTokenDistributor,,) = booster.poolInfo(pidInfo.pid);
 
         // Withdraw from ConvexCurve gauge
         IBaseRewardPool(rewardTokenDistributor).getReward(address(this), _claimExtraRewards);
@@ -166,12 +167,9 @@ contract ConvexFallback is BaseFallback {
 
     /// @notice Get all the rewards tokens from pid corresponding to `token`
     /// @return Array of rewards tokens address
-    function getRewardTokens(uint256 pid) public view override returns (address[] memory) {
-        // Get cvxLpToken address
-        (,,, address crvRewards,,) = booster.poolInfo(pid);
-
+    function getRewardTokens(address rewardTokenDistributor) public view returns (address[] memory) {
         // Check if there is extra rewards
-        uint256 extraRewardsLength = IBaseRewardPool(crvRewards).extraRewardsLength();
+        uint256 extraRewardsLength = IBaseRewardPool(rewardTokenDistributor).extraRewardsLength();
 
         address[] memory tokens = new address[](extraRewardsLength + 2);
         tokens[0] = address(rewardToken);
@@ -180,7 +178,7 @@ contract ConvexFallback is BaseFallback {
         address _token;
         for (uint256 i; i < extraRewardsLength;) {
             // Add the extra reward token to the array
-            _token = IBaseRewardPool(crvRewards).extraRewards(i);
+            _token = IBaseRewardPool(rewardTokenDistributor).extraRewards(i);
 
             /// Try Catch to see if the token is a valid ERC20
             try ERC20(_token).decimals() returns (uint8) {
