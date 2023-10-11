@@ -7,7 +7,7 @@ import {ERC20, SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 /// @title BaseFallback
 /// @author Stake DAO
 /// @notice Base contract for fallback implementation for Stake DAO Strategies
-contract BaseFallback {
+abstract contract Fallback {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -130,10 +130,6 @@ contract BaseFallback {
         ERC20(rewardToken).safeTransfer(feeReceiver, _feesAccrued);
     }
 
-    function updatePoolIDMappings() public {
-        _updatePoolIDMappings();
-    }
-
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
     function _chargeProtocolFees(uint256 _amount) internal returns (uint256) {
         if (_amount == 0) return 0;
@@ -163,15 +159,9 @@ contract BaseFallback {
     /// --- VIRTUAL FUNCTIONS
     //////////////////////////////////////////////////////
 
-    function _updatePoolIDMappings() internal virtual {}
-
-    function isActive(address token) external view virtual returns (bool) {}
-
     function balanceOf(address token) public view virtual returns (uint256) {}
 
     function deposit(address token, uint256 amount) external virtual {}
 
     function withdraw(address token, uint256 amount) external virtual {}
-
-    function getPid(address token) public view virtual returns (Pid memory) {}
 }

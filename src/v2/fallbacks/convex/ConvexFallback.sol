@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 // --- Core Contracts
-import "src/v2/fallbacks/BaseFallback.sol";
+import "src/v2/fallbacks/Fallback.sol";
 
 // --- Interfaces
 import {IBooster} from "src/interfaces/IBooster.sol";
@@ -12,29 +12,17 @@ import {IBaseRewardPool} from "src/interfaces/IBaseRewardPool.sol";
 /// @author Stake DAO
 /// @notice Manage LP deposit/withdraw/claim into ConvexCurve
 /// @dev Inherit from `BaseFallback` implementation
-contract ConvexFallback is BaseFallback {
+contract ConvexFallback is Fallback {
     using SafeTransferLib for ERC20;
-
-    //////////////////////////////////////////////////////
-    /// --- CONSTANTS
-    //////////////////////////////////////////////////////
 
     /// @notice Booster contract.
     IBooster public immutable booster;
 
-    //////////////////////////////////////////////////////
-    /// --- ERRORS
-    //////////////////////////////////////////////////////
-
     /// @notice Error emitted when deposit fails
     error DEPOSIT_FAIL();
 
-    //////////////////////////////////////////////////////
-    /// --- CONSTRUCTOR
-    //////////////////////////////////////////////////////
-
     constructor(address _governance, address _token, address _fallbackRewardToken, address _strategy, address _booster)
-        BaseFallback(_governance, _token, _fallbackRewardToken, _strategy)
+        Fallback(_governance, _token, _fallbackRewardToken, _strategy)
     {
         // Set the booster contract
         booster = IBooster(_booster);
@@ -42,12 +30,12 @@ contract ConvexFallback is BaseFallback {
         _updatePoolIDMappings();
     }
 
-    //////////////////////////////////////////////////////
-    /// --- MUTATIVE FUNCTIONS
-    //////////////////////////////////////////////////////
+    function updatePoolIDMappings() public {
+        _updatePoolIDMappings();
+    }
 
     /// @notice Internal process for mapping of pool ids from ConvexCurve to LP token address
-    function _updatePoolIDMappings() internal override {
+    function _updatePoolIDMappings() internal {
         // Cache the length of the pool registry
         uint256 len = booster.poolLength();
 
@@ -157,7 +145,7 @@ contract ConvexFallback is BaseFallback {
     /// @notice Check if the pid corresponding to LP token is active and initialized internally
     /// @param token Address of the LP token
     /// @return Flag if the pool is active and initialized internally
-    function isActive(address token) external view override returns (bool) {
+    function isActive(address token) external view returns (bool) {
         // Check if the pool is initialized and not shutdown
         (,,,,, bool shutdown) = booster.poolInfo(pids[token].pid);
 
@@ -198,7 +186,7 @@ contract ConvexFallback is BaseFallback {
     /// @notice Get the pid corresponding to LP token
     /// @param token Address of LP token to get pid
     /// @return pid Pid info struct
-    function getPid(address token) public view override returns (Pid memory pid) {
+    function getPid(address token) public view returns (Pid memory pid) {
         // Get the pid infos
         pid = pids[token];
 
