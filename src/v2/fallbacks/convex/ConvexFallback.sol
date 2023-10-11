@@ -11,8 +11,22 @@ import {IBaseRewardPool} from "src/interfaces/IBaseRewardPool.sol";
 contract ConvexFallback is Fallback {
     using SafeTransferLib for ERC20;
 
+    /// @notice Struct to store pool ids from Convex
+    /// @param pid Pool id from Convex
+    /// @param isInitialized Flag to check if pool is initialized
+    struct Pid {
+        uint256 pid;
+        bool isInitialized;
+    }
+
     /// @notice Booster contract.
     IBooster public immutable booster;
+
+    /// @notice Counter for pool ids from Convex in use.
+    uint256 public lastPid;
+
+    /// @notice LP token address -> pool ids from ConvexCurve or ConvexFrax
+    mapping(address => Pid) public pids;
 
     constructor(address _governance, address _token, address _fallbackRewardToken, address _strategy, address _booster)
         Fallback(_governance, _token, _fallbackRewardToken, _strategy)
@@ -56,7 +70,7 @@ contract ConvexFallback is Fallback {
         // Approve the amount
         ERC20(token).safeApprove(address(booster), amount);
         // Deposit the amount into pid from ConvexCurve and stake it into gauge (true)
-        booster.deposit(getPid(token).pid, amount, true);
+        booster.deposit(getPid(token), amount, true);
 
         emit Deposited(token, amount);
     }
@@ -67,7 +81,7 @@ contract ConvexFallback is Fallback {
     /// @param amount Amount of LP token to withdraw
     function withdraw(address token, uint256 amount) external override onlyStrategy {
         // Get cvxLpToken address
-        (,,, address rewardTokenDistributor,,) = booster.poolInfo(getPid(token).pid);
+        (,,, address rewardTokenDistributor,,) = booster.poolInfo(getPid(token));
 
         // Withdraw from ConvexCurve gauge without claiming rewards
         IBaseRewardPool(rewardTokenDistributor).withdrawAndUnwrap(amount, false);
@@ -181,12 +195,13 @@ contract ConvexFallback is Fallback {
     /// @notice Get the pid corresponding to LP token
     /// @param token Address of LP token to get pid
     /// @return pid Pid info struct
-    function getPid(address token) public view returns (Pid memory pid) {
+    function getPid(address token) public view returns (uint256) {
         // Get the pid infos
-        pid = pids[token];
-
+        Pid memory pid = pids[token];
         // Revert if the pid is initialized
         if (!pid.isInitialized) revert NOT_VALID_PID();
+
+        return pid.pid;
     }
 
     /// @notice Get the balance of the LP token on ConvexCurve

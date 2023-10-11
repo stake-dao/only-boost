@@ -11,14 +11,6 @@ abstract contract Fallback {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
-    /// @notice Struct to store pool ids from Convex
-    /// @param pid Pool id from Convex
-    /// @param isInitialized Flag to check if pool is initialized
-    struct Pid {
-        uint256 pid;
-        bool isInitialized;
-    }
-
     /// @notice Denominator for fixed point math.
     uint256 public constant DENOMINATOR = 10_000;
 
@@ -40,12 +32,6 @@ abstract contract Fallback {
 
     /// @notice Percentage of fees charged on `rewardToken` claimed.
     uint256 public protocolFeesPercent;
-
-    /// @notice Counter for pool ids from Convex in use.
-    uint256 public lastPid;
-
-    /// @notice LP token address -> pool ids from ConvexCurve or ConvexFrax
-    mapping(address => Pid) public pids;
 
     //////////////////////////////////////////////////////
     /// --- EVENTS & ERRORS
