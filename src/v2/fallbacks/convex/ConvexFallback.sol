@@ -109,12 +109,11 @@ contract ConvexFallback is Fallback {
             amounts = new uint256[](2);
         }
 
-        // Withdraw from ConvexCurve gauge
+        /// Claim rewardToken, fallbackRewardToken and _extraRewardTokens if _claimExtraRewards is true.
         IBaseRewardPool(rewardTokenDistributor).getReward(address(this), _claimExtraRewards);
 
-        /// Charge Fees
-        (amounts[0], _protocolFees) =
-            _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
+        /// Charge Fees.
+        (amounts[0], _protocolFees) = _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
 
         for (uint256 i = 1; i < rewardTokens.length;) {
             // Get the balance of the reward token

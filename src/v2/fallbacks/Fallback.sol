@@ -38,17 +38,8 @@ abstract contract Fallback {
     /// @notice Address of the future governance contract.
     address public futureGovernance;
 
-    /// @notice Address accruing protocol fees.
-    address public feeReceiver;
-
     /// @notice Percentage of fees charged on `rewardToken` claimed.
     uint256 public protocolFeesPercent;
-
-    /// @notice Amount of fees charged on `rewardToken` claimed
-    uint256 public feesAccrued;
-
-    /// @notice Percentage of fees charged on `rewardToken` claimed to incentivize claimers.
-    uint256 public claimIncentiveFee;
 
     /// @notice Counter for pool ids from Convex in use.
     uint256 public lastPid;
