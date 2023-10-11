@@ -100,14 +100,13 @@ contract ConvexFallback is Fallback {
         /// We can save gas by not claiming extra rewards if we don't need them, there's no extra rewards, or not enough rewards worth to claim.
         if (_claimExtraRewards) {
             rewardTokens = getRewardTokens(rewardTokenDistributor);
-            amounts = new uint256[](rewardTokens.length);
         } else {
-            address[] memory tokens = new address[](2);
-            tokens[0] = address(rewardToken);
-            tokens[1] = address(fallbackRewardToken);
-
-            amounts = new uint256[](2);
+            rewardTokens = new address[](2);
+            rewardTokens[0] = address(rewardToken);
+            rewardTokens[1] = address(fallbackRewardToken);
         }
+
+        amounts = new uint256[](rewardTokens.length);
 
         /// Claim rewardToken, fallbackRewardToken and _extraRewardTokens if _claimExtraRewards is true.
         IBaseRewardPool(rewardTokenDistributor).getReward(address(this), _claimExtraRewards);
