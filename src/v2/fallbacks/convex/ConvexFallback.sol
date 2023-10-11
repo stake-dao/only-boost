@@ -83,8 +83,9 @@ contract ConvexFallback is Fallback {
     /// @param token Address of LP token to claim reward from
     /// @return rewardTokens Array of rewards tokens address
     /// @return amounts Array of rewards tokens amount
-    function claimRewards(address token, bool _claimExtraRewards)
+    function claim(address token, bool _claimExtraRewards)
         external
+        override
         onlyStrategy
         returns (address[] memory rewardTokens, uint256[] memory amounts, uint256 _protocolFees)
     {

@@ -139,9 +139,15 @@ abstract contract Fallback {
     /// --- VIRTUAL FUNCTIONS
     //////////////////////////////////////////////////////
 
-    function balanceOf(address token) public view virtual returns (uint256) {}
-
     function deposit(address token, uint256 amount) external virtual {}
 
     function withdraw(address token, uint256 amount) external virtual {}
+
+    function balanceOf(address token) public view virtual returns (uint256) {}
+
+    function claim(address token, bool _claimExtraRewards)
+        external
+        virtual
+        returns (address[] memory rewardTokens, uint256[] memory amounts, uint256 _protocolFees)
+    {}
 }
