@@ -18,9 +18,6 @@ contract ConvexFallback is Fallback {
     /// @notice Booster contract.
     IBooster public immutable booster;
 
-    /// @notice Error emitted when deposit fails
-    error DEPOSIT_FAIL();
-
     constructor(address _governance, address _token, address _fallbackRewardToken, address _strategy, address _booster)
         Fallback(_governance, _token, _fallbackRewardToken, _strategy)
     {
