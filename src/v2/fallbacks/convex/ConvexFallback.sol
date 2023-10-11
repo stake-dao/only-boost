@@ -99,6 +99,7 @@ contract ConvexFallback is Fallback {
 
         /// We can save gas by not claiming extra rewards if we don't need them, there's no extra rewards, or not enough rewards worth to claim.
         if (_claimExtraRewards) {
+            /// This will return at least 2 reward tokens, rewardToken and fallbackRewardToken.
             rewardTokens = getRewardTokens(rewardTokenDistributor);
         } else {
             rewardTokens = new address[](2);
@@ -112,7 +113,11 @@ contract ConvexFallback is Fallback {
         IBaseRewardPool(rewardTokenDistributor).getReward(address(this), _claimExtraRewards);
 
         /// Charge Fees.
+        /// Amounts[0] is the amount of rewardToken claimed.
         (amounts[0], _protocolFees) = _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
+
+        /// Transfer the reward token to the claimer
+        ERC20(rewardTokens[0]).safeTransfer(msg.sender, amounts[0]);
 
         for (uint256 i = 1; i < rewardTokens.length;) {
             // Get the balance of the reward token
