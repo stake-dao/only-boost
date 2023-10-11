@@ -25,6 +25,7 @@ contract ConvexFallback is BaseFallback {
     //////////////////////////////////////////////////////
     /// --- ERRORS
     //////////////////////////////////////////////////////
+
     /// @notice Error emitted when deposit fails
     error DEPOSIT_FAIL();
 
@@ -56,10 +57,10 @@ contract ConvexFallback is BaseFallback {
         // If the length is smaller, update pids mapping
         for (uint256 i = lastPid; i < len;) {
             // Get the LP token address
-            (address token,,,,,) = booster.poolInfo(i);
+            (address _token,,,,, bool _isShutdown) = booster.poolInfo(i);
 
             // Map the LP token to the pool infos
-            pids[token] = Pid(i, true);
+            pids[_token] = Pid(i, _isShutdown);
 
             unchecked {
                 ++i;
@@ -107,10 +108,16 @@ contract ConvexFallback is BaseFallback {
     function claimRewards(address token, bool _claimExtraRewards)
         external
         onlyStrategy
-        returns (address[] memory rewardTokens, uint256[] memory amounts, uint256 _claimIncentiveFee)
+        returns (address[] memory rewardTokens, uint256[] memory amounts)
     {
+        // Cache the pid
+        Pid memory pidInfo = pids[token];
+
+        // Only claim if the pid is initialized and there is a position
+        if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0));
+
         if (_claimExtraRewards) {
-            rewardTokens = getRewardsTokens(token);
+            rewardTokens = getRewardTokens(pidInfo.pid);
             amounts = new uint256[](rewardTokens.length);
         } else {
             address[] memory tokens = new address[](2);
@@ -119,11 +126,6 @@ contract ConvexFallback is BaseFallback {
 
             amounts = new uint256[](2);
         }
-
-        // Cache the pid
-        Pid memory pidInfo = pids[token];
-        // Only claim if the pid is initialized and there is a position
-        if (!pidInfo.isInitialized) return (new address[](0), new uint256[](0), 0);
 
         // Get cvxLpToken address
         (,,, address rewardTokenDistributor,,) = booster.poolInfo(pidInfo.pid);
@@ -163,16 +165,10 @@ contract ConvexFallback is BaseFallback {
     }
 
     /// @notice Get all the rewards tokens from pid corresponding to `token`
-    /// @param token Address of LP token to get rewards tokens
     /// @return Array of rewards tokens address
-    function getRewardsTokens(address token) public view override returns (address[] memory) {
-        // Cache the pid
-        Pid memory pidInfo = pids[token];
-        // Only claim if the pid is initialized
-        if (!pidInfo.isInitialized) return (new address[](0));
-
+    function getRewardTokens(uint256 pid) public view override returns (address[] memory) {
         // Get cvxLpToken address
-        (,,, address crvRewards,,) = booster.poolInfo(pidInfo.pid);
+        (,,, address crvRewards,,) = booster.poolInfo(pid);
 
         // Check if there is extra rewards
         uint256 extraRewardsLength = IBaseRewardPool(crvRewards).extraRewardsLength();

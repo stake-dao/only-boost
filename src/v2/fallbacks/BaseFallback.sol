@@ -173,7 +173,7 @@ contract BaseFallback {
 
     function withdraw(address token, uint256 amount) external virtual {}
 
-    function getRewardsTokens(address token) public view virtual returns (address[] memory) {}
+    function getRewardTokens(uint256 pid) public view virtual returns (address[] memory) {}
 
     function getPid(address token) public view virtual returns (Pid memory) {}
 }
