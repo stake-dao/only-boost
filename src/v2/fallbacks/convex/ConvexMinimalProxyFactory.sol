@@ -34,6 +34,9 @@ contract ConvexMinimalProxyFactory {
     /// @notice Percentage of fees charged on `rewardToken` claimed.
     uint256 public protocolFeesPercent;
 
+    /// @notice Mapping of gauges to fallbacks.
+    mapping(address => address) public fallbacks;
+
     /// @notice Error emitted when auth failed
     error GOVERNANCE();
 
@@ -75,7 +78,7 @@ contract ConvexMinimalProxyFactory {
         require(IBooster(booster).poolLength() > _pid, "INVALID_PID");
 
         /// Check if the LP token is valid
-        (address lpToken,,, address _baseRewardPool,, bool isShutdown) = IBooster(booster).poolInfo(_pid);
+        (address lpToken,, address gauge, address _baseRewardPool,, bool isShutdown) = IBooster(booster).poolInfo(_pid);
 
         require(!isShutdown, "SHUTDOWN");
         require(lpToken == _token, "INVALID_TOKEN");
@@ -90,6 +93,9 @@ contract ConvexMinimalProxyFactory {
 
         /// Initialize the contract.
         IFallback(_fallback).initialize();
+
+        /// Set the fallback contract in the mapping.
+        fallbacks[gauge] = _fallback;
     }
 
     /// @notice Update protocol fees.

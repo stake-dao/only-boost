@@ -20,11 +20,11 @@ contract ConvexMinimalProxyTest is Test {
 
     address public constant BOOSTER = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     address public constant REWARD_TOKEN = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant BASE_REWARD_POOL = address(0xc3df9cC2B8FFdB801E8e6E8FF9C1245E2dEcdA98);
     address public constant FALLBACK_REWARD_TOKEN = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-    uint256 public constant pid = 131;
-    ERC20 public constant token = ERC20(0x893DA8A02b487FEF2F7e3F35DF49d7625aE549a3);
+    uint256 public constant pid = 9;
+    ERC20 public constant token = ERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
+    address public constant BASE_REWARD_POOL = address(0x689440f2Ff927E1f24c72F1087E1FAF471eCe1c8);
 
     uint256 public constant AMOUNT = 1000 ether;
 
