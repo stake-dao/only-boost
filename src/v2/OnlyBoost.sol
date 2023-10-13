@@ -14,6 +14,7 @@ import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";
 /// @notice OnlyBoost Compatible Strategy Proxy Contract to interact with Stake DAO Locker.
 abstract contract OnlyBoost is Strategy {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     /// @notice Optimizer address for deposit/withdrawal allocations.
     IOnlyBoost public optimizer;
@@ -63,8 +64,7 @@ abstract contract OnlyBoost is Strategy {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         // Call the Optimizor contract
-        (address[] memory recipients, uint256[] memory allocations) =
-            optimizer.getOptimalWithdrawalPath(gauge, amount);
+        (address[] memory recipients, uint256[] memory allocations) = optimizer.getOptimalWithdrawalPath(gauge, amount);
 
         for (uint256 i; i < recipients.length; ++i) {
             // Skip if the optimized amount is 0
@@ -85,6 +85,90 @@ abstract contract OnlyBoost is Strategy {
         // If optimizer is not set, use default claim
         if (address(optimizer) == address(0)) {
             return super.claim(_asset);
+        }
+    }
+
+    function claim(address _asset, bool _claimExtra, bool _claimFallbacksRewards) public {
+        // Get the gauge address
+        address gauge = gauges[_asset];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        /// Cache the rewardDistributor address.
+        address rewardDistributor = rewardDistributors[gauge];
+
+        /// 1. Claim `rewardToken` from the Gauge.
+        uint256 _claimed = _claimRewardToken(gauge);
+
+        uint256 _claimedFromFallbacks;
+        uint256 _protocolFeesFromFallbacks;
+
+        if (_claimFallbacksRewards) {
+            (_claimedFromFallbacks, _protocolFeesFromFallbacks) = _claimFallbacks(gauge, rewardDistributor, _claimExtra);
+            /// Add the _claimedFromFallbacks to the _claimed amount.
+            _claimed += _claimedFromFallbacks;
+        }
+
+        if (_claimExtra) {
+            /// We assume that the extra rewards are the same for all the fallbacks.
+            /// So we claim the extra rewards from the fallbacks first and then claim the extra rewards from the gauge.
+            /// Finally, we distribute all in once.
+            _claimed += _claimExtraRewards(gauge, rewardDistributor);
+        }
+
+        /// 4. Take Fees from _claimed amount.
+        _claimed = _chargeProtocolFees(_claimed);
+
+        /// 5. Distribute Claim Incentive
+        _claimed = _distributeClaimIncentive(_claimed);
+
+        /// 2. Distribute SDT
+        // Distribute SDT to the related gauge
+        ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
+
+        /// 6. Distribute the rewardToken.
+        ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, _claimed);
+    }
+
+    /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
+    /// @return _amount Amount left after charging protocol fees.
+    function _chargeProtocolFees(uint256 _amount, uint256 _totalProtocolFeesFromFallbacks) internal returns (uint256) {
+        if (_amount == 0) return 0;
+        if (protocolFeesPercent == 0) return _amount;
+
+        uint256 _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);
+        feesAccrued += _feeAccrued + _totalProtocolFeesFromFallbacks;
+
+        return _amount -= _feeAccrued;
+    }
+
+    function _claimFallbacks(address gauge, address rewardDistributor, bool _claimExtra)
+        internal
+        returns (uint256 _claimed, uint256 _totalProtocolFees)
+    {
+        /// Get the fallback addresses.
+        address[] memory fallbacks;
+        fallbacks = optimizer.getFallbacks(gauge);
+
+        address _fallbackRewardToken;
+
+        for (uint256 i; i < fallbacks.length;) {
+            // Do the claim
+            (uint256 rewardTokenAmount, uint256 fallbackRewardTokenAmount, uint256 protocolFees) =
+                IFallback(fallbacks[i]).claim(_claimExtra);
+
+            // Add the rewardTokenAmount to the _claimed amount.
+            _claimed += rewardTokenAmount;
+            _totalProtocolFees += protocolFees;
+
+            /// Distribute the fallbackRewardToken.
+            _fallbackRewardToken = IFallback(fallbacks[i]).fallbackRewardToken();
+            if (_fallbackRewardToken != address(0)) {
+                ILiquidityGauge(rewardDistributor).deposit_reward_token(_fallbackRewardToken, fallbackRewardTokenAmount);
+            }
+
+            unchecked {
+                ++i;
+            }
         }
     }
 

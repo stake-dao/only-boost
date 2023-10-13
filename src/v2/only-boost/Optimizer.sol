@@ -253,8 +253,10 @@ contract Optimizer is IOnlyBoost {
         }
     }
 
-    function getFallback(address gauge) public view returns (address) {
-        return proxyFactory.fallbacks(gauge);
+    function getFallbacks(address gauge) public view returns (address[] memory _fallbacks) {
+        _fallbacks = new address[](2);
+        _fallbacks[1] = VOTER_PROXY_SD;
+        _fallbacks[0] = address(proxyFactory.fallbacks(gauge));
     }
 
     /// @notice Adjust the conversion factor for CVX / vlCVX

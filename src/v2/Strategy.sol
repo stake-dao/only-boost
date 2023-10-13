@@ -375,9 +375,9 @@ abstract contract Strategy {
                 _claimed = ERC20(_extraRewardToken).balanceOf(address(locker)) - _snapshotLockerRewardBalances[i];
                 // Transfer the freshly rewards from the locker to this contract.
                 _transferFromLocker(_extraRewardToken, address(this), _claimed);
-            } else {
-                _claimed = ERC20(_extraRewardToken).balanceOf(address(this));
             }
+
+            _claimed = ERC20(_extraRewardToken).balanceOf(address(this));
 
             if (_extraRewardToken == rewardToken) {
                 _rewardTokenClaimed += _claimed;

@@ -11,5 +11,5 @@ interface IOnlyBoost {
         view
         returns (address[] memory, uint256[] memory);
 
-    function getFallback(address gauge) external view returns (address);
+    function getFallbacks(address gauge) external view returns (address[] memory);
 }

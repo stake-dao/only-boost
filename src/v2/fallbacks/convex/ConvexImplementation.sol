@@ -54,40 +54,34 @@ contract ConvexImplementation is Clone {
         ERC20(token()).safeTransfer(msg.sender, amount);
     }
 
-    /// @notice Main gateway to claim rewards from ConvexCurve
-    /// @dev Only callable by the strategy
-    /// @return rewardTokens Array of rewards tokens address
-    /// @return amounts Array of rewards tokens amount
     function claim(bool _claimExtraRewards)
         external
         onlyStrategy
-        returns (address[] memory rewardTokens, uint256[] memory amounts, uint256 _protocolFees)
+        returns (uint256 rewardTokenAmount, uint256 fallbackRewardTokenAmount, uint256 protocolFees)
     {
+        address[] memory extraRewardTokens;
         /// We can save gas by not claiming extra rewards if we don't need them, there's no extra rewards, or not enough rewards worth to claim.
         if (_claimExtraRewards) {
             /// This will return at least 2 reward tokens, rewardToken and fallbackRewardToken.
-            rewardTokens = getRewardTokens();
-        } else {
-            rewardTokens = new address[](2);
-            rewardTokens[0] = rewardToken();
-            rewardTokens[1] = fallbackRewardToken();
+            extraRewardTokens = getRewardTokens();
         }
-
-        amounts = new uint256[](rewardTokens.length);
 
         /// Claim rewardToken, fallbackRewardToken and _extraRewardTokens if _claimExtraRewards is true.
         baseRewardPool().getReward(address(this), _claimExtraRewards);
 
+        rewardTokenAmount = ERC20(rewardToken()).balanceOf(address(this));
+        fallbackRewardTokenAmount = ERC20(fallbackRewardToken()).balanceOf(address(this));
+
         /// Charge Fees.
         /// Amounts[0] is the amount of rewardToken claimed.
-        _protocolFees = _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
+        protocolFees = _chargeProtocolFees(rewardTokenAmount);
 
-        for (uint256 i = 0; i < rewardTokens.length;) {
-            // Get the balance of the reward token.
-            amounts[i] = ERC20(rewardTokens[i]).balanceOf(address(this));
+        ERC20(rewardToken()).safeTransfer(msg.sender, rewardTokenAmount);
+        ERC20(fallbackRewardToken()).safeTransfer(msg.sender, fallbackRewardTokenAmount);
 
+        for (uint256 i = 0; i < extraRewardTokens.length;) {
             // Transfer the reward token to the claimer.
-            ERC20(rewardTokens[i]).safeTransfer(msg.sender, amounts[i]);
+            ERC20(extraRewardTokens[i]).safeTransfer(msg.sender, ERC20(extraRewardTokens[i]).balanceOf(address(this)));
 
             unchecked {
                 ++i;
@@ -101,9 +95,7 @@ contract ConvexImplementation is Clone {
         // Check if there is extra rewards
         uint256 extraRewardsLength = baseRewardPool().extraRewardsLength();
 
-        address[] memory tokens = new address[](extraRewardsLength + 2);
-        tokens[0] = rewardToken();
-        tokens[1] = fallbackRewardToken();
+        address[] memory tokens = new address[](extraRewardsLength);
 
         address _token;
         for (uint256 i; i < extraRewardsLength;) {
@@ -112,9 +104,9 @@ contract ConvexImplementation is Clone {
 
             /// Try Catch to see if the token is a valid ERC20
             try ERC20(_token).decimals() returns (uint8) {
-                tokens[i + 2] = _token;
+                tokens[i] = _token;
             } catch {
-                tokens[i + 2] = IBaseRewardPool(_token).rewardToken();
+                tokens[i] = IBaseRewardPool(_token).rewardToken();
             }
 
             unchecked {
