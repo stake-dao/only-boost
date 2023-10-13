@@ -81,13 +81,6 @@ abstract contract OnlyBoost is Strategy {
         }
     }
 
-    function claim(address _asset) public override {
-        // If optimizer is not set, use default claim
-        if (address(optimizer) == address(0)) {
-            return super.claim(_asset);
-        }
-    }
-
     /// @notice Claim rewards from gauge & fallbacks.
     /// @param _asset _asset staked to claim for.
     /// @param _claimExtra True to claim extra rewards. False can save gas.
@@ -178,9 +171,6 @@ abstract contract OnlyBoost is Strategy {
         }
     }
 
-    /// TO OVERRIDE
-    /// CLAIM REWARDS
-
     /// NATIVE TO THIS CONTRACT
     /// REBALANCE
 
@@ -193,9 +183,4 @@ abstract contract OnlyBoost is Strategy {
     function setOptimizer(address _optimizer) external onlyGovernance {
         optimizer = IOnlyBoost(_optimizer);
     }
-
-    /// TODO: Implement
-    //// It should withdraw from all the fallbacks and deposit into the locker
-    ///  Then set the optimizer address to 0
-    function killOptimizer() external onlyGovernance {}
 }
