@@ -2,14 +2,14 @@
 pragma solidity 0.8.20;
 
 interface IOnlyBoost {
-    function getOptimalDepositAllocation(address token, address liquidityGauge, uint256 amount)
+    function getOptimalDepositAllocation(address gauge, uint256 amount)
         external
-        returns (address[] memory, uint256[] memory amounts);
+        returns (address[] memory, uint256[] memory);
 
-    function getOptimalWithdrawalPath(address token, address liquidityGauge, uint256 amount)
+    function getOptimalWithdrawalPath(address gauge, uint256 amount)
         external
         view
         returns (address[] memory, uint256[] memory);
 
-    function getFallbacks() external view returns (address[] memory);
+    function getFallback(address gauge) external view returns (address);
 }
