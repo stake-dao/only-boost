@@ -88,6 +88,10 @@ abstract contract OnlyBoost is Strategy {
         }
     }
 
+    /// @notice Claim rewards from gauge & fallbacks.
+    /// @param _asset _asset staked to claim for.
+    /// @param _claimExtra True to claim extra rewards. False can save gas.
+    /// @param _claimFallbacksRewards  True to claim fallbacks, False can save gas.
     function claim(address _asset, bool _claimExtra, bool _claimFallbacksRewards) public {
         // Get the gauge address
         address gauge = gauges[_asset];
@@ -102,12 +106,14 @@ abstract contract OnlyBoost is Strategy {
         uint256 _claimedFromFallbacks;
         uint256 _protocolFeesFromFallbacks;
 
+        /// 2. Claim from the fallbacks if requested.
         if (_claimFallbacksRewards) {
             (_claimedFromFallbacks, _protocolFeesFromFallbacks) = _claimFallbacks(gauge, rewardDistributor, _claimExtra);
             /// Add the _claimedFromFallbacks to the _claimed amount.
             _claimed += _claimedFromFallbacks;
         }
 
+        /// 3. Claim extra rewards if requested.
         if (_claimExtra) {
             /// We assume that the extra rewards are the same for all the fallbacks.
             /// So we claim the extra rewards from the fallbacks first and then claim the extra rewards from the gauge.
@@ -121,11 +127,11 @@ abstract contract OnlyBoost is Strategy {
         /// 5. Distribute Claim Incentive
         _claimed = _distributeClaimIncentive(_claimed);
 
-        /// 2. Distribute SDT
+        /// 6. Distribute SDT
         // Distribute SDT to the related gauge
         ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
 
-        /// 6. Distribute the rewardToken.
+        /// 7. Distribute the rewardToken.
         ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, _claimed);
     }
 
