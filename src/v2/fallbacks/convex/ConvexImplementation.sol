@@ -15,30 +15,23 @@ contract ConvexImplementation is Clone {
     /// @notice Denominator for percentage calculation
     uint256 public constant DENOMINATOR = 10_000;
 
-    //////////////////////////////////////////////////////
-    /// --- EVENTS & ERRORS
-    //////////////////////////////////////////////////////
-
-    /// @notice Emitted when a token is deposited
-    /// @param amount Amount of token deposited
-    event Deposited(uint256 amount);
-
-    /// @notice Emitted when a token is withdrawn
-    /// @param amount Amount of token withdrawn
-    event Withdrawn(uint256 amount);
+    /// @notice Error emitted when contract is not initialized
+    error FACTORY();
 
     /// @notice Error emitted when caller is not strategy
     error STRATEGY();
-
-    /// @notice Error emitted when contract is not initialized
-    error NOT_INITIALIZED();
 
     modifier onlyStrategy() {
         if (msg.sender != strategy()) revert STRATEGY();
         _;
     }
 
-    function initialize() external {
+    modifier onlyFactory() {
+        if (msg.sender != address(factory())) revert FACTORY();
+        _;
+    }
+
+    function initialize() external onlyFactory {
         ERC20(token()).safeApprove(address(booster()), type(uint256).max);
     }
 
@@ -48,8 +41,6 @@ contract ConvexImplementation is Clone {
     function deposit(uint256 amount) external onlyStrategy {
         // Deposit the amount into pid from ConvexCurve and stake it into gauge (true)
         booster().deposit(pid(), amount, true);
-
-        emit Deposited(amount);
     }
 
     /// @notice Main gateway to withdraw LP token from ConvexCurve
@@ -61,8 +52,6 @@ contract ConvexImplementation is Clone {
 
         // Transfer the amount
         ERC20(token()).safeTransfer(msg.sender, amount);
-
-        emit Withdrawn(amount);
     }
 
     /// @notice Main gateway to claim rewards from ConvexCurve
