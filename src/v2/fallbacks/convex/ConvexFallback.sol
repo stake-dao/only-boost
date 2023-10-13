@@ -124,21 +124,34 @@ contract ConvexFallback is Fallback {
 
         amounts = new uint256[](rewardTokens.length);
 
+        /// Snapshot before balances.
+        uint256[] memory beforeBalances = new uint256[](rewardTokens.length);
+
+        for (uint256 i = 0; i < rewardTokens.length;) {
+            // Get the balance of the reward token.
+            beforeBalances[i] = ERC20(rewardTokens[i]).balanceOf(address(this));
+
+            unchecked {
+                ++i;
+            }
+        }
+
         /// Claim rewardToken, fallbackRewardToken and _extraRewardTokens if _claimExtraRewards is true.
         IBaseRewardPool(rewardTokenDistributor).getReward(address(this), _claimExtraRewards);
 
         /// Charge Fees.
         /// Amounts[0] is the amount of rewardToken claimed.
-        (amounts[0], _protocolFees) = _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
+        (amounts[0], _protocolFees) =
+            _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)) - beforeBalances[0]);
 
-        /// Transfer the reward token to the claimer
+        /// Transfer the reward token to the claimer.
         ERC20(rewardTokens[0]).safeTransfer(msg.sender, amounts[0]);
 
         for (uint256 i = 1; i < rewardTokens.length;) {
-            // Get the balance of the reward token
-            amounts[i] = ERC20(rewardTokens[i]).balanceOf(address(this));
+            // Get the balance of the reward token.
+            amounts[i] = ERC20(rewardTokens[i]).balanceOf(address(this)) - beforeBalances[i];
 
-            // Transfer the reward token to the claimer
+            // Transfer the reward token to the claimer.
             ERC20(rewardTokens[i]).safeTransfer(msg.sender, amounts[i]);
 
             unchecked {

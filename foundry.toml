@@ -8,3 +8,7 @@ verbosity = 3
 runs = 100
 depth = 10
 fail_on_revert = false
+
+remappings = [
+    "solady/=lib/solady/src/"
+]

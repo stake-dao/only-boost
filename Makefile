@@ -14,7 +14,10 @@ install:
 	forge install
 
 test:
-	forge test --match-path 'test/integration/*'
+	forge test
+
+test-%:
+	@FOUNDRY_TEST=test/$* make test
 
 snapshot:
 	forge snapshot
