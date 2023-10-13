@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import {Clone} from "solady/src/utils/Clone.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
+import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
 import {IBaseRewardPool} from "src/interfaces/IBaseRewardPool.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {ERC20, SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
@@ -13,13 +14,6 @@ contract ConvexImplementation is Clone {
 
     /// @notice Denominator for percentage calculation
     uint256 public constant DENOMINATOR = 10_000;
-
-    /// @notice Percentage of rewards to be charged as protocol fees
-    uint256 public protocolFeesPercent;
-
-    function initialize() external {
-        ERC20(token()).safeApprove(address(booster()), type(uint256).max);
-    }
 
     //////////////////////////////////////////////////////
     /// --- EVENTS & ERRORS
@@ -36,9 +30,16 @@ contract ConvexImplementation is Clone {
     /// @notice Error emitted when caller is not strategy
     error STRATEGY();
 
+    /// @notice Error emitted when contract is not initialized
+    error NOT_INITIALIZED();
+
     modifier onlyStrategy() {
         if (msg.sender != strategy()) revert STRATEGY();
         _;
+    }
+
+    function initialize() external {
+        ERC20(token()).safeApprove(address(booster()), type(uint256).max);
     }
 
     /// @notice Main gateway to deposit LP token into ConvexCurve
@@ -90,7 +91,7 @@ contract ConvexImplementation is Clone {
 
         /// Charge Fees.
         /// Amounts[0] is the amount of rewardToken claimed.
-        (amounts[0], _protocolFees) = _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
+        _protocolFees = _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
 
         /// Transfer the reward token to the claimer.
         ERC20(rewardTokens[0]).safeTransfer(msg.sender, amounts[0]);
@@ -138,18 +139,14 @@ contract ConvexImplementation is Clone {
         return tokens;
     }
 
-    function updateProtocolFeesPercent(uint256 _protocolFeesPercent) external onlyStrategy {
-        protocolFeesPercent = _protocolFeesPercent;
-    }
-
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
-    function _chargeProtocolFees(uint256 _amount) internal view returns (uint256, uint256) {
-        if (_amount == 0) return (0, 0);
-        if (protocolFeesPercent == 0) return (_amount, 0);
+    function _chargeProtocolFees(uint256 _amount) internal view returns (uint256 _feeAccrued) {
+        if (_amount == 0) return 0;
 
-        uint256 _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);
+        uint256 protocolFeesPercent = factory().protocolFeePercent();
+        if (protocolFeesPercent == 0) return 0;
 
-        return (_amount - _feeAccrued, _feeAccrued);
+        _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);
     }
 
     /// @notice Get the balance of the LP token on ConvexCurve
@@ -163,31 +160,35 @@ contract ConvexImplementation is Clone {
     /// --- IMMUTABLES
     //////////////////////////////////////////////////////
 
-    function token() public pure returns (address _token) {
-        return _getArgAddress(0);
+    function factory() public pure returns (IConvexFactory _factory) {
+        return IConvexFactory(_getArgAddress(0));
     }
 
-    function rewardToken() public pure returns (address _rewardToken) {
+    function token() public pure returns (address _token) {
         return _getArgAddress(20);
     }
 
-    function fallbackRewardToken() public pure returns (address _fallbackRewardToken) {
+    function rewardToken() public pure returns (address _rewardToken) {
         return _getArgAddress(40);
     }
 
-    function strategy() public pure returns (address _strategy) {
+    function fallbackRewardToken() public pure returns (address _fallbackRewardToken) {
         return _getArgAddress(60);
     }
 
+    function strategy() public pure returns (address _strategy) {
+        return _getArgAddress(80);
+    }
+
     function booster() public pure returns (IBooster _booster) {
-        return IBooster(_getArgAddress(80));
+        return IBooster(_getArgAddress(100));
     }
 
     function baseRewardPool() public pure returns (IBaseRewardPool _baseRewardPool) {
-        return IBaseRewardPool(_getArgAddress(100));
+        return IBaseRewardPool(_getArgAddress(120));
     }
 
     function pid() public pure returns (uint256 _pid) {
-        return _getArgUint256(120);
+        return _getArgUint256(140);
     }
 }

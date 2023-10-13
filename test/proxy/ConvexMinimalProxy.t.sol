@@ -30,10 +30,10 @@ contract ConvexMinimalProxyTest is Test {
 
         assertEq(convexFallback.pid(), pid);
         assertEq(convexFallback.token(), token);
-        assertEq(convexFallback.booster(), booster);
         assertEq(convexFallback.strategy(), strategy);
         assertEq(convexFallback.rewardToken(), rewardToken);
-        assertEq(convexFallback.baseRewardPool(), baseRewardPool);
+        assertEq(address(convexFallback.booster()), booster);
+        assertEq(address(convexFallback.baseRewardPool()), baseRewardPool);
         assertEq(convexFallback.fallbackRewardToken(), fallbackRewardToken);
     }
 }
