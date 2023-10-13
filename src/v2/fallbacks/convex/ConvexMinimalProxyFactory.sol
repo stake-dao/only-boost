@@ -3,9 +3,6 @@ pragma solidity 0.8.20;
 
 import {LibClone} from "solady/src/utils/LibClone.sol";
 
-/// @title ConvexFallback
-/// @author Stake DAO
-/// @notice Manage LP deposit/withdraw/claim into Convex like platforms.
 contract ConvexMinimalProxyFactory {
     using LibClone for address;
 
@@ -38,6 +35,5 @@ contract ConvexMinimalProxyFactory {
         bytes32 salt = keccak256(abi.encodePacked(_token, _pid));
         // Clone the implementation
         _fallback = implementation.cloneDeterministic(data, salt);
-
     }
 }
