@@ -2,5 +2,5 @@
 pragma solidity 0.8.20;
 
 interface IConvexFactory {
-    function protocolFeePercent() external view returns (uint256);
+    function protocolFeesPercent() external view returns (uint256);
 }

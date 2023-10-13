@@ -82,10 +82,7 @@ contract ConvexImplementation is Clone {
         /// Amounts[0] is the amount of rewardToken claimed.
         _protocolFees = _chargeProtocolFees(ERC20(rewardTokens[0]).balanceOf(address(this)));
 
-        /// Transfer the reward token to the claimer.
-        ERC20(rewardTokens[0]).safeTransfer(msg.sender, amounts[0]);
-
-        for (uint256 i = 1; i < rewardTokens.length;) {
+        for (uint256 i = 0; i < rewardTokens.length;) {
             // Get the balance of the reward token.
             amounts[i] = ERC20(rewardTokens[i]).balanceOf(address(this));
 
@@ -132,7 +129,7 @@ contract ConvexImplementation is Clone {
     function _chargeProtocolFees(uint256 _amount) internal view returns (uint256 _feeAccrued) {
         if (_amount == 0) return 0;
 
-        uint256 protocolFeesPercent = factory().protocolFeePercent();
+        uint256 protocolFeesPercent = factory().protocolFeesPercent();
         if (protocolFeesPercent == 0) return 0;
 
         _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);

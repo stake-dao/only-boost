@@ -14,7 +14,7 @@ install:
 	forge install
 
 test:
-	forge test
+	forge test --gas-report
 
 test-%:
 	@FOUNDRY_TEST=test/$* make test
@@ -29,11 +29,11 @@ test-c-%:
 	@FOUNDRY_MATCH_CONTRACT=$* make test
 
 coverage:
-	forge coverage --match-path 'test/integration/*'
+	forge coverage --match-path
 
 coverage-lcov:
 	forge coverage --report lcov
-	lcov --remove ./lcov.info -o ./lcov.info.pruned 'test/integration/*'
+	lcov --remove ./lcov.info -o ./lcov.info.pruned
 
 coverage-html:
 	make coverage

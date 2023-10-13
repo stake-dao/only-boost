@@ -88,12 +88,6 @@ abstract contract OnlyBoost is Strategy {
         }
     }
 
-    function _claimFallbacks(address _asset, address _rewardDistributor) internal {
-        // Get fallbacks addresses
-        // If no optimizor setted, this will revert
-        address[] memory fallbacks = optimizer.getFallbacks();
-    }
-
     /// TO OVERRIDE
     /// CLAIM REWARDS
 
