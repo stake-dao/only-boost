@@ -35,20 +35,20 @@ abstract contract OnlyBoost is Strategy {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         /// Get the optimal allocation for the deposit.
-        (address[] memory recipients, uint256[] memory allocations) =
+        (address[] memory fundsManagers, uint256[] memory allocations) =
             optimizer.getOptimalDepositAllocation(gauge, amount);
 
-        for (uint256 i; i < recipients.length; ++i) {
+        for (uint256 i; i < fundsManagers.length; ++i) {
             // Skip if the allocation amount is 0.
             if (allocations[i] == 0) continue;
 
             /// Deposit into the locker if the recipient is the locker.
-            if (recipients[i] == address(locker)) {
+            if (fundsManagers[i] == address(locker)) {
                 _depositIntoLocker(_asset, gauge, allocations[i]);
             } else {
                 /// Else, transfer the asset to the fallback recipient and call deposit.
-                ERC20(_asset).safeTransfer(recipients[i], allocations[i]);
-                IFallback(recipients[i]).deposit(_asset, allocations[i]);
+                ERC20(_asset).safeTransfer(fundsManagers[i], allocations[i]);
+                IFallback(fundsManagers[i]).deposit(_asset, allocations[i]);
             }
         }
     }
@@ -64,19 +64,19 @@ abstract contract OnlyBoost is Strategy {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         // Call the Optimizor contract
-        (address[] memory recipients, uint256[] memory allocations) = optimizer.getOptimalWithdrawalPath(gauge, amount);
+        (address[] memory fundsManagers, uint256[] memory allocations) = optimizer.getOptimalWithdrawalPath(gauge, amount);
 
-        for (uint256 i; i < recipients.length; ++i) {
+        for (uint256 i; i < fundsManagers.length; ++i) {
             // Skip if the optimized amount is 0
             if (allocations[i] == 0) continue;
 
             // Special process for Stake DAO locker
-            if (recipients[i] == address(locker)) {
+            if (fundsManagers[i] == address(locker)) {
                 _withdrawFromLocker(_asset, gauge, allocations[i]);
             }
             // Withdraw from other fallback
             else {
-                IFallback(recipients[i]).withdraw(_asset, allocations[i]);
+                IFallback(fundsManagers[i]).withdraw(_asset, allocations[i]);
             }
         }
     }
@@ -115,7 +115,7 @@ abstract contract OnlyBoost is Strategy {
         }
 
         /// 4. Take Fees from _claimed amount.
-        _claimed = _chargeProtocolFees(_claimed);
+        _claimed = _chargeProtocolFees(_claimed, _protocolFeesFromFallbacks);
 
         /// 5. Distribute Claim Incentive
         _claimed = _distributeClaimIncentive(_claimed);
