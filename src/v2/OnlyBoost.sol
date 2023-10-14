@@ -167,9 +167,6 @@ abstract contract OnlyBoost is Strategy {
             /// Distribute the fallbackRewardToken.
             _fallbackRewardToken = IFallback(fallbacks[i]).fallbackRewardToken();
             if (_fallbackRewardToken != address(0)) {
-                /// Approve the rewardDistributor to spend the fallbackRewardToken.
-                ERC20(_fallbackRewardToken).safeApprove(rewardDistributor, fallbackRewardTokenAmount);
-
                 /// Distribute the fallbackRewardToken.
                 ILiquidityGauge(rewardDistributor).deposit_reward_token(_fallbackRewardToken, fallbackRewardTokenAmount);
             }
