@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
+// TODO: For testing, remove for production
+import "forge-std/Test.sol";
+
 import {Clone} from "solady/src/utils/Clone.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
@@ -38,7 +41,7 @@ contract ConvexImplementation is Clone {
     /// @notice Main gateway to deposit LP token into ConvexCurve
     /// @dev Only callable by the strategy
     /// @param amount Amount of LP token to deposit
-    function deposit(uint256 amount) external onlyStrategy {
+    function deposit(address, uint256 amount) external onlyStrategy {
         // Deposit the amount into pid from ConvexCurve and stake it into gauge (true)
         booster().deposit(pid(), amount, true);
     }
@@ -46,7 +49,7 @@ contract ConvexImplementation is Clone {
     /// @notice Main gateway to withdraw LP token from ConvexCurve
     /// @dev Only callable by the strategy
     /// @param amount Amount of LP token to withdraw
-    function withdraw(uint256 amount) external onlyStrategy {
+    function withdraw(address, uint256 amount) external onlyStrategy {
         // Withdraw from Convex gauge without claiming rewards.
         baseRewardPool().withdrawAndUnwrap(amount, false);
 
@@ -129,7 +132,7 @@ contract ConvexImplementation is Clone {
 
     /// @notice Get the balance of the LP token on ConvexCurve
     /// @return Balance of the LP token on ConvexCurve
-    function balanceOf() public view returns (uint256) {
+    function balanceOf(address) public view returns (uint256) {
         // Return the balance of the LP token on ConvexCurve if initialized, else 0
         return baseRewardPool().balanceOf(address(this));
     }

@@ -64,7 +64,8 @@ abstract contract OnlyBoost is Strategy {
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         // Call the Optimizor contract
-        (address[] memory fundsManagers, uint256[] memory allocations) = optimizer.getOptimalWithdrawalPath(gauge, amount);
+        (address[] memory fundsManagers, uint256[] memory allocations) =
+            optimizer.getOptimalWithdrawalPath(gauge, amount);
 
         for (uint256 i; i < fundsManagers.length; ++i) {
             // Skip if the optimized amount is 0
@@ -102,8 +103,6 @@ abstract contract OnlyBoost is Strategy {
         /// 2. Claim from the fallbacks if requested.
         if (_claimFallbacksRewards) {
             (_claimedFromFallbacks, _protocolFeesFromFallbacks) = _claimFallbacks(gauge, rewardDistributor, _claimExtra);
-            /// Add the _claimedFromFallbacks to the _claimed amount.
-            _claimed += _claimedFromFallbacks;
         }
 
         /// 3. Claim extra rewards if requested.
@@ -115,7 +114,7 @@ abstract contract OnlyBoost is Strategy {
         }
 
         /// 4. Take Fees from _claimed amount.
-        _claimed = _chargeProtocolFees(_claimed, _protocolFeesFromFallbacks);
+        _claimed = _chargeProtocolFees(_claimed, _claimedFromFallbacks, _protocolFeesFromFallbacks);
 
         /// 5. Distribute Claim Incentive
         _claimed = _distributeClaimIncentive(_claimed);
@@ -130,14 +129,20 @@ abstract contract OnlyBoost is Strategy {
 
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
     /// @return _amount Amount left after charging protocol fees.
-    function _chargeProtocolFees(uint256 _amount, uint256 _totalProtocolFeesFromFallbacks) internal returns (uint256) {
+    function _chargeProtocolFees(
+        uint256 _amount,
+        uint256 _claimedFromFallbacks,
+        uint256 _totalProtocolFeesFromFallbacks
+    ) internal returns (uint256) {
         if (_amount == 0) return 0;
         if (protocolFeesPercent == 0) return _amount;
 
         uint256 _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);
         feesAccrued += _feeAccrued + _totalProtocolFeesFromFallbacks;
 
-        return _amount -= _feeAccrued;
+        /// Add the _claimedFromFallbacks to the _claimed amount only.
+        /// We add it here to avoid the fees to be charged on the _claimedFromFallbacks amount.
+        return _amount -= _feeAccrued - _totalProtocolFeesFromFallbacks + _claimedFromFallbacks;
     }
 
     function _claimFallbacks(address gauge, address rewardDistributor, bool _claimExtra)
@@ -162,12 +167,28 @@ abstract contract OnlyBoost is Strategy {
             /// Distribute the fallbackRewardToken.
             _fallbackRewardToken = IFallback(fallbacks[i]).fallbackRewardToken();
             if (_fallbackRewardToken != address(0)) {
+                /// Approve the rewardDistributor to spend the fallbackRewardToken.
+                ERC20(_fallbackRewardToken).safeApprove(rewardDistributor, fallbackRewardTokenAmount);
+
+                /// Distribute the fallbackRewardToken.
                 ILiquidityGauge(rewardDistributor).deposit_reward_token(_fallbackRewardToken, fallbackRewardTokenAmount);
             }
 
             unchecked {
                 ++i;
             }
+        }
+    }
+
+    function balanceOf(address _asset) public view override returns (uint256 _balanceOf) {
+        address gauge = gauges[_asset];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        _balanceOf = ILiquidityGauge(gauge).balanceOf(address(locker));
+        address[] memory _fallbacks = optimizer.getFallbacks(gauge);
+
+        for (uint256 i; i < _fallbacks.length; ++i) {
+            _balanceOf += IFallback(_fallbacks[i]).balanceOf(_asset);
         }
     }
 

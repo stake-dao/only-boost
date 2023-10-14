@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
+// TODO: For testing, remove for production
+import "forge-std/Test.sol";
+
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IFallback} from "src/interfaces/IFallback.sol";
 import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
@@ -84,8 +87,16 @@ contract Optimizer is IOnlyBoost {
     /// @notice Error emitted when auth failed
     error GOVERNANCE();
 
+    /// @notice Error emitted when the caller is not the strategy.
+    error STRATEGY();
+
     modifier onlyGovernance() {
         if (msg.sender != governance) revert GOVERNANCE();
+        _;
+    }
+
+    modifier onlyStrategy() {
+        if (msg.sender != strategy) revert STRATEGY();
         _;
     }
 
@@ -143,15 +154,20 @@ contract Optimizer is IOnlyBoost {
     /// @param amount Amount of LP token to deposit
     function getOptimalDepositAllocation(address gauge, uint256 amount)
         public
+        onlyStrategy
         returns (address[] memory _depositors, uint256[] memory _allocations)
     {
-        _depositors = new address[](2);
-        _allocations = new uint256[](2);
-
         address _fallback = proxyFactory.fallbacks(gauge);
 
         // If available on Convex Curve
         if (_fallback != address(0)) {
+            /// Initialize arrays
+            _depositors = new address[](2);
+            _allocations = new uint256[](2);
+
+            _depositors[0] = _fallback;
+            _depositors[1] = VOTER_PROXY_SD;
+
             // If Convex Curve has max boost, no need to optimize
             if (
                 ILiquidityGauge(gauge).working_balances(VOTER_PROXY_CONVEX)
@@ -166,7 +182,7 @@ contract Optimizer is IOnlyBoost {
                 uint256 opt = _getOptimalAmount(gauge, gaugeBalance, amount);
 
                 // Stake DAO Curve
-                _allocations[1] = absDiff(opt, gaugeBalance);
+                _allocations[1] = opt > gaugeBalance ? FixedPointMathLib.min(opt - gaugeBalance, amount) : 0;
 
                 // Convex Curve
                 _allocations[0] = amount - _allocations[1];
@@ -174,8 +190,12 @@ contract Optimizer is IOnlyBoost {
         }
         // If not available on Convex Curve
         else {
-            // Stake DAO Curve
-            _allocations[1] = amount;
+            /// Initialize arrays
+            _depositors = new address[](1);
+            _depositors[0] = VOTER_PROXY_SD;
+
+            _allocations = new uint256[](1);
+            _allocations[0] = amount;
         }
     }
 
@@ -226,7 +246,8 @@ contract Optimizer is IOnlyBoost {
         uint256 balanceOfConvexCurve;
         if (address(_fallback) != address(0)) {
             _fallbacks[0] = address(_fallback);
-            balanceOfConvexCurve = _fallback.balanceOf();
+            /// We give gauge as parameter but it's not used in the fallback.
+            balanceOfConvexCurve = _fallback.balanceOf(gauge);
         }
 
         /// If there's more asset on Convex than Stake DAO, then we prioritize Convex.
@@ -254,8 +275,7 @@ contract Optimizer is IOnlyBoost {
     }
 
     function getFallbacks(address gauge) public view returns (address[] memory _fallbacks) {
-        _fallbacks = new address[](2);
-        _fallbacks[1] = VOTER_PROXY_SD;
+        _fallbacks = new address[](1);
         _fallbacks[0] = address(proxyFactory.fallbacks(gauge));
     }
 

@@ -85,6 +85,9 @@ abstract contract Strategy {
     /// @notice Map native liquidity gauge to Stake DAO Reward Distributor.
     mapping(address => address) public rewardDistributors;
 
+    /// @notice Map addresses allowed to interact with the `execute` function.
+    mapping(address => bool) public allowed;
+
     ////////////////////////////////////////////////////////////////
     /// --- EVENTS & ERRORS
     ///////////////////////////////////////////////////////////////
@@ -132,6 +135,11 @@ abstract contract Strategy {
 
     modifier onlyGovernance() {
         if (msg.sender != governance) revert GOVERNANCE();
+        _;
+    }
+
+    modifier onlyGovernanceOrAllowed() {
+        if (msg.sender != governance && !allowed[msg.sender]) revert UNAUTHORIZED();
         _;
     }
 
@@ -567,8 +575,24 @@ abstract contract Strategy {
     }
 
     //////////////////////////////////////////////////////
-    /// --- EXECUTE
+    /// --- GOVERNANCE OR ALLOWED FUNCTIONS
     //////////////////////////////////////////////////////
+
+    /// @notice Add Extra Reward Token to a Liquidity Gauge.
+    /// @dev Allowed contract need to do extra checks for the safety of the token to add.
+    /// Eg. Check if the token is a gauge token, or if the token is already added, rebasing, in the gauge controller etc.
+    function addRewardToken(address gauge, address extraRewardToken) external onlyGovernanceOrAllowed {
+        if (gauge == address(0) || extraRewardToken == address(0)) revert ADDRESS_NULL();
+
+        /// Get the rewardDistributor address to add the reward token to.
+        address _rewardDistributor = rewardDistributors[gauge];
+
+        /// Approve the rewardDistributor to spend token.
+        ERC20(extraRewardToken).safeApprove(_rewardDistributor, type(uint256).max);
+
+        /// Add it to the Gauge with Distributor as this contract.
+        ILiquidityGauge(_rewardDistributor).add_reward(extraRewardToken, address(this));
+    }
 
     /// @notice Execute a function
     /// @dev Only callable by the owner
@@ -579,7 +603,7 @@ abstract contract Strategy {
     /// @return result_ Bytes containing the result of the execution
     function execute(address to, uint256 value, bytes calldata data)
         external
-        onlyGovernance
+        onlyGovernanceOrAllowed
         returns (bool, bytes memory)
     {
         (bool success, bytes memory result) = to.call{value: value}(data);
