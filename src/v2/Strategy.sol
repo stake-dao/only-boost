@@ -390,7 +390,6 @@ abstract contract Strategy {
             if (_extraRewardToken == rewardToken) {
                 _rewardTokenClaimed += _claimed;
             } else {
-                ERC20(_extraRewardToken).safeApprove(_rewardDistributor, _claimed);
                 ILiquidityGauge(_rewardDistributor).deposit_reward_token(_extraRewardToken, _claimed);
             }
 
