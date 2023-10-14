@@ -8,6 +8,8 @@ import {CRVStrategy} from "src/v2/CRVStrategy.sol";
 import {Optimizer} from "src/v2/only-boost/Optimizer.sol";
 import "src/v2/fallbacks/convex/ConvexImplementation.sol";
 import "src/v2/fallbacks/convex/ConvexMinimalProxyFactory.sol";
+
+import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {LiquidityGaugeMock} from "test/mocks/LiquidityGaugeMock.sol";
 
 contract OnlyBoostTest is Test {
@@ -35,6 +37,11 @@ contract OnlyBoostTest is Test {
     uint256 public constant pid = 25;
     ERC20 public constant token = ERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
     address public constant gauge = address(0x182B723a58739a9c974cFDB385ceaDb237453c28);
+    address public constant rewardDistributor = address(0x087143dDEc7e00028AA0e446f486eAB8071b1f53);
+
+    address public constant EXTRA_REWARD_TOKEN_1 = address(0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32);
+    address public constant EXTRA_REWARD_TOKEN_2 = address(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+
     address public constant BASE_REWARD_POOL = address(0x0A760466E1B4621579a82a39CB56Dda2F4E70f03);
 
     uint256 public constant AMOUNT = 100_000 ether;
@@ -79,7 +86,24 @@ contract OnlyBoostTest is Test {
         token.approve(address(strategy), type(uint256).max);
         strategy.setGauge(address(token), address(gauge));
 
-        strategy.setRewardDistributor(address(gauge), address(0x087143dDEc7e00028AA0e446f486eAB8071b1f53));
+        strategy.setRewardDistributor(address(gauge), address(rewardDistributor));
+
+        vm.startPrank(ILiquidityGauge(address(rewardDistributor)).admin());
+        /// Update the rewardToken distributor to the strategy.
+        ILiquidityGauge(address(rewardDistributor)).set_reward_distributor(REWARD_TOKEN, address(strategy));
+
+        ILiquidityGauge(address(rewardDistributor)).set_reward_distributor(EXTRA_REWARD_TOKEN_1, address(strategy));
+
+        /// Transfer Ownership of the gauge to the strategy.
+        ILiquidityGauge(address(rewardDistributor)).commit_transfer_ownership(address(strategy));
+
+        vm.stopPrank();
+        /// Accept ownership of the gauge.
+        strategy.execute(address(rewardDistributor), 0, abi.encodeWithSignature("accept_transfer_ownership()"));
+
+        /// Add the reward token to the rewardDistributor.
+        strategy.addRewardToken(gauge, FALLBACK_REWARD_TOKEN);
+        strategy.addRewardToken(gauge, EXTRA_REWARD_TOKEN_2);
 
         /// We need to overwrite the locker balance.
         deal(address(gauge), address(locker), 0);
@@ -100,7 +124,7 @@ contract OnlyBoostTest is Test {
         /// Wait 7 days for rewards to accrue.
         skip(7 days);
 
-        strategy.claim(address(token), false, true);
+        strategy.claim(address(token), false, false);
 
         // assertEq(cloneFallback.balanceOf(), AMOUNT);
         // assertEq(baseRewardPool.balanceOf(address(cloneFallback)), AMOUNT);

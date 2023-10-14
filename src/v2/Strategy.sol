@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 /// TODO: For testing, remove for production
-//import "forge-std/Test.sol";
+import "forge-std/Test.sol";
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
@@ -362,12 +362,11 @@ abstract contract Strategy {
         }
 
         bool isTransferNeeded;
-        // Claim on behalf of locker.
-        try locker.execute(
-            _gauge, 0, abi.encodeWithSignature("claim_rewards(address,address)", address(locker), address(this))
+        if (
+            !locker.safeExecute(
+                _gauge, 0, abi.encodeWithSignature("claim_rewards(address,address)", address(locker), address(this))
+            )
         ) {
-            // Do nothing.
-        } catch {
             ILiquidityGauge(_gauge).claim_rewards(address(locker));
             isTransferNeeded = true;
         }
@@ -381,16 +380,20 @@ abstract contract Strategy {
             uint256 _claimed;
             if (isTransferNeeded) {
                 _claimed = ERC20(_extraRewardToken).balanceOf(address(locker)) - _snapshotLockerRewardBalances[i];
-                // Transfer the freshly rewards from the locker to this contract.
-                _transferFromLocker(_extraRewardToken, address(this), _claimed);
+                if (_claimed != 0) {
+                    // Transfer the freshly rewards from the locker to this contract.
+                    _transferFromLocker(_extraRewardToken, address(this), _claimed);
+                }
             }
-
-            _claimed = ERC20(_extraRewardToken).balanceOf(address(this));
 
             if (_extraRewardToken == rewardToken) {
                 _rewardTokenClaimed += _claimed;
             } else {
-                ILiquidityGauge(_rewardDistributor).deposit_reward_token(_extraRewardToken, _claimed);
+                _claimed = ERC20(_extraRewardToken).balanceOf(address(this));
+                if (_claimed != 0) {
+                    // Distribute the extra reward token.
+                    ILiquidityGauge(_rewardDistributor).deposit_reward_token(_extraRewardToken, _claimed);
+                }
             }
 
             unchecked {

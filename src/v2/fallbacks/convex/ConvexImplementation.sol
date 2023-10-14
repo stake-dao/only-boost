@@ -83,8 +83,11 @@ contract ConvexImplementation is Clone {
         ERC20(fallbackRewardToken()).safeTransfer(msg.sender, fallbackRewardTokenAmount);
 
         for (uint256 i = 0; i < extraRewardTokens.length;) {
-            // Transfer the reward token to the claimer.
-            ERC20(extraRewardTokens[i]).safeTransfer(msg.sender, ERC20(extraRewardTokens[i]).balanceOf(address(this)));
+            uint256 _balance = ERC20(extraRewardTokens[i]).balanceOf(address(this));
+            if (_balance > 0) {
+                // Transfer the reward token to the claimer.
+                ERC20(extraRewardTokens[i]).safeTransfer(msg.sender, _balance);
+            }
 
             unchecked {
                 ++i;
