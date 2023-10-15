@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 /// TODO: For testing, remove for production
 //import "forge-std/Test.sol";
 
-import "src/v2/strategy/only-boost/OnlyBoost.sol";
+import "src/strategy/only-boost/OnlyBoost.sol";
 
 /// @title OnlyBoost Strategy Contract
 /// @author Stake DAO

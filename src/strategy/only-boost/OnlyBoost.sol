@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 /// TODO: For testing, remove for production
 //import "forge-std/Test.sol";
 
-import "src/v2/strategy/Strategy.sol";
+import "src/strategy/Strategy.sol";
 
 import {IFallback} from "src/interfaces/IFallback.sol";
 import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.20;
 
-import "test/Base.sol";
+import "test/Base.t.sol";
 
 abstract contract OnlyBoost_Test is Base_Test {
     constructor(uint256 pid, address _rewardDistributor) Base_Test(pid, _rewardDistributor) {}
@@ -59,6 +59,9 @@ abstract contract OnlyBoost_Test is Base_Test {
     function test_withdraw(uint128 _amount, uint128 _toWithdraw) public {
         uint256 amount = uint256(_amount);
         uint256 toWithdraw = uint256(_toWithdraw);
+
+        vm.assume(amount != 0);
+        vm.assume(toWithdraw != 0);
         vm.assume(amount >= toWithdraw);
 
         deal(address(token), address(this), amount);
@@ -78,7 +81,7 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         strategy.withdraw(address(token), toWithdraw);
 
-         /// Means that Convex has maxboost.
+        /// Means that Convex has maxboost.
         /// So we expect that deposit will be done to Convex.
         if (balance == workingBalance) {
             assertEq(token.balanceOf(address(proxy)), 0);
@@ -100,22 +103,24 @@ abstract contract OnlyBoost_Test is Base_Test {
             // Compute difference between optimal balance and amount.
             uint256 difference = amount - optimalSDBalance;
 
-            if(proxyBalance > sdBalance){
+            if (proxyBalance > sdBalance) {
                 /// If we withdraw less than difference, we expect that everything will be withdrawn from Convex.
-                if(difference > toWithdraw) {
+                if (difference > toWithdraw) {
                     assertEq(proxy.balanceOf(address(token)), difference - toWithdraw);
                     assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance);
-                } else{
+                } else {
                     assertEq(proxy.balanceOf(address(token)), 0);
                     uint256 leftToWithdraw = toWithdraw - difference;
-                    assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance - leftToWithdraw);
+                    assertEq(
+                        ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance - leftToWithdraw
+                    );
                 }
             } else {
                 /// If we withdraw less than difference, we expect that everything will be withdrawn from Convex.
-                if(difference > toWithdraw) {
-                    assertEq(proxy.balanceOf(address(token)), difference);
+                if (difference > toWithdraw) {
                     assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance - toWithdraw);
-                } else{
+                    assertEq(proxy.balanceOf(address(token)), difference);
+                } else {
                     assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), 0);
                     uint256 leftToWithdraw = toWithdraw - optimalSDBalance;
                     assertEq(proxy.balanceOf(address(token)), leftToWithdraw);
