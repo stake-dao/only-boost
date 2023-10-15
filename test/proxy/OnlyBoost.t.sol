@@ -5,9 +5,9 @@ import "forge-std/Test.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {CRVStrategy} from "src/v2/CRVStrategy.sol";
-import {Optimizer} from "src/v2/only-boost/Optimizer.sol";
 import "src/v2/fallbacks/convex/ConvexImplementation.sol";
 import "src/v2/fallbacks/convex/ConvexMinimalProxyFactory.sol";
+import {Optimizer} from "src/v2/only-boost-helper/Optimizer.sol";
 
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {LiquidityGaugeMock} from "test/mocks/LiquidityGaugeMock.sol";
@@ -34,15 +34,10 @@ contract OnlyBoostTest is Test {
     address public constant REWARD_TOKEN = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
     address public constant FALLBACK_REWARD_TOKEN = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-    uint256 public constant pid = 25;
-    ERC20 public constant token = ERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
-    address public constant gauge = address(0x182B723a58739a9c974cFDB385ceaDb237453c28);
-    address public constant rewardDistributor = address(0x087143dDEc7e00028AA0e446f486eAB8071b1f53);
-
-    address public constant EXTRA_REWARD_TOKEN_1 = address(0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32);
-    address public constant EXTRA_REWARD_TOKEN_2 = address(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-
-    address public constant BASE_REWARD_POOL = address(0x0A760466E1B4621579a82a39CB56Dda2F4E70f03);
+    uint256 public constant pid = 9;
+    ERC20 public constant token = ERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
+    address public constant gauge = address(0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A);
+    address public constant rewardDistributor = address(0xf99FD99711671268EE557fEd651EA45e34B2414f);
 
     uint256 public constant AMOUNT = 100_000 ether;
 
@@ -51,7 +46,7 @@ contract OnlyBoostTest is Test {
     address public constant MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0; // Convex Minter
 
     function setUp() public {
-        vm.rollFork({blockNumber: 18_341_841});
+        vm.rollFork({blockNumber: 17_700_000});
 
         /// Initialize Locker
         locker = ILocker(LOCKER);
@@ -92,7 +87,7 @@ contract OnlyBoostTest is Test {
         /// Update the rewardToken distributor to the strategy.
         ILiquidityGauge(address(rewardDistributor)).set_reward_distributor(REWARD_TOKEN, address(strategy));
 
-        ILiquidityGauge(address(rewardDistributor)).set_reward_distributor(EXTRA_REWARD_TOKEN_1, address(strategy));
+        // ILiquidityGauge(address(rewardDistributor)).set_reward_distributor(EXTRA_REWARD_TOKEN_1, address(strategy));
 
         /// Transfer Ownership of the gauge to the strategy.
         ILiquidityGauge(address(rewardDistributor)).commit_transfer_ownership(address(strategy));
@@ -102,8 +97,9 @@ contract OnlyBoostTest is Test {
         strategy.execute(address(rewardDistributor), 0, abi.encodeWithSignature("accept_transfer_ownership()"));
 
         /// Add the reward token to the rewardDistributor.
+        strategy.setLGtype(gauge, 1);
         strategy.addRewardToken(gauge, FALLBACK_REWARD_TOKEN);
-        strategy.addRewardToken(gauge, EXTRA_REWARD_TOKEN_2);
+        // strategy.addRewardToken(gauge, EXTRA_REWARD_TOKEN_2);
 
         /// We need to overwrite the locker balance.
         deal(address(gauge), address(locker), 0);
@@ -124,7 +120,7 @@ contract OnlyBoostTest is Test {
         /// Wait 7 days for rewards to accrue.
         skip(7 days);
 
-        strategy.claim(address(token), false, false);
+        strategy.claim(address(token), true, true, true);
 
         // assertEq(cloneFallback.balanceOf(), AMOUNT);
         // assertEq(baseRewardPool.balanceOf(address(cloneFallback)), AMOUNT);

@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 /// TODO: For testing, remove for production
 //import "forge-std/Test.sol";
 
-import "src/v2/Strategy.sol";
+import "src/v2/strategy/Strategy.sol";
 
 import {IFallback} from "src/interfaces/IFallback.sol";
 import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";
@@ -86,7 +86,7 @@ abstract contract OnlyBoost is Strategy {
     /// @param _asset _asset staked to claim for.
     /// @param _claimExtra True to claim extra rewards. False can save gas.
     /// @param _claimFallbacksRewards  True to claim fallbacks, False can save gas.
-    function claim(address _asset, bool _claimExtra, bool _claimFallbacksRewards) public {
+    function claim(address _asset, bool _distributeSDT, bool _claimExtra, bool _claimFallbacksRewards) public {
         // Get the gauge address
         address gauge = gauges[_asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
@@ -121,7 +121,9 @@ abstract contract OnlyBoost is Strategy {
 
         /// 6. Distribute SDT
         // Distribute SDT to the related gauge
-        ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
+        if (_distributeSDT) {
+            ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
+        }
 
         /// 7. Distribute the rewardToken.
         ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, _claimed);

@@ -4,6 +4,10 @@ out = 'out'
 libs = ['lib']
 verbosity = 4
 
+[profile.default.fuzz]
+max_test_rejects = 1_000_000 # Number of times `vm.assume` can fail
+runs = 10_000 # Number of times to run the test
+
 [invariant]
 runs = 100
 depth = 10
