@@ -121,9 +121,16 @@ abstract contract OnlyBoost_Test is Base_Test {
                     assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance - toWithdraw);
                     assertEq(proxy.balanceOf(address(token)), difference);
                 } else {
-                    assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), 0);
-                    uint256 leftToWithdraw = toWithdraw - optimalSDBalance;
-                    assertEq(proxy.balanceOf(address(token)), leftToWithdraw);
+                    if (toWithdraw > optimalSDBalance) {
+                        assertEq(
+                            ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance - toWithdraw
+                        );
+                        assertEq(proxy.balanceOf(address(token)), difference);
+                    } else {
+                        assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), 0);
+                        uint256 leftToWithdraw = toWithdraw - optimalSDBalance;
+                        assertEq(proxy.balanceOf(address(token)), leftToWithdraw);
+                    }
                 }
             }
         }
