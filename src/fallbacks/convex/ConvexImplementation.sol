@@ -7,9 +7,10 @@ import "forge-std/Test.sol";
 import {Clone} from "solady/src/utils/Clone.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IBaseRewardPool} from "src/interfaces/IBaseRewardPool.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
-import {ERC20, SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/utils/SafeTransferLib.sol";
 
 contract ConvexImplementation is Clone {
     using SafeTransferLib for ERC20;
@@ -35,7 +36,7 @@ contract ConvexImplementation is Clone {
     }
 
     function initialize() external onlyFactory {
-        ERC20(token()).safeApprove(address(booster()), type(uint256).max);
+        SafeTransferLib.safeApproveWithRetry(token(), address(booster()), type(uint256).max);
     }
 
     /// @notice Main gateway to deposit LP token into ConvexCurve
@@ -54,7 +55,7 @@ contract ConvexImplementation is Clone {
         baseRewardPool().withdrawAndUnwrap(amount, false);
 
         // Transfer the amount
-        ERC20(token()).safeTransfer(msg.sender, amount);
+        SafeTransferLib.safeTransfer(token(), msg.sender, amount);
     }
 
     function claim(bool _claimExtraRewards)
@@ -79,14 +80,14 @@ contract ConvexImplementation is Clone {
         /// Amounts[0] is the amount of rewardToken claimed.
         protocolFees = _chargeProtocolFees(rewardTokenAmount);
 
-        ERC20(rewardToken()).safeTransfer(msg.sender, rewardTokenAmount);
-        ERC20(fallbackRewardToken()).safeTransfer(msg.sender, fallbackRewardTokenAmount);
+        SafeTransferLib.safeTransfer(rewardToken(), msg.sender, rewardTokenAmount);
+        SafeTransferLib.safeTransfer(fallbackRewardToken(), msg.sender, fallbackRewardTokenAmount);
 
         for (uint256 i = 0; i < extraRewardTokens.length;) {
             uint256 _balance = ERC20(extraRewardTokens[i]).balanceOf(address(this));
             if (_balance > 0) {
                 // Transfer the reward token to the claimer.
-                ERC20(extraRewardTokens[i]).safeTransfer(msg.sender, _balance);
+                SafeTransferLib.safeTransfer(extraRewardTokens[i], msg.sender, _balance);
             }
 
             unchecked {

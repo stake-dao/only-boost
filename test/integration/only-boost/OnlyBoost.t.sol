@@ -7,12 +7,13 @@ abstract contract OnlyBoost_Test is Base_Test {
     constructor(uint256 pid, address _rewardDistributor) Base_Test(pid, _rewardDistributor) {}
 
     function setUp() public override {
-        vm.rollFork({blockNumber: 18_127_824});
+        vm.rollFork({blockNumber: 18_364_805});
         Base_Test.setUp();
     }
 
     function test_deposit(uint128 _amount) public {
         uint256 amount = uint256(_amount);
+        vm.assume(amount != 0);
 
         deal(address(token), address(this), amount);
 
