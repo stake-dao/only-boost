@@ -278,6 +278,7 @@ abstract contract Strategy {
 
     function _distributeClaimIncentive(uint256 _amount) internal returns (uint256) {
         if (_amount == 0) return 0;
+        if (claimIncentiveFee == 0) return _amount;
 
         uint256 _claimerIncentive = _amount.mulDivDown(claimIncentiveFee, DENOMINATOR);
 
@@ -339,13 +340,13 @@ abstract contract Strategy {
         virtual
         returns (uint256 _rewardTokenClaimed)
     {
-        if (lGaugeType[_gauge] > 0 || ILiquidityGauge(_gauge).reward_tokens(0) == address(0)) return 0;
+        if (lGaugeType[_gauge] > 0) return 0;
 
         // Cache the reward tokens and their balance before locker
         address[8] memory _extraRewardTokens;
         uint256[8] memory _snapshotLockerRewardBalances;
 
-        uint256 i;
+        uint8 i;
         for (i; i < 8;) {
             // Get reward token
             address _extraRewardToken = ILiquidityGauge(_gauge).reward_tokens(i);

@@ -4,12 +4,13 @@ pragma solidity 0.8.20;
 // TODO: For testing, remove for production
 import "forge-std/Test.sol";
 
-import {Clone} from "solady/src/utils/Clone.sol";
+import {Clone} from "solady/utils/Clone.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IBaseRewardPool} from "src/interfaces/IBaseRewardPool.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {IStashTokenWrapper} from "src/interfaces/IStashTokenWrapper.sol";
 import {ERC20} from "solmate/utils/SafeTransferLib.sol";
 
 contract ConvexImplementation is Clone {
@@ -109,11 +110,17 @@ contract ConvexImplementation is Clone {
             // Add the extra reward token to the array
             _token = baseRewardPool().extraRewards(i);
 
-            /// Try Catch to see if the token is a valid ERC20
-            try ERC20(_token).decimals() returns (uint8) {
-                tokens[i] = _token;
-            } catch {
-                tokens[i] = IBaseRewardPool(_token).rewardToken();
+            if (pid() >= 151) {
+                address wrapper = IBaseRewardPool(_token).rewardToken();
+                tokens[i] = IStashTokenWrapper(wrapper).token();
+            } else {
+                /// Try Catch to see if the token is a valid ERC20
+                try ERC20(_token).decimals() returns (uint8) {
+                    tokens[i] = _token;
+                    console.log("Try", tokens[i]);
+                } catch {
+                    tokens[i] = IBaseRewardPool(_token).rewardToken();
+                }
             }
 
             unchecked {

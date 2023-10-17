@@ -7,8 +7,8 @@ import "src/CRVStrategy.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {Optimizer} from "src/only-boost-helper/Optimizer.sol";
 
-import {SafeTransferLib as SafeTransfer} from "solady/src/utils/SafeTransferLib.sol";
-import {ConvexImplementation} from "src/fallbacks/convex/ConvexImplementation.sol";
+import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
+import {IBaseRewardPool, ConvexImplementation} from "src/fallbacks/convex/ConvexImplementation.sol";
 import {IBooster, ConvexMinimalProxyFactory} from "src/fallbacks/convex/ConvexMinimalProxyFactory.sol";
 
 abstract contract Base_Test is Test {
@@ -52,6 +52,8 @@ abstract contract Base_Test is Test {
     ERC20 public token;
     address public gauge;
     address public rewardDistributor;
+
+    address[] public extraRewardTokens;
 
     constructor(uint256 _pid, address _rewardDistributor) {
         /// Check if the LP token is valid
@@ -112,6 +114,10 @@ abstract contract Base_Test is Test {
     }
 
     function _addExtraRewardToken() internal {
+        /// Reset Balance of the rewardDistributor for each reward token.
+        deal(REWARD_TOKEN, address(rewardDistributor), 0);
+        deal(FALLBACK_REWARD_TOKEN, address(rewardDistributor), 0);
+
         /// Add the reward token to the rewardDistributor.
         strategy.addRewardToken(gauge, FALLBACK_REWARD_TOKEN);
 
@@ -122,17 +128,29 @@ abstract contract Base_Test is Test {
             abi.encodeWithSignature("set_reward_distributor(address,address)", REWARD_TOKEN, address(strategy))
         );
 
-        uint256 _extraRewardTokenLength = proxy.baseRewardPool().extraRewardsLength();
+        extraRewardTokens = proxy.getRewardTokens();
+        uint256 _extraRewardTokenLength = extraRewardTokens.length;
 
         if (_extraRewardTokenLength > 0) {
+            if (_extraRewardTokenLength == 1) {
+                address virtualPool = IBaseRewardPool(proxy.baseRewardPool()).extraRewards(0);
+                if (IBaseRewardPool(virtualPool).rewardRate() == 0) {
+                    strategy.setLGtype(gauge, 1);
+                }
+            }
+
             for (uint256 i; i < _extraRewardTokenLength; i++) {
-                address _extraRewardToken = proxy.baseRewardPool().extraRewards(i);
+                address _extraRewardToken = extraRewardTokens[i];
 
                 // If not already added in the rewardDistributor.
                 address distributor = ILiquidityGauge(rewardDistributor).reward_data(_extraRewardToken).distributor;
-                if (distributor != address(0)) {
-                    strategy.addRewardToken(gauge, _extraRewardToken);
-                } else {
+                if (distributor == address(0)) {
+                    address virtualPool = IBaseRewardPool(proxy.baseRewardPool()).extraRewards(i);
+
+                    if (IBaseRewardPool(virtualPool).rewardRate() > 0) {
+                        strategy.addRewardToken(gauge, _extraRewardToken);
+                    }
+                } else if (distributor != address(strategy)) {
                     /// Update the rewardToken distributor to the strategy.
                     strategy.execute(
                         address(rewardDistributor),
@@ -141,10 +159,51 @@ abstract contract Base_Test is Test {
                             "set_reward_distributor(address,address)", _extraRewardToken, address(strategy)
                         )
                     );
+
+                    /// Approve the strategy to spend the extra reward token.
+                    strategy.execute(
+                        address(_extraRewardToken),
+                        0,
+                        abi.encodeWithSignature("approve(address,uint256)", address(rewardDistributor), 0)
+                    );
+                    strategy.execute(
+                        address(_extraRewardToken),
+                        0,
+                        abi.encodeWithSignature(
+                            "approve(address,uint256)", address(rewardDistributor), type(uint256).max
+                        )
+                    );
                 }
+
+                /// Reset Balance of the rewardDistributor for each reward token.
+                /// We use transfer because deal doesn't support tokens that perform compute on balanceOf.
+                uint256 _balance = ERC20(_extraRewardToken).balanceOf(address(rewardDistributor));
+
+                vm.prank(address(rewardDistributor));
+                ERC20(_extraRewardToken).transfer(address(0xCACA), _balance);
             }
         } else {
             strategy.setLGtype(gauge, 1);
         }
+    }
+
+    function _getSDExtraRewardsEarned() internal returns (uint256[] memory _sdExtraRewardsEarned) {
+        /// We need to snapshot the state of the strategy.
+        /// Because there's no way to get the extra rewards earned from the strategy directly without claiming them.
+        uint256 id = vm.snapshot();
+        _sdExtraRewardsEarned = new uint256[](extraRewardTokens.length);
+
+        uint256[] memory _snapshotBalances = new uint[](extraRewardTokens.length);
+        for (uint256 i = 0; i < extraRewardTokens.length; i++) {
+            _snapshotBalances[i] = ERC20(extraRewardTokens[i]).balanceOf(address(locker));
+        }
+
+        ILiquidityGauge(gauge).claim_rewards(address(locker));
+
+        for (uint256 i = 0; i < extraRewardTokens.length; i++) {
+            _sdExtraRewardsEarned[i] = ERC20(extraRewardTokens[i]).balanceOf(address(locker)) - _snapshotBalances[i];
+        }
+
+        vm.revertTo(id);
     }
 }

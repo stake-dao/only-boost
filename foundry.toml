@@ -1,17 +1,18 @@
 [profile.default]
 src = 'src'
 out = 'out'
+tests = 'test'
 libs = ['lib']
 verbosity = 3
 evm_version = "shanghai"
 
-fs_permissions = [{ access = "read", path = "./test/python/pools.json"}]
-
-[invariant]
-runs = 100
-depth = 10
-fail_on_revert = false
+ffi = true
+optimizers_runs = 200
 
 remappings = [
     "solady/=lib/solady/src/"
 ]
+
+# Failed
+# _155_Deposit_Test
+# _151_Deposit_Test

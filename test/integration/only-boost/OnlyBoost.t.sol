@@ -129,4 +129,83 @@ abstract contract OnlyBoost_Test is Base_Test {
             }
         }
     }
+
+    function test_claim(
+        uint128 _amount,
+        uint256 _weeksToSkip,
+        bool _distributeSDT,
+        bool _claimExtraRewards,
+        bool _claimFallbacks
+    ) public {
+        uint256 amount = uint256(_amount);
+        vm.assume(amount != 0);
+        vm.assume(_weeksToSkip < 10);
+
+        deal(address(token), address(this), amount);
+        strategy.deposit(address(token), amount);
+
+        /// Need to first skip weeks to harvest Convex.
+        skip(_weeksToSkip * 1 weeks);
+
+        vm.prank(address(0xBEEF));
+        IBooster(BOOSTER).earmarkRewards(pid);
+
+        /// Then skip weeks to harvest SD.
+        skip(_weeksToSkip * 1 weeks);
+
+        /// Before claiming, snapshot reward balances.
+        IBaseRewardPool baseRewardPool = proxy.baseRewardPool();
+
+        uint256 _earned = baseRewardPool.earned(address(proxy));
+        uint256[] memory _extraRewardsEarned = new uint256[](extraRewardTokens.length);
+        uint256[] memory _SDExtraRewardsEarned = new uint256[](extraRewardTokens.length);
+
+        if (extraRewardTokens.length > 0) {
+            _SDExtraRewardsEarned = _getSDExtraRewardsEarned();
+        }
+
+        for (uint256 i = 0; i < extraRewardTokens.length; i++) {
+            address virtualPool = baseRewardPool.extraRewards(i);
+            _extraRewardsEarned[i] = IBaseRewardPool(virtualPool).earned(address(proxy));
+        }
+
+        strategy.claim(address(token), _distributeSDT, _claimExtraRewards, _claimFallbacks);
+
+        /// Means that Convex has maxboost.
+        /// So we expect that deposit will be done to Convex.
+        uint256 _balanceRewardToken = ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor));
+
+        if (_claimFallbacks) {
+            assertGe(_balanceRewardToken, _earned);
+
+            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
+            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(proxy)), 0);
+            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
+
+            assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(this)), 0);
+            assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(proxy)), 0);
+            assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(strategy)), 0);
+        }
+
+        if (_claimExtraRewards) {
+            /// Loop through the extra reward tokens.
+            for (uint256 i = 0; i < extraRewardTokens.length; i++) {
+
+                assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(this)), 0);
+                assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(proxy)), 0);
+                assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(strategy)), 0);
+
+                /// Only if there's reward flowing, we assert that there's some balance.
+                if (_extraRewardsEarned[i] > 0) {
+                    _balanceRewardToken = ERC20(extraRewardTokens[i]).balanceOf(address(rewardDistributor));
+
+                    console.log("balanceRewardToken: %s", _balanceRewardToken);
+                    console.log("extraRewardsEarned: %s", _extraRewardsEarned[i]);
+                    console.log("SDExtraRewardsEarned: %s", _SDExtraRewardsEarned[i]);
+                    assertEq(_balanceRewardToken, _extraRewardsEarned[i] + _SDExtraRewardsEarned[i]);
+
+                }
+            }
+        }
+    }
 }

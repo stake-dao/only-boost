@@ -136,15 +136,22 @@ abstract contract OnlyBoost is Strategy {
         uint256 _claimedFromFallbacks,
         uint256 _totalProtocolFeesFromFallbacks
     ) internal returns (uint256) {
-        if (_amount == 0) return 0;
-        if (protocolFeesPercent == 0) return _amount;
+        // If there's no amount and no protocol fees from fallbacks, return the amount claimed from fallbacks
+        if (_amount == 0 && _totalProtocolFeesFromFallbacks == 0) return _claimedFromFallbacks;
 
+        // If there's no protocol fees set and there's no protocol fees from fallbacks, return the total amount
+        if (protocolFeesPercent == 0 && _totalProtocolFeesFromFallbacks == 0) return _amount + _claimedFromFallbacks;
+
+        // Calculate the fees accrued from the claimed amount
         uint256 _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);
+
+        // Update the total fees accrued with the fee accrued from this claim and the protocol fees from fallbacks
         feesAccrued += _feeAccrued + _totalProtocolFeesFromFallbacks;
 
-        /// Add the _claimedFromFallbacks to the _claimed amount only.
-        /// We add it here to avoid the fees to be charged on the _claimedFromFallbacks amount.
-        return _amount -= _feeAccrued - _totalProtocolFeesFromFallbacks + _claimedFromFallbacks;
+        // Reduce the amount by the fees accrued but add back the protocol fees from fallbacks and the amount claimed from fallbacks
+        uint256 _netAmount = _amount + _claimedFromFallbacks - _feeAccrued;
+
+        return _netAmount;
     }
 
     function _claimFallbacks(address gauge, address rewardDistributor, bool _claimExtra)
@@ -168,7 +175,7 @@ abstract contract OnlyBoost is Strategy {
 
             /// Distribute the fallbackRewardToken.
             _fallbackRewardToken = IFallback(fallbacks[i]).fallbackRewardToken();
-            if (_fallbackRewardToken != address(0)) {
+            if (_fallbackRewardToken != address(0) && fallbackRewardTokenAmount > 0) {
                 /// Distribute the fallbackRewardToken.
                 ILiquidityGauge(rewardDistributor).deposit_reward_token(_fallbackRewardToken, fallbackRewardTokenAmount);
             }

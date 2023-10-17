@@ -10,7 +10,7 @@ import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";
 import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
-import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
+import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
 /// @title Optimizer
 /// @author Stake DAO
