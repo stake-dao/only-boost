@@ -42,7 +42,7 @@ abstract contract OnlyBoost_Test is Base_Test {
         if (balance == workingBalance) {
             assertEq(proxy.balanceOf(address(token)), amount);
             assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), 0);
-        } else if (optimalSDBalance > amount) {
+        } else if (optimalSDBalance >= amount) {
             /// If the optimal balance is greater than the amount we want to deposit,
             /// Everything will be deposited to SD.
             assertEq(proxy.balanceOf(address(token)), 0);
