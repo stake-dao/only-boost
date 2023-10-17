@@ -171,20 +171,18 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         strategy.claim(address(token), _distributeSDT, _claimExtraRewards, _claimFallbacks);
 
-        /// Means that Convex has maxboost.
-        /// So we expect that deposit will be done to Convex.
         uint256 _balanceRewardToken = ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor));
+
+        assertEq(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
+        assertEq(ERC20(REWARD_TOKEN).balanceOf(address(proxy)), 0);
+        assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
+
+        assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(this)), 0);
+        assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(proxy)), 0);
+        assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(strategy)), 0);
 
         if (_claimFallbacks) {
             assertGe(_balanceRewardToken, _earned);
-
-            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
-            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(proxy)), 0);
-            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
-
-            assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(this)), 0);
-            assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(proxy)), 0);
-            assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(strategy)), 0);
         }
 
         if (_claimExtraRewards) {
@@ -199,11 +197,11 @@ abstract contract OnlyBoost_Test is Base_Test {
                 if (_extraRewardsEarned[i] > 0) {
                     _balanceRewardToken = ERC20(extraRewardTokens[i]).balanceOf(address(rewardDistributor));
 
-                    console.log("balanceRewardToken: %s", _balanceRewardToken);
-                    console.log("extraRewardsEarned: %s", _extraRewardsEarned[i]);
-                    console.log("SDExtraRewardsEarned: %s", _SDExtraRewardsEarned[i]);
-                    assertEq(_balanceRewardToken, _extraRewardsEarned[i] + _SDExtraRewardsEarned[i]);
-
+                    if(_claimFallbacks){
+                        assertEq(_balanceRewardToken, _extraRewardsEarned[i] + _SDExtraRewardsEarned[i]);
+                    } else{
+                        assertEq(_balanceRewardToken, _SDExtraRewardsEarned[i]);
+                    }
                 }
             }
         }
