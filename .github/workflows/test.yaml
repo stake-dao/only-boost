@@ -5,8 +5,6 @@ on:
       - master
       - develop
 
-  pull_request:
-
 env:
   FOUNDRY_ETH_RPC_URL: https://mainnet.infura.io/v3/${{secrets.INFURA_KEY}}
   FOUNDRY_FUZZ_RUNS: "1"
