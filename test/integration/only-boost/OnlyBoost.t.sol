@@ -215,11 +215,8 @@ abstract contract OnlyBoost_Test is Base_Test {
             /// Compute the fees.
             uint256 _protocolFee;
             if(_setFallbackFees && _claimFallbacks){
-                console.log(_expectedLockerRewardTokenAmount);
                 _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
-                console.log(_protocolFee);
                 _protocolFee += _earned.mulDivDown(17, 100);
-                console.log(_protocolFee);
             }
             else {
                 _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
