@@ -134,12 +134,11 @@ abstract contract Base_Test is Test {
         uint256 _extraRewardTokenLength = extraRewardTokens.length;
 
         if (_extraRewardTokenLength > 0) {
-
             if (_extraRewardTokenLength == 1) {
                 address virtualPool = IBaseRewardPool(proxy.baseRewardPool()).extraRewards(0);
 
                 /// There's a special case for the susd pool we don't want to compromise on.
-                if (IBaseRewardPool(virtualPool).rewardRate() == 0 || pid == 4 ) {
+                if (IBaseRewardPool(virtualPool).rewardRate() == 0 || pid == 4) {
                     strategy.setLGtype(gauge, 1);
                 }
             }

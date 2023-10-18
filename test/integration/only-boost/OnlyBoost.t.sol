@@ -130,7 +130,7 @@ abstract contract OnlyBoost_Test is Base_Test {
         }
     }
 
-    function test_claim(
+    function test_harvest(
         uint128 _amount,
         uint256 _weeksToSkip,
         bool _distributeSDT,
@@ -175,7 +175,7 @@ abstract contract OnlyBoost_Test is Base_Test {
             console.log("Extra Rewards Earned: %s", _extraRewardsEarned[i]);
         }
 
-        strategy.claim(address(token), _distributeSDT, _claimExtraRewards, _claimFallbacks);
+        strategy.harvest(address(token), _distributeSDT, _claimExtraRewards, _claimFallbacks);
 
         uint256 _balanceRewardToken = ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor));
 

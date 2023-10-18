@@ -220,7 +220,7 @@ abstract contract Strategy {
         _transferFromLocker(feeRewardToken, accumulator, _claimed);
     }
 
-    function claim(address _asset) public virtual {
+    function harvest(address _asset) public virtual {
         /// Get the gauge address.
         address gauge = gauges[_asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
