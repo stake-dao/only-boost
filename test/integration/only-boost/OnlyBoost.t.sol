@@ -152,7 +152,7 @@ abstract contract OnlyBoost_Test is Base_Test {
             strategy.updateClaimIncentiveFee(100); // 1%
             /// Total: 18%
 
-            if(_setFallbackFees) {
+            if (_setFallbackFees) {
                 factory.updateProtocolFee(1_700); // 17%
             }
         }
@@ -214,18 +214,16 @@ abstract contract OnlyBoost_Test is Base_Test {
         if (_setFees) {
             /// Compute the fees.
             uint256 _protocolFee;
-            if(_setFallbackFees && _claimFallbacks){
+            if (_setFallbackFees && _claimFallbacks) {
                 _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
                 _protocolFee += _earned.mulDivDown(17, 100);
-            }
-            else {
+            } else {
                 _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
             }
             _totalRewardTokenAmount -= _protocolFee;
 
             uint256 _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
             _totalRewardTokenAmount -= _claimerFee;
-
 
             assertEq(ERC20(REWARD_TOKEN).balanceOf(address(0xBEEC)), _claimerFee);
             assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), _protocolFee);
