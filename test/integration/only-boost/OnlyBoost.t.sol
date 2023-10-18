@@ -166,8 +166,6 @@ abstract contract OnlyBoost_Test is Base_Test {
         /// Then skip weeks to harvest SD.
         skip(_weeksToSkip * 1 weeks);
 
-        IBaseRewardPool baseRewardPool = proxy.baseRewardPool();
-
         uint256 _expectedLockerRewardTokenAmount = _getSdRewardTokenMinted();
         uint256 _expectedFallbackRewardTokenAmount;
 
@@ -178,7 +176,7 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         uint256 _earned;
         if (_claimFallbacks) {
-            _earned = baseRewardPool.earned(address(proxy));
+            _earned = proxy.baseRewardPool().earned(address(proxy));
             _totalRewardTokenAmount += _earned;
 
             _expectedFallbackRewardTokenAmount = _getFallbackRewardMinted();
@@ -189,7 +187,7 @@ abstract contract OnlyBoost_Test is Base_Test {
 
             if (_claimFallbacks) {
                 for (uint256 i = 0; i < extraRewardTokens.length; i++) {
-                    address virtualPool = baseRewardPool.extraRewards(i);
+                    address virtualPool = proxy.baseRewardPool().extraRewards(i);
                     _extraRewardsEarned[i] = IBaseRewardPool(virtualPool).earned(address(proxy));
 
                     if (extraRewardTokens[i] == REWARD_TOKEN) {
@@ -208,58 +206,98 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         uint256 _balanceRewardToken = ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor));
 
-        assertEq(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
-        assertEq(ERC20(REWARD_TOKEN).balanceOf(address(proxy)), 0);
-
         if (_setFees) {
-            /// Compute the fees.
-            uint256 _protocolFee;
-            if (_setFallbackFees && _claimFallbacks) {
-                _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
-                _protocolFee += _earned.mulDivDown(17, 100);
-            } else {
-                _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
-            }
-            _totalRewardTokenAmount -= _protocolFee;
-
-            uint256 _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
-            _totalRewardTokenAmount -= _claimerFee;
-
-            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(0xBEEC)), _claimerFee);
-            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), _protocolFee);
-            assertEq(_balanceRewardToken, _totalRewardTokenAmount);
+            _checkCorrectFeeCompute(
+                _setFallbackFees,
+                _claimFallbacks,
+                _earned,
+                _expectedLockerRewardTokenAmount,
+                _totalRewardTokenAmount,
+                _balanceRewardToken
+            );
         } else {
-            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(0xBEEC)), 0);
-            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
+            assertEq(strategy.feesAccrued(), 0);
+
+            assertEq(_balanceOf(REWARD_TOKEN, address(this)), 0);
+            assertEq(_balanceOf(REWARD_TOKEN, address(proxy)), 0);
+            assertEq(_balanceOf(REWARD_TOKEN, address(0xBEEC)), 0);
+            assertEq(_balanceOf(REWARD_TOKEN, address(strategy)), 0);
 
             assertEq(_balanceRewardToken, _totalRewardTokenAmount);
         }
 
-        assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(this)), 0);
-        assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(proxy)), 0);
-        assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(strategy)), 0);
+        assertEq(_balanceOf(FALLBACK_REWARD_TOKEN, address(this)), 0);
+        assertEq(_balanceOf(FALLBACK_REWARD_TOKEN, address(proxy)), 0);
+        assertEq(_balanceOf(FALLBACK_REWARD_TOKEN, address(strategy)), 0);
 
         if (_claimExtraRewards) {
-            /// Loop through the extra reward tokens.
-            for (uint256 i = 0; i < extraRewardTokens.length; i++) {
-                assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(this)), 0);
-                assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(proxy)), 0);
-                assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(strategy)), 0);
+            _checkExtraRewardsDistribution(_extraRewardsEarned, _SDExtraRewardsEarned, _claimFallbacks);
+        }
+    }
 
-                /// Only if there's reward flowing, we assert that there's some balance.
-                if (_extraRewardsEarned[i] > 0) {
-                    _balanceRewardToken = ERC20(extraRewardTokens[i]).balanceOf(address(rewardDistributor));
+    function _checkCorrectFeeCompute(
+        bool _setFallbackFees,
+        bool _claimFallbacks,
+        uint256 _earned,
+        uint256 _expectedLockerRewardTokenAmount,
+        uint256 _totalRewardTokenAmount,
+        uint256 _balanceRewardToken
+    ) internal {
+        uint256 _claimerFee;
+        uint256 _protocolFee;
 
-                    if (extraRewardTokens[i] == REWARD_TOKEN) continue;
-                    if (extraRewardTokens[i] == FALLBACK_REWARD_TOKEN) continue;
+        /// Compute the fees.
+        if (_setFallbackFees && _claimFallbacks) {
+            _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+            _protocolFee += _earned.mulDivDown(17, 100);
+        } else {
+            _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+        }
+        _totalRewardTokenAmount -= _protocolFee;
 
-                    if (_claimFallbacks) {
-                        assertEq(_balanceRewardToken, _extraRewardsEarned[i] + _SDExtraRewardsEarned[i]);
-                    } else {
-                        assertEq(_balanceRewardToken, _SDExtraRewardsEarned[i]);
-                    }
+        _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
+        _totalRewardTokenAmount -= _claimerFee;
+
+        assertEq(_balanceOf(REWARD_TOKEN, address(0xBEEC)), _claimerFee);
+
+        assertEq(strategy.feesAccrued(), _protocolFee);
+        assertEq(_balanceOf(REWARD_TOKEN, address(strategy)), _protocolFee);
+
+        assertEq(_balanceRewardToken, _totalRewardTokenAmount);
+    }
+
+    function _checkExtraRewardsDistribution(
+        uint256[] memory _extraRewardsEarned,
+        uint256[] memory _SDExtraRewardsEarned,
+        bool _claimFallbacks
+    ) internal {
+        /// Loop through the extra reward tokens.
+        for (uint256 i = 0; i < extraRewardTokens.length; i++) {
+            assertEq(_balanceOf(extraRewardTokens[i], address(this)), 0);
+            assertEq(_balanceOf(extraRewardTokens[i], address(proxy)), 0);
+            assertEq(_balanceOf(extraRewardTokens[i], address(strategy)), 0);
+
+            /// Only if there's reward flowing, we assert that there's some balance.
+            if (_extraRewardsEarned[i] > 0) {
+                uint256 _balanceRewardToken = ERC20(extraRewardTokens[i]).balanceOf(address(rewardDistributor));
+
+                if (extraRewardTokens[i] == REWARD_TOKEN) continue;
+                if (extraRewardTokens[i] == FALLBACK_REWARD_TOKEN) continue;
+
+                if (_claimFallbacks) {
+                    assertEq(_balanceRewardToken, _extraRewardsEarned[i] + _SDExtraRewardsEarned[i]);
+                } else {
+                    assertEq(_balanceRewardToken, _SDExtraRewardsEarned[i]);
                 }
             }
         }
+    }
+
+    function _balanceOf(address token, address account) internal view returns (uint256) {
+        if (token == address(0)) {
+            return account.balance;
+        }
+
+        return ERC20(token).balanceOf(account);
     }
 }

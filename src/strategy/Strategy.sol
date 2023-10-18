@@ -217,7 +217,7 @@ abstract contract Strategy {
         _transferFromLocker(feeRewardToken, accumulator, _claimed);
     }
 
-    function harvest(address _asset) public virtual {
+    function harvest(address _asset, bool _distributeSDT, bool _claimExtra) public virtual {
         /// Get the gauge address.
         address gauge = gauges[_asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
@@ -230,12 +230,16 @@ abstract contract Strategy {
 
         /// 2. Distribute SDT
         // Distribute SDT to the related gauge
-        ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
+        if (_distributeSDT) {
+            ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
+        }
 
         /// 3. Check for additional rewards from the Locker.
         /// If there's the `rewardToken` as extra reward, we add it to the `_claimed` amount in order to distribute it only
         /// once.
-        _claimed += _claimExtraRewards(gauge, rewardDistributor);
+        if (_claimExtra) {
+            _claimed += _claimExtraRewards(gauge, rewardDistributor);
+        }
 
         /// 4. Take Fees from _claimed amount.
         _claimed = _chargeProtocolFees(_claimed);
