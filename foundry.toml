@@ -17,7 +17,3 @@ optimizers_runs = 200
 remappings = [
     "solady/=lib/solady/src/"
 ]
-
-# Failed
-# _155_Deposit_Test
-# _151_Deposit_Test

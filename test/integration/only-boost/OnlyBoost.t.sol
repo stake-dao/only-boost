@@ -186,18 +186,10 @@ abstract contract OnlyBoost_Test is Base_Test {
             _SDExtraRewardsEarned = _getSDExtraRewardsEarned();
 
             if (_claimFallbacks) {
-                for (uint256 i = 0; i < extraRewardTokens.length; i++) {
-                    address virtualPool = proxy.baseRewardPool().extraRewards(i);
-                    _extraRewardsEarned[i] = IBaseRewardPool(virtualPool).earned(address(proxy));
-
-                    if (extraRewardTokens[i] == REWARD_TOKEN) {
-                        _totalRewardTokenAmount += _extraRewardsEarned[i] + _SDExtraRewardsEarned[i];
-                    }
-
-                    if (extraRewardTokens[i] == FALLBACK_REWARD_TOKEN) {
-                        _expectedFallbackRewardTokenAmount += _extraRewardsEarned[i] + _SDExtraRewardsEarned[i];
-                    }
-                }
+                (_totalRewardTokenAmount, _expectedFallbackRewardTokenAmount, _extraRewardsEarned) =
+                _checkForDuplicatesExtraRewards(
+                    _totalRewardTokenAmount, _expectedFallbackRewardTokenAmount, _SDExtraRewardsEarned
+                );
             }
         }
 
@@ -233,6 +225,104 @@ abstract contract OnlyBoost_Test is Base_Test {
         if (_claimExtraRewards) {
             _checkExtraRewardsDistribution(_extraRewardsEarned, _SDExtraRewardsEarned, _claimFallbacks);
         }
+    }
+
+    function test_fee_computation(uint128 _amount, uint256 _weeksToSkip, bool _setFallbackFees) public {
+        uint256 amount = uint256(_amount);
+        vm.assume(amount != 0);
+        vm.assume(_weeksToSkip < 10);
+
+        // Deposit
+        deal(address(token), address(this), amount);
+        strategy.deposit(address(token), amount);
+
+        // Set Fees
+        strategy.updateProtocolFee(1_700); // 17%
+        strategy.updateClaimIncentiveFee(100); // 1%
+
+        if (_setFallbackFees) {
+            factory.updateProtocolFee(1_700); // 17%
+        }
+
+        uint256 claimerFee;
+        uint256 totalRewardTokenAmount;
+        uint256 totalProtocolFeesAccrued;
+
+        // Harvest and Check Fees Twice
+        for (uint256 i = 0; i < 2; i++) {
+            // Skip weeks for the harvest
+            skip(_weeksToSkip * 1 weeks);
+
+            // Harvest
+            vm.prank(address(0xBEEF));
+            IBooster(BOOSTER).earmarkRewards(pid);
+
+            // Calculate and check fees
+            uint256 expectedLockerRewardTokenAmount = _getSdRewardTokenMinted();
+            uint256 earned = proxy.baseRewardPool().earned(address(proxy));
+
+            vm.prank(address(0xBEEC));
+            strategy.harvest(address(token), false, true, true);
+
+            (totalProtocolFeesAccrued, claimerFee, totalRewardTokenAmount) = _checkFees(
+                totalRewardTokenAmount, totalProtocolFeesAccrued, claimerFee, expectedLockerRewardTokenAmount, earned, _setFallbackFees
+            );
+        }
+    }
+
+    function _checkFees(
+        uint256 totalRewardTokenAmount,
+        uint256 totalProtocolFeesAccrued,
+        uint256 claimerFee,
+        uint256 _expectedLockerRewardTokenAmount,
+        uint256 _earned,
+        bool _setFallbackFees
+    ) internal returns (uint256, uint256, uint256) {
+        uint256 protocolFeeForThisHarvest = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+
+        if (_setFallbackFees && _earned > 0) {
+            protocolFeeForThisHarvest += _earned.mulDivDown(17, 100);
+        }
+
+        totalProtocolFeesAccrued += protocolFeeForThisHarvest;
+        uint256 _totalRewardTokenAmount = _expectedLockerRewardTokenAmount + _earned - protocolFeeForThisHarvest;
+
+        uint256 _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
+        claimerFee += _claimerFee;
+
+        _totalRewardTokenAmount -= _claimerFee;
+
+        totalRewardTokenAmount += _totalRewardTokenAmount;
+
+        assertEq(strategy.feesAccrued(), totalProtocolFeesAccrued);
+        assertEq(_balanceOf(REWARD_TOKEN, address(0xBEEC)), claimerFee);
+        assertEq(_balanceOf(REWARD_TOKEN, address(strategy)), totalProtocolFeesAccrued);
+        assertEq(ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor)), totalRewardTokenAmount);
+
+        return (totalProtocolFeesAccrued, claimerFee, totalRewardTokenAmount);
+    }
+
+    function _checkForDuplicatesExtraRewards(
+        uint256 _totalRewardTokenAmount,
+        uint256 _expectedFallbackRewardTokenAmount,
+        uint256[] memory _SDExtraRewardsEarned
+    ) internal view returns (uint256, uint256, uint256[] memory _extraRewardsEarned) {
+        _extraRewardsEarned = new uint256[](extraRewardTokens.length);
+
+        for (uint256 i = 0; i < extraRewardTokens.length; i++) {
+            address virtualPool = proxy.baseRewardPool().extraRewards(i);
+            _extraRewardsEarned[i] = IBaseRewardPool(virtualPool).earned(address(proxy));
+
+            if (extraRewardTokens[i] == REWARD_TOKEN) {
+                _totalRewardTokenAmount += _extraRewardsEarned[i] + _SDExtraRewardsEarned[i];
+            }
+
+            if (extraRewardTokens[i] == FALLBACK_REWARD_TOKEN) {
+                _expectedFallbackRewardTokenAmount += _extraRewardsEarned[i] + _SDExtraRewardsEarned[i];
+            }
+        }
+
+        return (_totalRewardTokenAmount, _expectedFallbackRewardTokenAmount, _extraRewardsEarned);
     }
 
     function _checkCorrectFeeCompute(
