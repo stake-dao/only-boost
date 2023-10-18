@@ -4,7 +4,9 @@ pragma solidity 0.8.20;
 import "forge-std/Test.sol";
 
 import "src/CRVStrategy.sol";
+
 import {ILocker} from "src/interfaces/ILocker.sol";
+import {IConvexToken} from "src/interfaces/IConvexToken.sol";
 import {Optimizer} from "src/only-boost-helper/Optimizer.sol";
 
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
@@ -132,9 +134,12 @@ abstract contract Base_Test is Test {
         uint256 _extraRewardTokenLength = extraRewardTokens.length;
 
         if (_extraRewardTokenLength > 0) {
+
             if (_extraRewardTokenLength == 1) {
                 address virtualPool = IBaseRewardPool(proxy.baseRewardPool()).extraRewards(0);
-                if (IBaseRewardPool(virtualPool).rewardRate() == 0) {
+
+                /// There's a special case for the susd pool we don't want to compromise on.
+                if (IBaseRewardPool(virtualPool).rewardRate() == 0 || pid == 4 ) {
                     strategy.setLGtype(gauge, 1);
                 }
             }
@@ -202,8 +207,40 @@ abstract contract Base_Test is Test {
 
         for (uint256 i = 0; i < extraRewardTokens.length; i++) {
             _sdExtraRewardsEarned[i] = ERC20(extraRewardTokens[i]).balanceOf(address(locker)) - _snapshotBalances[i];
+
+            console.log("SD Extra Rewards: %s", extraRewardTokens[i]);
+            console.log("SD Extra Rewards Earned: %s", _sdExtraRewardsEarned[i]);
         }
 
         vm.revertTo(id);
+    }
+
+    function _getFallbackRewardMinted() internal view returns (uint256 _fallbackRewardAmount) {
+        uint256 rewardTokenEarned = proxy.baseRewardPool().earned(address(proxy));
+
+        IConvexToken _fallbackToken = IConvexToken(FALLBACK_REWARD_TOKEN);
+
+        uint256 _supply = _fallbackToken.totalSupply();
+        uint256 _maxSupply = _fallbackToken.maxSupply();
+        uint256 _totalCliffs = _fallbackToken.totalCliffs();
+        uint256 _reductionPerCliff = _fallbackToken.reductionPerCliff();
+
+        //use current supply to gauge cliff
+        //this will cause a bit of overflow into the next cliff range
+        //but should be within reasonable levels.
+        //requires a max supply check though
+        uint256 cliff = _supply / _reductionPerCliff;
+        //mint if below total cliffs
+        if (cliff < _totalCliffs) {
+            //for reduction% take inverse of current cliff
+            uint256 reduction = _totalCliffs - cliff;
+            //reduce
+            _fallbackRewardAmount = rewardTokenEarned * reduction / _totalCliffs;
+
+            uint256 amtTillMax = _maxSupply - _supply;
+            if (_fallbackRewardAmount > amtTillMax) {
+                _fallbackRewardAmount = amtTillMax;
+            }
+        }
     }
 }

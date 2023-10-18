@@ -114,13 +114,7 @@ contract ConvexImplementation is Clone {
                 address wrapper = IBaseRewardPool(_token).rewardToken();
                 tokens[i] = IStashTokenWrapper(wrapper).token();
             } else {
-                /// Try Catch to see if the token is a valid ERC20
-                try ERC20(_token).decimals() returns (uint8) {
-                    tokens[i] = _token;
-                    console.log("Try", tokens[i]);
-                } catch {
-                    tokens[i] = IBaseRewardPool(_token).rewardToken();
-                }
+                tokens[i] = IBaseRewardPool(_token).rewardToken();
             }
 
             unchecked {

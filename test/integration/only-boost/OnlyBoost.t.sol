@@ -157,8 +157,11 @@ abstract contract OnlyBoost_Test is Base_Test {
         IBaseRewardPool baseRewardPool = proxy.baseRewardPool();
 
         uint256 _earned = baseRewardPool.earned(address(proxy));
+
         uint256[] memory _extraRewardsEarned = new uint256[](extraRewardTokens.length);
         uint256[] memory _SDExtraRewardsEarned = new uint256[](extraRewardTokens.length);
+
+        uint256 _expectedFallbackRewardAmount = _getFallbackRewardMinted();
 
         if (extraRewardTokens.length > 0) {
             _SDExtraRewardsEarned = _getSDExtraRewardsEarned();
@@ -167,6 +170,9 @@ abstract contract OnlyBoost_Test is Base_Test {
         for (uint256 i = 0; i < extraRewardTokens.length; i++) {
             address virtualPool = baseRewardPool.extraRewards(i);
             _extraRewardsEarned[i] = IBaseRewardPool(virtualPool).earned(address(proxy));
+
+            console.log("Extra Rewards: %s", extraRewardTokens[i]);
+            console.log("Extra Rewards Earned: %s", _extraRewardsEarned[i]);
         }
 
         strategy.claim(address(token), _distributeSDT, _claimExtraRewards, _claimFallbacks);
@@ -181,6 +187,7 @@ abstract contract OnlyBoost_Test is Base_Test {
         assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(proxy)), 0);
         assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(strategy)), 0);
 
+        /// TODO: Change this test to take into account what's be claimed by SD.
         if (_claimFallbacks) {
             assertGe(_balanceRewardToken, _earned);
         }
@@ -188,7 +195,6 @@ abstract contract OnlyBoost_Test is Base_Test {
         if (_claimExtraRewards) {
             /// Loop through the extra reward tokens.
             for (uint256 i = 0; i < extraRewardTokens.length; i++) {
-
                 assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(this)), 0);
                 assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(proxy)), 0);
                 assertEq(ERC20(extraRewardTokens[i]).balanceOf(address(strategy)), 0);
@@ -197,9 +203,13 @@ abstract contract OnlyBoost_Test is Base_Test {
                 if (_extraRewardsEarned[i] > 0) {
                     _balanceRewardToken = ERC20(extraRewardTokens[i]).balanceOf(address(rewardDistributor));
 
-                    if(_claimFallbacks){
+                    if (extraRewardTokens[i] == FALLBACK_REWARD_TOKEN) {
+                        _extraRewardsEarned[i] += _expectedFallbackRewardAmount;
+                    }
+
+                    if (_claimFallbacks) {
                         assertEq(_balanceRewardToken, _extraRewardsEarned[i] + _SDExtraRewardsEarned[i]);
-                    } else{
+                    } else {
                         assertEq(_balanceRewardToken, _SDExtraRewardsEarned[i]);
                     }
                 }
