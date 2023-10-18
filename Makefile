@@ -14,7 +14,7 @@ install:
 	forge install
 
 test:
-	@forge test --gas-report
+	@forge test # --mc _104_Deposit_Test
 
 test-f-%:
 	@FOUNDRY_MATCH_TEST=$* make test 

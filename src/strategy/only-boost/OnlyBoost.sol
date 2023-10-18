@@ -149,7 +149,7 @@ abstract contract OnlyBoost is Strategy {
         feesAccrued += _feeAccrued + _totalProtocolFeesFromFallbacks;
 
         // Reduce the amount by the fees accrued but add back the protocol fees from fallbacks and the amount claimed from fallbacks
-        uint256 _netAmount = _amount + _claimedFromFallbacks - _feeAccrued;
+        uint256 _netAmount = _amount + _claimedFromFallbacks - _feeAccrued - _totalProtocolFeesFromFallbacks;
 
         return _netAmount;
     }

@@ -4,6 +4,8 @@ pragma solidity 0.8.20;
 import "test/Base.t.sol";
 
 abstract contract OnlyBoost_Test is Base_Test {
+    using FixedPointMathLib for uint256;
+
     constructor(uint256 pid, address _rewardDistributor) Base_Test(pid, _rewardDistributor) {}
 
     function setUp() public override {
@@ -135,7 +137,8 @@ abstract contract OnlyBoost_Test is Base_Test {
         bool _distributeSDT,
         bool _claimExtraRewards,
         bool _claimFallbacks,
-        bool _setFees
+        bool _setFees,
+        bool _setFallbackFees
     ) public {
         uint256 amount = uint256(_amount);
         vm.assume(amount != 0);
@@ -147,8 +150,11 @@ abstract contract OnlyBoost_Test is Base_Test {
         if (_setFees) {
             strategy.updateProtocolFee(1_700); // 17%
             strategy.updateClaimIncentiveFee(100); // 1%
-
             /// Total: 18%
+
+            if(_setFallbackFees) {
+                factory.updateProtocolFee(1_700); // 17%
+            }
         }
 
         /// Need to first skip weeks to harvest Convex.
@@ -170,8 +176,9 @@ abstract contract OnlyBoost_Test is Base_Test {
         uint256[] memory _extraRewardsEarned = new uint256[](extraRewardTokens.length);
         uint256[] memory _SDExtraRewardsEarned = new uint256[](extraRewardTokens.length);
 
+        uint256 _earned;
         if (_claimFallbacks) {
-            uint256 _earned = baseRewardPool.earned(address(proxy));
+            _earned = baseRewardPool.earned(address(proxy));
             _totalRewardTokenAmount += _earned;
 
             _expectedFallbackRewardTokenAmount = _getFallbackRewardMinted();
@@ -205,8 +212,27 @@ abstract contract OnlyBoost_Test is Base_Test {
         assertEq(ERC20(REWARD_TOKEN).balanceOf(address(proxy)), 0);
 
         if (_setFees) {
-            // assertEq(ERC20(REWARD_TOKEN).balanceOf(address(0xBEEC)), 0);
-            // assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
+            /// Compute the fees.
+            uint256 _protocolFee;
+            if(_setFallbackFees && _claimFallbacks){
+                console.log(_expectedLockerRewardTokenAmount);
+                _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+                console.log(_protocolFee);
+                _protocolFee += _earned.mulDivDown(17, 100);
+                console.log(_protocolFee);
+            }
+            else {
+                _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+            }
+            _totalRewardTokenAmount -= _protocolFee;
+
+            uint256 _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
+            _totalRewardTokenAmount -= _claimerFee;
+
+
+            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(0xBEEC)), _claimerFee);
+            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), _protocolFee);
+            assertEq(_balanceRewardToken, _totalRewardTokenAmount);
         } else {
             assertEq(ERC20(REWARD_TOKEN).balanceOf(address(0xBEEC)), 0);
             assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
