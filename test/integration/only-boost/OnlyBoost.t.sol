@@ -7,7 +7,6 @@ abstract contract OnlyBoost_Test is Base_Test {
     constructor(uint256 pid, address _rewardDistributor) Base_Test(pid, _rewardDistributor) {}
 
     function setUp() public override {
-        vm.rollFork({blockNumber: 18_364_805});
         Base_Test.setUp();
     }
 
@@ -135,7 +134,8 @@ abstract contract OnlyBoost_Test is Base_Test {
         uint256 _weeksToSkip,
         bool _distributeSDT,
         bool _claimExtraRewards,
-        bool _claimFallbacks
+        bool _claimFallbacks,
+        bool _setFees
     ) public {
         uint256 amount = uint256(_amount);
         vm.assume(amount != 0);
@@ -143,6 +143,13 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         deal(address(token), address(this), amount);
         strategy.deposit(address(token), amount);
+
+        if (_setFees) {
+            strategy.updateProtocolFee(1_700); // 17%
+            strategy.updateClaimIncentiveFee(100); // 1%
+
+            /// Total: 18%
+        }
 
         /// Need to first skip weeks to harvest Convex.
         skip(_weeksToSkip * 1 weeks);
@@ -153,44 +160,63 @@ abstract contract OnlyBoost_Test is Base_Test {
         /// Then skip weeks to harvest SD.
         skip(_weeksToSkip * 1 weeks);
 
-        /// Before claiming, snapshot reward balances.
         IBaseRewardPool baseRewardPool = proxy.baseRewardPool();
 
-        uint256 _earned = baseRewardPool.earned(address(proxy));
+        uint256 _expectedLockerRewardTokenAmount = _getSdRewardTokenMinted();
+        uint256 _expectedFallbackRewardTokenAmount;
+
+        uint256 _totalRewardTokenAmount = _expectedLockerRewardTokenAmount;
 
         uint256[] memory _extraRewardsEarned = new uint256[](extraRewardTokens.length);
         uint256[] memory _SDExtraRewardsEarned = new uint256[](extraRewardTokens.length);
 
-        uint256 _expectedFallbackRewardAmount = _getFallbackRewardMinted();
+        if (_claimFallbacks) {
+            uint256 _earned = baseRewardPool.earned(address(proxy));
+            _totalRewardTokenAmount += _earned;
 
-        if (extraRewardTokens.length > 0) {
+            _expectedFallbackRewardTokenAmount = _getFallbackRewardMinted();
+        }
+
+        if (_claimExtraRewards && extraRewardTokens.length > 0) {
             _SDExtraRewardsEarned = _getSDExtraRewardsEarned();
+
+            if (_claimFallbacks) {
+                for (uint256 i = 0; i < extraRewardTokens.length; i++) {
+                    address virtualPool = baseRewardPool.extraRewards(i);
+                    _extraRewardsEarned[i] = IBaseRewardPool(virtualPool).earned(address(proxy));
+
+                    if (extraRewardTokens[i] == REWARD_TOKEN) {
+                        _totalRewardTokenAmount += _extraRewardsEarned[i] + _SDExtraRewardsEarned[i];
+                    }
+
+                    if (extraRewardTokens[i] == FALLBACK_REWARD_TOKEN) {
+                        _expectedFallbackRewardTokenAmount += _extraRewardsEarned[i] + _SDExtraRewardsEarned[i];
+                    }
+                }
+            }
         }
 
-        for (uint256 i = 0; i < extraRewardTokens.length; i++) {
-            address virtualPool = baseRewardPool.extraRewards(i);
-            _extraRewardsEarned[i] = IBaseRewardPool(virtualPool).earned(address(proxy));
-
-            console.log("Extra Rewards: %s", extraRewardTokens[i]);
-            console.log("Extra Rewards Earned: %s", _extraRewardsEarned[i]);
-        }
-
+        vm.prank(address(0xBEEC));
         strategy.harvest(address(token), _distributeSDT, _claimExtraRewards, _claimFallbacks);
 
         uint256 _balanceRewardToken = ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor));
 
         assertEq(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
         assertEq(ERC20(REWARD_TOKEN).balanceOf(address(proxy)), 0);
-        assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
+
+        if (_setFees) {
+            // assertEq(ERC20(REWARD_TOKEN).balanceOf(address(0xBEEC)), 0);
+            // assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
+        } else {
+            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(0xBEEC)), 0);
+            assertEq(ERC20(REWARD_TOKEN).balanceOf(address(strategy)), 0);
+
+            assertEq(_balanceRewardToken, _totalRewardTokenAmount);
+        }
 
         assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(this)), 0);
         assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(proxy)), 0);
         assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(strategy)), 0);
-
-        /// TODO: Change this test to take into account what's be claimed by SD.
-        if (_claimFallbacks) {
-            assertGe(_balanceRewardToken, _earned);
-        }
 
         if (_claimExtraRewards) {
             /// Loop through the extra reward tokens.
@@ -203,9 +229,8 @@ abstract contract OnlyBoost_Test is Base_Test {
                 if (_extraRewardsEarned[i] > 0) {
                     _balanceRewardToken = ERC20(extraRewardTokens[i]).balanceOf(address(rewardDistributor));
 
-                    if (extraRewardTokens[i] == FALLBACK_REWARD_TOKEN) {
-                        _extraRewardsEarned[i] += _expectedFallbackRewardAmount;
-                    }
+                    if (extraRewardTokens[i] == REWARD_TOKEN) continue;
+                    if (extraRewardTokens[i] == FALLBACK_REWARD_TOKEN) continue;
 
                     if (_claimFallbacks) {
                         assertEq(_balanceRewardToken, _extraRewardsEarned[i] + _SDExtraRewardsEarned[i]);

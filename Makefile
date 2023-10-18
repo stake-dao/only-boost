@@ -17,7 +17,7 @@ test:
 	@forge test --gas-report
 
 test-f-%:
-	@FOUNDRY_MATCH_TEST=$* make test
+	@FOUNDRY_MATCH_TEST=$* make test 
 
 test-c-%:
 	@FOUNDRY_MATCH_CONTRACT=$* make test

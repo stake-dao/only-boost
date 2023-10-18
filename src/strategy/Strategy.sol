@@ -573,8 +573,15 @@ abstract contract Strategy {
     /// @notice Update protocol fees.
     /// @param _protocolFee New protocol fee.
     function updateProtocolFee(uint256 _protocolFee) external onlyGovernance {
-        if (_protocolFee > DENOMINATOR) revert FEE_TOO_HIGH();
+        if (claimIncentiveFee + _protocolFee > DENOMINATOR) revert FEE_TOO_HIGH();
         protocolFeesPercent = _protocolFee;
+    }
+
+    /// @notice Update claimIncentive fees.
+    /// @param _claimIncentiveFee New Claim Incentive Fees
+    function updateClaimIncentiveFee(uint256 _claimIncentiveFee) external onlyGovernance {
+        if (protocolFeesPercent + _claimIncentiveFee > DENOMINATOR) revert FEE_TOO_HIGH();
+        claimIncentiveFee = _claimIncentiveFee;
     }
 
     //////////////////////////////////////////////////////

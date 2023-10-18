@@ -68,6 +68,8 @@ abstract contract Base_Test is Test {
     }
 
     function setUp() public virtual {
+        vm.rollFork({blockNumber: 18_377_451});
+
         /// Initialize Locker
         locker = ILocker(SD_VOTER_PROXY);
 
@@ -206,10 +208,24 @@ abstract contract Base_Test is Test {
 
         for (uint256 i = 0; i < extraRewardTokens.length; i++) {
             _sdExtraRewardsEarned[i] = ERC20(extraRewardTokens[i]).balanceOf(address(locker)) - _snapshotBalances[i];
-
-            console.log("SD Extra Rewards: %s", extraRewardTokens[i]);
-            console.log("SD Extra Rewards Earned: %s", _sdExtraRewardsEarned[i]);
         }
+
+        vm.revertTo(id);
+    }
+
+    function _getSdRewardTokenMinted() internal returns (uint256 _rewardTokenAmount) {
+        uint256 id = vm.snapshot();
+        /// Snapshot before claim.
+        uint256 _snapshotBalance = ERC20(REWARD_TOKEN).balanceOf(address(locker));
+
+        /// Claim.
+        address _minter = strategy.minter();
+
+        vm.prank(locker.governance());
+        locker.execute(_minter, 0, abi.encodeWithSignature("mint(address)", gauge));
+
+        /// Snapshot after claim.
+        _rewardTokenAmount = ERC20(REWARD_TOKEN).balanceOf(address(locker)) - _snapshotBalance;
 
         vm.revertTo(id);
     }
