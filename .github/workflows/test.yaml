@@ -4,6 +4,7 @@ on:
     branches:
       - master
       - develop
+  pull_request:
 
 env:
   FOUNDRY_ETH_RPC_URL: https://mainnet.infura.io/v3/${{secrets.INFURA_KEY}}
@@ -22,6 +23,14 @@ jobs:
 
       - name: Install deps
         run: forge install
+
+      - name: "Cache the build so that it can be re-used by the other jobs"
+      uses: "actions/cache/save@v3"
+      with:
+        key: "foundry-build-${{ github.sha }}"
+        path: |
+          cache
+          out
 
       - name: Run tests
 
