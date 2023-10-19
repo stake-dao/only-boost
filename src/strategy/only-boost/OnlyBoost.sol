@@ -16,6 +16,8 @@ abstract contract OnlyBoost is Strategy {
     /// @notice Optimizer address for deposit/withdrawal allocations.
     IOnlyBoost public optimizer;
 
+    error REBALANCE_FAILED();
+
     constructor(address _owner, address _locker, address _veToken, address _rewardToken, address _minter)
         Strategy(_owner, _locker, _veToken, _rewardToken, _minter)
     {}
@@ -33,7 +35,7 @@ abstract contract OnlyBoost is Strategy {
 
         /// Get the optimal allocation for the deposit.
         (address[] memory fundsManagers, uint256[] memory allocations) =
-            optimizer.getOptimalDepositAllocation(gauge, amount);
+            optimizer.getOptimalDepositAllocation(gauge, amount, false);
 
         for (uint256 i; i < fundsManagers.length; ++i) {
             // Skip if the allocation amount is 0.
@@ -126,6 +128,62 @@ abstract contract OnlyBoost is Strategy {
         ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, _claimed);
     }
 
+    function rebalance(address _asset) public {
+        if (address(optimizer) == address(0)) revert ADDRESS_NULL();
+
+        // Get the gauge address
+        address gauge = gauges[_asset];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        /// Snapshot the current balance.
+        uint256 _snapshotBalance = balanceOf(_asset);
+
+        /// Get Fallbacks.
+        address[] memory fallbacks = optimizer.getFallbacks(gauge);
+
+        for (uint256 i; i < fallbacks.length; ++i) {
+            /// Get the current balance of the fallbacks.
+            uint256 _balanceOfFallback = IFallback(fallbacks[i]).balanceOf(_asset);
+
+            if (_balanceOfFallback > 0) {
+                /// Withdraw from the fallbacks.
+                IFallback(fallbacks[i]).withdraw(_asset, _balanceOfFallback);
+            }
+        }
+
+        /// Get the current balance of the gauge.
+        uint256 _balanceOfGauge = ILiquidityGauge(gauge).balanceOf(address(locker));
+
+        if (_balanceOfGauge > 0) {
+            /// Withdraw from the locker.
+            _withdrawFromLocker(_asset, gauge, _balanceOfGauge);
+        }
+
+        uint256 _currentBalance = ERC20(_asset).balanceOf(address(this));
+
+        /// Get the optimal allocation for the deposit.
+        (address[] memory fundsManagers, uint256[] memory allocations) =
+            optimizer.getOptimalDepositAllocation(gauge, _currentBalance, true);
+
+        for (uint256 i; i < fundsManagers.length; ++i) {
+            // Skip if the allocation amount is 0.
+            if (allocations[i] == 0) continue;
+
+            /// Deposit into the locker if the recipient is the locker.
+            if (fundsManagers[i] == address(locker)) {
+                _depositIntoLocker(_asset, gauge, allocations[i]);
+            } else {
+                /// Else, transfer the asset to the fallback recipient and call deposit.
+                ERC20(_asset).safeTransfer(fundsManagers[i], allocations[i]);
+                IFallback(fundsManagers[i]).deposit(_asset, allocations[i]);
+            }
+        }
+
+        _currentBalance = balanceOf(_asset);
+
+        if (_currentBalance != _snapshotBalance) revert REBALANCE_FAILED();
+    }
+
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
     /// @return _amount Amount left after charging protocol fees.
     function _chargeProtocolFees(
@@ -194,9 +252,6 @@ abstract contract OnlyBoost is Strategy {
             _balanceOf += IFallback(_fallbacks[i]).balanceOf(_asset);
         }
     }
-
-    /// NATIVE TO THIS CONTRACT
-    /// REBALANCE
 
     //////////////////////////////////////////////////////
     /// --- GOVERNANCE STRATEGY SETTERS

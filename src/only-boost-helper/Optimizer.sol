@@ -149,7 +149,7 @@ contract Optimizer is IOnlyBoost {
     /// @dev This is not a view due to the cache system
     /// @param gauge Address of Liquidity Gauge corresponding to LP token
     /// @param amount Amount of LP token to deposit
-    function getOptimalDepositAllocation(address gauge, uint256 amount)
+    function getOptimalDepositAllocation(address gauge, uint256 amount, bool bypassCache)
         public
         onlyStrategy
         returns (address[] memory _depositors, uint256[] memory _allocations)
@@ -176,7 +176,7 @@ contract Optimizer is IOnlyBoost {
                 uint256 gaugeBalance = ERC20(gauge).balanceOf(address(VOTER_PROXY_SD));
 
                 // Get the optimal amount of lps that must be held by the locker
-                uint256 opt = _getOptimalAmount(gauge, gaugeBalance, amount);
+                uint256 opt = _getOptimalAmount(gauge, gaugeBalance, amount, bypassCache);
 
                 // Stake DAO Curve
                 _allocations[1] = opt > gaugeBalance ? FixedPointMathLib.min(opt - gaugeBalance, amount) : 0;
@@ -200,13 +200,17 @@ contract Optimizer is IOnlyBoost {
     /// @param gauge Address of the liquidity gauge
     /// param balanceConvex Balance of the liquidity gauge on Convex Curve
     /// @return opt Optimal amount of LP token that must be held by the locker
-    function _getOptimalAmount(address gauge, uint256 gaugeBalance, uint256 amount) internal returns (uint256 opt) {
+    function _getOptimalAmount(address gauge, uint256 gaugeBalance, uint256 amount, bool bypassCache)
+        internal
+        returns (uint256 opt)
+    {
         CachedOptimization memory cachedOptimization = cachedOptimizations[gauge];
 
         if (
-            cachedOptimization
-                /// If the cache is enabled
-                .timestamp + cachePeriod > block.timestamp
+            !bypassCache
+                && cachedOptimization
+                    /// If the cache is enabled
+                    .timestamp + cachePeriod > block.timestamp
             /// And the new deposit is lower than the cached optimal amount
             && cachedOptimization.value >= amount + gaugeBalance
         ) {
