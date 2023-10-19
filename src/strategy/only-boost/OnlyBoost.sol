@@ -181,7 +181,7 @@ abstract contract OnlyBoost is Strategy {
 
         _currentBalance = balanceOf(_asset);
 
-        if (_currentBalance != _snapshotBalance) revert REBALANCE_FAILED();
+        if (_currentBalance < _snapshotBalance) revert REBALANCE_FAILED();
     }
 
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
