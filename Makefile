@@ -13,6 +13,9 @@ install:
 	foundryup
 	forge install
 
+snapshot:
+	@forge snapshot
+
 test:
 	@forge test
 

@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-
 import "src/CRVStrategy.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
@@ -194,13 +193,12 @@ abstract contract Base_Test is Test {
         }
     }
 
-
-    function _hasMaxBoost() internal returns(bool, uint256 optimalSD){
+    function _hasMaxBoost() internal returns (bool, uint256 optimalSD) {
         uint256 id = vm.snapshot();
 
         strategy.withdraw(address(token), strategy.balanceOf(address(token)));
 
-         /// Check if Convex has maxboost.
+        /// Check if Convex has maxboost.
         uint256 balance = ILiquidityGauge(gauge).balanceOf(CONVEX_VOTER_PROXY);
         uint256 workingBalance = ILiquidityGauge(gauge).working_balances(CONVEX_VOTER_PROXY);
 

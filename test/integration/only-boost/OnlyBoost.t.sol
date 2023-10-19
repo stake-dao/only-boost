@@ -300,11 +300,10 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         strategy.rebalance(address(token));
 
-        if(_hasMaxBoost){
+        if (_hasMaxBoost) {
             assertEq(proxy.balanceOf(address(token)), amount);
             assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), 0);
-        } 
-        else if (optimalSDBalance >= amount) {
+        } else if (optimalSDBalance >= amount) {
             assertEq(proxy.balanceOf(address(token)), 0);
             assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), amount);
         } else {
