@@ -17,7 +17,7 @@ snapshot:
 	@forge snapshot
 
 test:
-	@forge test
+	@forge test --gas-report
 
 test-f-%:
 	@FOUNDRY_MATCH_TEST=$* make test 

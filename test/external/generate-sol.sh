@@ -11,7 +11,7 @@ json_file=$1
 # Start of the solidity file
 cat <<EOF
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.20;
+pragma solidity 0.8.19;
 
 import "test/Base.t.sol";
 import "test/integration/only-boost/OnlyBoost.t.sol";

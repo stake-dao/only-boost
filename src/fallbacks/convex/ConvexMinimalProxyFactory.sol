@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.20;
+pragma solidity 0.8.19;
 
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
@@ -19,6 +19,7 @@ contract ConvexMinimalProxyFactory {
 
     /// @notice Reward token address.
     address public immutable rewardToken;
+
     /// @notice Fallback reward token address.
     address public immutable fallbackRewardToken;
 
@@ -87,7 +88,7 @@ contract ConvexMinimalProxyFactory {
             address(this), _token, rewardToken, fallbackRewardToken, strategy, booster, _baseRewardPool, _pid
         );
 
-        bytes32 salt = keccak256(abi.encodePacked(_token, _pid));
+        bytes32 salt = keccak256(abi.encodePacked(_token, gauge));
         // Clone the implementation
         _fallback = implementation.cloneDeterministic(data, salt);
 

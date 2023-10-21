@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.20;
+pragma solidity 0.8.19;
 
 interface ILiquidityGaugeStrat {
     struct Reward {
@@ -31,6 +31,8 @@ interface ILiquidityGaugeStrat {
     function withdraw(uint256 _value, address _addr, bool _claim_rewards) external;
 
     function withdraw(uint256 _value, address _addr) external;
+
+    function lp_token() external view returns (address);
 
     // solhint-disable-next-line
     function reward_data(address _tokenReward) external view returns (Reward memory);
