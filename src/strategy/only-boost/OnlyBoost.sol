@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
+import "forge-std/Test.sol";
 
 import "src/strategy/Strategy.sol";
 
@@ -121,6 +122,7 @@ abstract contract OnlyBoost is Strategy {
         /// 6. Distribute SDT
         // Distribute SDT to the related gauge
         if (_distributeSDT) {
+            console.log("ICI");
             ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
         }
 

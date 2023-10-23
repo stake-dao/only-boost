@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import "src/CRVStrategy.sol";
+import "solady/utils/LibClone.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IConvexToken} from "src/interfaces/IConvexToken.sol";
@@ -18,7 +19,9 @@ abstract contract Base_Test is Test {
 
     ILocker public locker;
     Optimizer public optimizer;
+
     CRVStrategy public strategy;
+    CRVStrategy public stratImplementation;
 
     ConvexMinimalProxyFactory public factory;
 
@@ -73,13 +76,17 @@ abstract contract Base_Test is Test {
         /// Initialize Locker
         locker = ILocker(SD_VOTER_PROXY);
 
-        strategy = new CRVStrategy(
+        stratImplementation = new CRVStrategy(
             address(this),
             SD_VOTER_PROXY,
             VE_CRV,
             REWARD_TOKEN,
             MINTER
         );
+
+        address _proxy = LibClone.deployERC1967(address(stratImplementation));
+        strategy = CRVStrategy(payable(_proxy));
+        strategy.initialize(address(this));
 
         // Give strategy roles from depositor to new strategy
         vm.prank(locker.governance());
@@ -115,6 +122,16 @@ abstract contract Base_Test is Test {
 
         /// We need to overwrite the locker balance.
         deal(address(gauge), address(locker), 0);
+
+
+        /// Label the contract.
+        vm.label(address(locker), "locker");
+        vm.label(address(strategy), "strategy");
+        vm.label(address(proxy), "convex");
+        vm.label(address(optimizer), "optimizer");
+        vm.label(address(factory), "factory");
+        vm.label(address(implementation), "implementation");
+        vm.label(address(this), "owner");
     }
 
     function _addExtraRewardToken() internal {
