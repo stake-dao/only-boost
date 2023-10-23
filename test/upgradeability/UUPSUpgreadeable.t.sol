@@ -53,6 +53,30 @@ contract UUPSUpgradeableTest is Test {
 
     event Upgraded(address indexed implementation);
 
+    function test_InitialValues() public {
+        /// Proxy values
+        assertEq(proxy.veToken(), VE_CRV);
+        assertEq(proxy.rewardToken(), REWARD_TOKEN);
+        assertEq(proxy.minter(), MINTER);
+        assertEq(address(proxy.locker()), SD_VOTER_PROXY);
+        assertEq(proxy.governance(), address(this));
+
+        /// Impl values
+        assertEq(implementation.veToken(), VE_CRV);
+        assertEq(implementation.rewardToken(), REWARD_TOKEN);
+        assertEq(implementation.minter(), MINTER);
+        assertEq(address(implementation.locker()), SD_VOTER_PROXY);
+        assertEq(implementation.governance(), address(this));
+    }
+
+    function test_initializeTwice() public {
+        vm.expectRevert(Strategy.GOVERNANCE.selector);
+        proxy.initialize(address(0xCAFE));
+
+        vm.expectRevert(Strategy.GOVERNANCE.selector);
+        implementation.initialize(address(0xCAFE));
+    }
+
     function test_NotDelegatedGuard() public {
         assertEq(implementation.proxiableUUID(), _ERC1967_IMPLEMENTATION_SLOT);
 
