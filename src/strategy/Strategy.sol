@@ -181,7 +181,7 @@ abstract contract Strategy {
     /// @param _token Address of LP token to deposit
     /// @param gauge Address of Liqudity gauge corresponding to LP token
     /// @param amount Amount of LP token to deposit
-    function _depositIntoLocker(address _token, address gauge, uint256 amount) internal virtual  {
+    function _depositIntoLocker(address _token, address gauge, uint256 amount) internal virtual {
         ERC20(_token).safeTransfer(address(locker), amount);
 
         // Locker deposit token
@@ -518,6 +518,13 @@ abstract contract Strategy {
     function setAccumulator(address newAccumulator) external onlyGovernance {
         if (newAccumulator == address(0)) revert ADDRESS_NULL();
         accumulator = newAccumulator;
+    }
+
+    /// @notice Set Factory address.
+    /// @param _factory Address of new Accumulator
+    function setFactory(address _factory) external onlyGovernance {
+        if (_factory == address(0)) revert ADDRESS_NULL();
+        factory = _factory;
     }
 
     /// @notice Set new RewardToken FeeDistributor new address
