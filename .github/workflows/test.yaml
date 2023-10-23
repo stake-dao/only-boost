@@ -4,7 +4,7 @@ on:
     branches:
       - master
       - develop
-  pull_request:
+  # pull_request:
 
 env:
   FOUNDRY_ETH_RPC_URL: https://mainnet.infura.io/v3/${{secrets.INFURA_KEY}}
