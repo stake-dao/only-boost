@@ -181,7 +181,7 @@ abstract contract Strategy {
     /// @param _token Address of LP token to deposit
     /// @param gauge Address of Liqudity gauge corresponding to LP token
     /// @param amount Amount of LP token to deposit
-    function _depositIntoLocker(address _token, address gauge, uint256 amount) internal {
+    function _depositIntoLocker(address _token, address gauge, uint256 amount) internal virtual  {
         ERC20(_token).safeTransfer(address(locker), amount);
 
         // Locker deposit token
@@ -192,7 +192,7 @@ abstract contract Strategy {
     /// @param _asset Address of LP token to withdraw
     /// @param gauge Address of Liqudity gauge corresponding to LP token
     /// @param amount Amount of LP token to withdraw
-    function _withdrawFromLocker(address _asset, address gauge, uint256 amount) internal {
+    function _withdrawFromLocker(address _asset, address gauge, uint256 amount) internal virtual {
         /// Withdraw from the Gauge trough the Locker.
         locker.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
 
@@ -428,29 +428,6 @@ abstract contract Strategy {
     /// --- LOCKER HELPER FUNCTIONS
     //////////////////////////////////////////////////////
 
-    /// @notice Increase token amount locked
-    /// @param value Amount of token to lock
-    function increaseAmount(uint256 value) external virtual onlyGovernance {
-        locker.increaseAmount(value);
-    }
-
-    /// @notice Extend unlock time on the locker
-    /// @param unlock_time New epoch time for unlocking
-    function increaseUnlockTime(uint256 unlock_time) external virtual onlyGovernance {
-        locker.execute(veToken, 0, abi.encodeWithSignature("increase_unlock_time(uint256)", unlock_time));
-    }
-
-    /// @notice Release all token locked
-    function release() external onlyGovernance {
-        locker.release();
-    }
-
-    /// @notice Set the governance address
-    /// @param _governance Address of the new governance
-    function transferLockerGovernance(address _governance) external virtual onlyGovernance {
-        locker.setGovernance(_governance);
-    }
-
     /// @notice Transfer the governance to a new address.
     /// @param _governance Address of the new governance.
     function transferGovernance(address _governance) external onlyGovernance {
@@ -465,13 +442,6 @@ abstract contract Strategy {
         emit GovernanceChanged(msg.sender);
     }
 
-    /// @notice Set the strategy address
-    /// @dev Calling this function will disable the current strategy.
-    /// @param _strategy Address of the new strategy
-    function transferLockerStrategy(address _strategy) external virtual onlyGovernance {
-        locker.setStrategy(_strategy);
-    }
-
     //////////////////////////////////////////////////////
     /// --- MIGRATION LOGIC
     //////////////////////////////////////////////////////
@@ -479,7 +449,7 @@ abstract contract Strategy {
     /// @notice Migrate LP token from the locker to the vault
     /// @dev Only callable by the vault
     /// @param _asset Address of LP token to migrate
-    function migrateLP(address _asset) external onlyVault {
+    function migrateLP(address _asset) public virtual onlyVault {
         // Get gauge address
         address gauge = gauges[_asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
