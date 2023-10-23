@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {UUPSUpgradeable} from "solady/utils/UUPSUpgradeable.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
@@ -13,7 +14,7 @@ import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
 /// @title Strategy
 /// @author Stake DAO
 /// @notice Strategy Proxy Contract to interact with Stake DAO Locker.
-abstract contract Strategy {
+abstract contract Strategy is UUPSUpgradeable {
     using SafeExecute for ILocker;
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -599,4 +600,6 @@ abstract contract Strategy {
     }
 
     receive() external payable {}
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 }

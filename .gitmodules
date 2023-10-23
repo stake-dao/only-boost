@@ -6,4 +6,4 @@
 	url = https://github.com/transmissions11/solmate
 [submodule "lib/solady"]
 	path = lib/solady
-	url = https://github.com/Vectorized/solady
+	url = https://github.com/vectorized/solady
