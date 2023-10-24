@@ -62,6 +62,7 @@ graph TD
     Strategy -->|Harvest| ConvexProxyPID_1
     end
 
+    ConvexProxyPID_1 -->|getReward| Convex
     Strategy -->|deposit_reward_token| LiquidityGauge
 
 ```
