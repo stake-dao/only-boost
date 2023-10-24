@@ -49,7 +49,7 @@ graph TD
 
 ### Harvest Rewards Flow
 
-Per PID & Token:
+Each Pool ID is associated with its own contract. When harvesting occurs, the strategy claims from both the corresponding fallback and the locker, then proceeds to distribute the rewards within the liquidity gauge. (`RewardDistributor`)
 
 ```mermaid
 
