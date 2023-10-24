@@ -4,9 +4,17 @@
 This repository contains the implementation of the OnlyBoost white paper, focusing on smart contracts for the CRV Liquid Locker. These contracts optimize the fund distribution between Stake DAO and Convex to maximize the boost.
 
 ## Installation
-
     
 ## Architecture
+
+### Strategy
+
+
+### Convex Minimal Proxy
+
+
+### Optimizer
+
 
 ### Deposit and Withdrawal Flow
 
@@ -29,6 +37,23 @@ graph TD
     ConvexProxy... -->|delegatecall| ConvexPIDImplementation
 ```
 
-### Claim Rewards
+### Harvest Rewards Flow
+
+Per PID:
+
+```mermaid
+
+graph TD
+    Vault -->|Deposit & Withdraw| Strategy
+    Vault -->|Mint| LiquidityGauge
+
+    subgraph OnlyBoost[ ]
+    Strategy -->|Harvest| Locker
+    Strategy -->|Harvest| ConvexProxyPID_1
+    end
+
+    Strategy -->|deposit_reward_token| LiquidityGauge
+
+```
 
 ## Acknowledgements
