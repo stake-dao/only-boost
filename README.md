@@ -25,6 +25,7 @@ The `optimizer` contract's responsibility is to determine the most advantageous 
 
 For each Convex pool, there's a dedicated minimal proxy that is deployed through a factory system. Given that any participant can stake a claim for a user on Convex, this architecture not only simplifies the reward distribution process but also results in a reduction of gas costs.
 
+## Flow
 ### Deposit and Withdrawal Flow
 
 ```mermaid
