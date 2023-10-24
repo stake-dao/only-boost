@@ -5,28 +5,6 @@ This repository contains the implementation of the OnlyBoost white paper, focusi
 
 ## Installation
 
-Install Foundry:
-```bash
-   # This will install Foundryup
-   curl -L https://foundry.paradigm.xyz | bash
-   # Then Run
-   foundryup
-```
-
-Install Dependencies:
-```bash
-    forge install
-```
-
-Build:
-```bash
-    forge b
-```
-
-Run all tests:
-```bash
-    make test
-```
     
 ## Architecture
 
