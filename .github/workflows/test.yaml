@@ -1,0 +1,37 @@
+name: CI
+on:
+  # push:
+    # branches:
+      # - master
+      # - develop
+
+env:
+  FOUNDRY_ETH_RPC_URL: https://mainnet.infura.io/v3/${{secrets.INFURA_KEY}}
+  FOUNDRY_FUZZ_RUNS: "1"
+
+jobs:
+  run-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install deps
+        run: forge install
+
+      - name: "Cache the build so that it can be re-used by the other jobs"
+        uses: "actions/cache/save@v3"
+        with:
+          key: "foundry-build-${{ github.sha }}"
+          path: |
+            cache
+            out
+
+      - name: Run tests
+
+        run: forge test
+      

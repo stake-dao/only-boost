@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-
-pragma solidity 0.8.20;
+pragma solidity 0.8.19;
 
 interface ILiquidityGauge {
     struct Reward {
@@ -24,7 +23,9 @@ interface ILiquidityGauge {
 
     function reward_data(address _tokenReward) external view returns (Reward memory);
 
-    function balanceOf(address) external returns (uint256);
+    function balanceOf(address) external view returns (uint256);
+
+    function totalSupply() external view returns (uint256);
 
     function claimable_reward(address _user, address _reward_token) external view returns (uint256);
 
@@ -33,6 +34,8 @@ interface ILiquidityGauge {
     function user_checkpoint(address _user) external returns (bool);
 
     function commit_transfer_ownership(address) external;
+
+    function apply_transfer_ownership() external;
 
     function claim_rewards(address) external;
 

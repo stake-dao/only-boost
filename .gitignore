@@ -7,3 +7,12 @@ lcov.info.pruned
 coverage.txt
 coverage/
 .DS_Store
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+.hypothesis/
+
+```
