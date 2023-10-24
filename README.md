@@ -56,6 +56,7 @@ Each Pool ID is associated with its own contract. When harvesting occurs, the st
 graph TD
     Vault -->|Deposit & Withdraw| Strategy
     Vault -->|Mint| LiquidityGauge
+    Optimizer <.->|GetFallback| Strategy
 
     subgraph OnlyBoost[ ]
     Strategy -->|Harvest| Locker
