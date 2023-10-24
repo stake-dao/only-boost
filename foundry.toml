@@ -1,10 +1,19 @@
 [profile.default]
 src = 'src'
 out = 'out'
+tests = 'test'
 libs = ['lib']
 verbosity = 3
+evm_version = "shanghai"
+  gas_reports = [
+    "CRVStrategy",
+    "ConvexImplementation",
+    "ConvexMinimalProxyFactory"
+  ]
 
-[invariant]
-runs = 100
-depth = 10
-fail_on_revert = false
+ffi = true
+optimizers_runs = 200
+
+remappings = [
+    "solady/=lib/solady/src/"
+]
