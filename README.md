@@ -21,6 +21,7 @@ This repository contains the implementation of the OnlyBoost white paper, focusi
 ```mermaid
 
 graph TD
+    Vault -->|Mint| LiquidityGauge
     Vault -->|Deposit & Withdraw| Strategy
     Optimizer -->|GetOptimalDepositAllocation| Strategy
 
@@ -39,7 +40,7 @@ graph TD
 
 ### Harvest Rewards Flow
 
-Per PID:
+Per PID & Token:
 
 ```mermaid
 
