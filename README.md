@@ -33,7 +33,7 @@ For each Convex pool, there's a dedicated minimal proxy that is deployed through
 graph TD
     Vault -->|Mint| LiquidityGauge
     Vault -->|Deposit & Withdraw| Strategy
-    Optimizer -->|GetOptimalDepositAllocation| Strategy
+    Optimizer <.->|GetOptimalDepositAllocation| Strategy
 
     subgraph OnlyBoost[ ]
     Strategy -->|Deposit & Withdraw| Locker
