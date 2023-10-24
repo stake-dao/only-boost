@@ -7,7 +7,7 @@ import "solady/utils/LibClone.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IConvexToken} from "src/interfaces/IConvexToken.sol";
-import {ICVXLocker, Optimizer} from "src/only-boost-helper/Optimizer.sol";
+import {ICVXLocker, Optimizer} from "src/optimizer/Optimizer.sol";
 
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
 import {IBaseRewardPool, ConvexImplementation} from "src/fallbacks/convex/ConvexImplementation.sol";
@@ -122,7 +122,6 @@ abstract contract Base_Test is Test {
 
         /// We need to overwrite the locker balance.
         deal(address(gauge), address(locker), 0);
-
 
         /// Label the contract.
         vm.label(address(locker), "locker");

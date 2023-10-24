@@ -122,10 +122,8 @@ abstract contract Strategy is UUPSUpgradeable {
         rewardToken = _rewardToken;
     }
 
-    function initialize(
-        address owner
-    ) external virtual {
-        if(governance != address(0)) revert GOVERNANCE();
+    function initialize(address owner) external virtual {
+        if (governance != address(0)) revert GOVERNANCE();
 
         governance = owner;
         SDTDistributor = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C;
