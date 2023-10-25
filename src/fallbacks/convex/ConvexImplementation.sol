@@ -67,7 +67,6 @@ contract ConvexImplementation is Clone {
         address[] memory extraRewardTokens;
         /// We can save gas by not claiming extra rewards if we don't need them, there's no extra rewards, or not enough rewards worth to claim.
         if (_claimExtraRewards) {
-            /// This will return at least 2 reward tokens, rewardToken and fallbackRewardToken.
             extraRewardTokens = getRewardTokens();
         }
 
@@ -78,7 +77,6 @@ contract ConvexImplementation is Clone {
         fallbackRewardTokenAmount = ERC20(fallbackRewardToken()).balanceOf(address(this));
 
         /// Charge Fees.
-        /// Amounts[0] is the amount of rewardToken claimed.
         protocolFees = _chargeProtocolFees(rewardTokenAmount);
 
         SafeTransferLib.safeTransfer(rewardToken(), msg.sender, rewardTokenAmount);

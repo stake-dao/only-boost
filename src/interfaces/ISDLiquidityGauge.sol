@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-interface ILiquidityGaugeStrat {
+/// Modified version of the liquidity for Stake DAO needs.
+interface ISDLiquidityGauge {
     struct Reward {
         address token;
         address distributor;

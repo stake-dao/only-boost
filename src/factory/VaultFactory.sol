@@ -7,7 +7,7 @@ import {IBooster} from "src/interfaces/IBooster.sol";
 
 import {IStrategy} from "src/interfaces/IStrategy.sol";
 import {IFallback} from "src/interfaces/IFallback.sol";
-import {ILiquidityGaugeStrat} from "src/interfaces/ILiquidityGaugeStrat.sol";
+import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
 
 abstract contract VaultFactory {
     using LibClone for address;
@@ -66,7 +66,7 @@ abstract contract VaultFactory {
     function _isValidToken(address _token) internal view virtual returns (bool) {}
 
     function _getGaugeStakingToken(address _gauge) internal view virtual returns (address lp) {
-        lp = ILiquidityGaugeStrat(_gauge).lp_token();
+        lp = ISDLiquidityGauge(_gauge).lp_token();
     }
 
     function _getNameAndSymbol(address _lp) internal view virtual returns (string memory name, string memory symbol) {
