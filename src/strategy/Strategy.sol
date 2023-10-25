@@ -525,6 +525,7 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @param rewardDistributor Address of rewardDistributor
     function acceptRewardDistributorOwnership(address rewardDistributor) external onlyGovernanceOrFactory {
         if (rewardDistributor == address(0)) revert ADDRESS_NULL();
+
         (bool success,) = address(rewardDistributor).call(abi.encodeWithSignature("accept_transfer_ownership()"));
         if (!success) revert LOW_LEVEL_CALL_FAILED();
     }

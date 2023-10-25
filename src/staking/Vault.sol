@@ -106,11 +106,6 @@ contract Vault is ERC20, Clone {
         SafeTransferLib.safeTransfer(address(token()), msg.sender, _shares);
     }
 
-    /// @notice function to withdraw all curve LPs deposited
-    function withdrawAll() external {
-        withdraw(balanceOf(msg.sender));
-    }
-
     function _earn() internal {
         uint256 _balance = token().balanceOf(address(this));
         strategy().deposit(address(token()), _balance);
