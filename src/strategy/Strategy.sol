@@ -97,6 +97,9 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @notice Error emitted when input address is null
     error ADDRESS_NULL();
 
+    /// @notice Error emitted when low level call failed
+    error LOW_LEVEL_CALL_FAILED();
+
     /// @notice Error emitted when sum of fees is above 100%
     error FEE_TOO_HIGH();
 
@@ -515,6 +518,15 @@ abstract contract Strategy is UUPSUpgradeable {
         /// Approve the rewardDistributor to spend token.
         ERC20(rewardToken).safeApprove(rewardDistributor, 0);
         ERC20(rewardToken).safeApprove(rewardDistributor, type(uint256).max);
+    }
+
+    /// @notice Accept Reward Distrbutor Ownership
+    /// @dev Gauge need to call this function to accept ownership of the rewardDistributor because ownership is transfered in two steps.
+    /// @param rewardDistributor Address of rewardDistributor
+    function acceptRewardDistributorOwnership(address rewardDistributor) external onlyGovernanceOrFactory {
+        if (rewardDistributor == address(0)) revert ADDRESS_NULL();
+        (bool success,) = address(rewardDistributor).call(abi.encodeWithSignature("accept_transfer_ownership()"));
+        if (!success) revert LOW_LEVEL_CALL_FAILED();
     }
 
     //////////////////////////////////////////////////////
