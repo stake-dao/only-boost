@@ -13,9 +13,10 @@ cat <<EOF
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
+import "test/pool-factory/Staking.t.sol";
 import "test/pool-factory/PoolFactory.t.sol";
 
 EOF
 
 # Parse the JSON and generate the solidity contracts
-jq -r '.[] | "uint256 constant \(.name)_PID = \(.pid);\n\ncontract \(.name)_Factory_Test is PoolFactory_Test(\(.name)_PID) {}\n"' $json_file
+jq -r '.[] | "uint256 constant \(.name)_PID = \(.pid);\n\ncontract \(.name)_Factory_Test is PoolFactory_Test(\(.name)_PID) {}\n\ncontract \(.name)_Staking_Test is Staking_Test(\(.name)_PID) {}\n"' $json_file

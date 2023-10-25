@@ -9,8 +9,13 @@ import {Vault} from "src/staking/Vault.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/factory/curve/CRVPoolFactory.sol";
 
-abstract contract PoolFactory_Test is Test {
+abstract contract Staking_Test is Test {
+    using FixedPointMathLib for uint256;
+
     ILocker public locker;
+
+    Vault vault;
+    ISDLiquidityGauge rewardDistributor;
 
     Vault vaultImplementation;
     CRVPoolFactory poolFactory;
@@ -75,68 +80,48 @@ abstract contract PoolFactory_Test is Test {
         );
 
         strategy.setFactory(address(poolFactory));
-    }
 
-    function test_deploy_pool() public {
+        address _vault;
+        address _rewardDistributor;
+
         uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(gauge);
-
-        address vault;
-        address rewardDistributor;
-
         if (weight == 0) {
-            vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);
-            (vault, rewardDistributor) = poolFactory.create(gauge);
+            return;
         } else {
-            (vault, rewardDistributor) = poolFactory.create(gauge);
+            (_vault, _rewardDistributor) = poolFactory.create(gauge);
 
-            /// Vault Checks.
-            assertEq(address(Vault(vault).token()), address(token));
-            assertEq(address(Vault(vault).strategy()), address(strategy));
-            assertEq(address(Vault(vault).liquidityGauge()), rewardDistributor);
+            vault = Vault(_vault);
+            rewardDistributor = ISDLiquidityGauge(_rewardDistributor);
 
-            vm.expectRevert(Vault.ALREADY_INITIALIZED.selector);
-            Vault(vault).initialize();
-
-            /// Reward Distributor Checks.
-            assertEq(ISDLiquidityGauge(rewardDistributor).vault(), vault);
-            assertEq(ISDLiquidityGauge(rewardDistributor).staking_token(), vault);
-
-            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(0), poolFactory.SDT());
-            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
-
-            /// Check if there's extra rewards in the gauge.
-            _checkExtraRewards(rewardDistributor);
+            /// Approve vault to spend LP tokens
+            token.approve(address(vault), type(uint256).max);
         }
     }
 
-    function _checkExtraRewards(address rewardDistributor) public {
-        // view function called only to recognize the gauge type
-        bytes memory data = abi.encodeWithSignature("reward_tokens(uint256)", 0);
-        (bool success,) = gauge.call(data);
-        if (!success) {
-            assertEq(strategy.lGaugeType(gauge), 1);
-        } else {
-            uint256 _count = 2; // 2 because we already checked for SDT and CRV
-            for (uint8 i = 0; i < 8;) {
-                // Get reward token
-                address _extraRewardToken = ISDLiquidityGauge(gauge).reward_tokens(i);
-                if (_extraRewardToken == address(0)) {
-                    break;
-                }
+    function test_deposit(uint128 _amount, bool _doEarn) public {
+        if (address(vault) == address(0)) {
+            return;
+        }
 
-                ISDLiquidityGauge.Reward memory reward =
-                    ISDLiquidityGauge(rewardDistributor).reward_data(_extraRewardToken);
-                assertEq(reward.distributor, address(strategy));
+        uint256 amount = uint256(_amount);
+        vm.assume(amount != 0);
 
-                if (_extraRewardToken != REWARD_TOKEN && _extraRewardToken != poolFactory.SDT()) {
-                    _count += 1;
-                }
+        deal(address(token), address(this), amount);
+        vault.deposit(address(this), amount, _doEarn);
 
-                unchecked {
-                    ++i;
-                }
-            }
-            assertEq(_count, ISDLiquidityGauge(rewardDistributor).reward_count());
+        assertEq(vault.balanceOf(address(this)), 0);
+
+        if(_doEarn){
+            assertEq(vault.incentiveTokenAmount(), 0);
+            assertEq(token.balanceOf(address(vault)), 0);
+            assertEq(rewardDistributor.balanceOf(address(this)), amount);
+        }
+        else{
+            uint256 _incentiveTokenAmount = amount.mulDivDown(1, 1000);
+
+            assertEq(token.balanceOf(address(vault)), amount);
+            assertEq(vault.incentiveTokenAmount(), _incentiveTokenAmount);
+            assertEq(rewardDistributor.balanceOf(address(this)), amount - _incentiveTokenAmount);
         }
     }
 }
