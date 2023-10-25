@@ -19,6 +19,9 @@ abstract contract PoolFactory {
     /// @notice Stake DAO strategy contract address.
     IStrategy public immutable strategy;
 
+    /// @notice Reward token address.
+    address public immutable rewardToken;
+
     /// @notice Staking Deposit implementation address.
     address public immutable vaultImplementation;
 
@@ -52,7 +55,13 @@ abstract contract PoolFactory {
     /// @notice Emitted when a new pool is deployed.
     event PoolDeployed(address vault, address rewardDistributor, address token, address gauge);
 
-    constructor(address _strategy, address _vaultImplementation, address _liquidityGaugeImplementation) {
+    constructor(
+        address _strategy,
+        address _rewardToken,
+        address _vaultImplementation,
+        address _liquidityGaugeImplementation
+    ) {
+        rewardToken = _rewardToken;
         strategy = IStrategy(_strategy);
         vaultImplementation = _vaultImplementation;
         liquidityGaugeImplementation = _liquidityGaugeImplementation;
@@ -90,8 +99,11 @@ abstract contract PoolFactory {
         strategy.setGauge(lp, _gauge);
         strategy.setRewardDistributor(_gauge, rewardDistributor);
 
+        /// Add Reward Token.
+        ISDLiquidityGauge(rewardDistributor).add_reward(rewardToken, address(strategy));
+
         /// Add extra rewards.
-        _addExtraRewards();
+        _addExtraRewards(_gauge, rewardDistributor);
 
         /// Set ClaimHelper as claimer.
         ISDLiquidityGauge(rewardDistributor).set_claimer(CLAIM_HELPER);
@@ -105,7 +117,25 @@ abstract contract PoolFactory {
         emit PoolDeployed(vault, rewardDistributor, lp, _gauge);
     }
 
-    function _addExtraRewards() internal virtual {}
+    function _addExtraRewards(address _gauge, address rewardDistributor) internal virtual {
+        // view function called only to recognize the gauge type
+        bytes memory data = abi.encodeWithSignature("reward_tokens(uint256)", 0);
+        (bool success,) = _gauge.call(data);
+        if (!success) {
+            /// Means that the gauge doesn't support extra rewards.
+            strategy.setLGtype(_gauge, 1);
+        }
+
+        for (uint8 i = 0; i < 8;) {
+            // Get reward token
+            address _extraRewardToken = ISDLiquidityGauge(_gauge).reward_tokens(i);
+            if (_extraRewardToken == address(0)) break;
+
+            if (_isValidToken(_extraRewardToken)) {
+                ISDLiquidityGauge(rewardDistributor).add_reward(_extraRewardToken, address(strategy));
+            }
+        }
+    }
 
     function _isValidGauge(address _gauge) internal view virtual returns (bool) {}
 
