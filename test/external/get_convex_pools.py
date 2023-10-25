@@ -18,12 +18,29 @@ with open("test/external/strategy.json", "r") as f:
 INFURA_URL = "https://mainnet.infura.io/v3/" + os.getenv("INFURA_KEY")
 w3 = Web3(Web3.HTTPProvider(INFURA_URL))
 
+# Query all pools on Convex.
+booster = w3.eth.contract(address=BOOSTER, abi=BOOSTER_ABI)
+strategy = w3.eth.contract(address=STRATEGY, abi=STRATEGY_ABI)
+
+def get_all_pools():
+    pool_length = booster.functions.poolLength().call()
+
+    pool_list = []
+
+    for i in range(pool_length):
+        pool = booster.functions.poolInfo(i).call()
+
+        pool_list.append(
+            {"pid": i, "rewardDistributor": ZERO_ADDRESS, "name": "_" + str(i)}
+        )
+
+    # Dump to JSON
+    with open("test/external/all_pools.json", "w") as f:
+        json.dump(pool_list, f, indent=4)
+
+
 
 def build_pools():
-    # Query all pools on Convex.
-    booster = w3.eth.contract(address=BOOSTER, abi=BOOSTER_ABI)
-    strategy = w3.eth.contract(address=STRATEGY, abi=STRATEGY_ABI)
-
     pool_length = booster.functions.poolLength().call()
 
     pool_list = []
@@ -45,7 +62,7 @@ def build_pools():
 
 
 def main():
-    return build_pools()
+    return get_all_pools()
 
 
 __name__ == "__main__" and main()

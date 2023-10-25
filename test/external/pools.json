@@ -720,6 +720,11 @@
         "name": "_223"
     },
     {
+        "pid": 224,
+        "rewardDistributor": "0xB25c8b3329d05c67194747653ae19d349c39fCB3",
+        "name": "_224"
+    },
+    {
         "pid": 225,
         "rewardDistributor": "0x9343EB26c0b5fC4d13362920eA6C194b5476d366",
         "name": "_225"
@@ -768,5 +773,35 @@
         "pid": 238,
         "rewardDistributor": "0x9bbF31E99F30c38a5003952206C31EEa77540BeF",
         "name": "_238"
+    },
+    {
+        "pid": 240,
+        "rewardDistributor": "0xaA81e655e0611597c75142f4030121093EF2c12A",
+        "name": "_240"
+    },
+    {
+        "pid": 241,
+        "rewardDistributor": "0xdD745CA371c965B8491677Aefa07AC1C04F3B278",
+        "name": "_241"
+    },
+    {
+        "pid": 244,
+        "rewardDistributor": "0x3D92968C1cb89Dc769E75Ba7C0D9Cd65505e021E",
+        "name": "_244"
+    },
+    {
+        "pid": 248,
+        "rewardDistributor": "0x27Ed381A396125a8E53Cc1eF2117B68fd0ABEc8a",
+        "name": "_248"
+    },
+    {
+        "pid": 249,
+        "rewardDistributor": "0x0CCd6f6F7FbD09aC2BC3241a1A1c707a69A63b2a",
+        "name": "_249"
+    },
+    {
+        "pid": 250,
+        "rewardDistributor": "0xA2eEabfD28468d1402Be2112613946C8A2f3FbDe",
+        "name": "_250"
     }
 ]
