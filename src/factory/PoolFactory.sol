@@ -10,6 +10,7 @@ import {IStrategy} from "src/interfaces/IStrategy.sol";
 import {IFallback} from "src/interfaces/IFallback.sol";
 import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
 
+/// @notice Factory built to be compatible with CRV gauges but can be overidden to support other gauges/protocols.
 abstract contract PoolFactory {
     using LibClone for address;
 
