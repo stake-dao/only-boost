@@ -3,8 +3,8 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 
-import "src/fallbacks/convex/ConvexImplementation.sol";
-import "src/fallbacks/convex/ConvexMinimalProxyFactory.sol";
+import "src/fallbacks/ConvexImplementation.sol";
+import "src/fallbacks/ConvexMinimalProxyFactory.sol";
 
 contract ConvexMinimalProxyTest is Test {
     using FixedPointMathLib for uint256;

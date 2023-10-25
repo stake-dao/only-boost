@@ -1509,4 +1509,3 @@ uint256 constant _250_PID = 250;
 contract _250_Factory_Test is PoolFactory_Test(_250_PID) {}
 
 contract _250_Staking_Test is Staking_Test(_250_PID) {}
-

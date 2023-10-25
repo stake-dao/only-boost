@@ -111,12 +111,11 @@ abstract contract Staking_Test is Test {
 
         assertEq(vault.balanceOf(address(this)), 0);
 
-        if(_doEarn){
+        if (_doEarn) {
             assertEq(vault.incentiveTokenAmount(), 0);
             assertEq(token.balanceOf(address(vault)), 0);
             assertEq(rewardDistributor.balanceOf(address(this)), amount);
-        }
-        else{
+        } else {
             uint256 _incentiveTokenAmount = amount.mulDivDown(1, 1000);
 
             assertEq(token.balanceOf(address(vault)), amount);
