@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {Clone} from "solady/utils/Clone.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC20} from "solady/tokens/ERC20.sol";
 import {IStrategy} from "src/interfaces/IStrategy.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
@@ -26,9 +26,6 @@ contract Vault is ERC20, Clone {
     /// @notice Throws if the contract is already initialized.
     error ALREADY_INITIALIZED();
 
-    /// @notice Throws if the token decimals are not 18.
-    error UNCOMPATIBLE_TOKEN_DECIMALS();
-
     /// @notice Throws if the sender does not have enough tokens.
     error NOT_ENOUGH_TOKENS();
 
@@ -48,16 +45,8 @@ contract Vault is ERC20, Clone {
         return ISDLiquidityGauge(_getArgAddress(40));
     }
 
-    constructor() ERC20("Stake DAO Vault", "sdVault", 18) {}
-
     function initialize() external {
-        if (token().decimals() != 18) revert UNCOMPATIBLE_TOKEN_DECIMALS();
         if (token().allowance(address(this), address(strategy())) != 0) revert ALREADY_INITIALIZED();
-
-        string memory tokenSymbol = token().symbol();
-
-        name = string(abi.encodePacked("sd", tokenSymbol, " Vault"));
-        symbol = string(abi.encodePacked("sd", tokenSymbol, "-vault"));
 
         SafeTransferLib.safeApproveWithRetry(address(token()), address(strategy()), type(uint256).max);
         SafeTransferLib.safeApproveWithRetry(address(this), address(liquidityGauge()), type(uint256).max);
@@ -119,11 +108,23 @@ contract Vault is ERC20, Clone {
 
     /// @notice function to withdraw all curve LPs deposited
     function withdrawAll() external {
-        withdraw(balanceOf[msg.sender]);
+        withdraw(balanceOf(msg.sender));
     }
 
     function _earn() internal {
         uint256 _balance = token().balanceOf(address(this));
         strategy().deposit(address(token()), _balance);
+    }
+
+    function name() public view override returns (string memory) {
+        return string(abi.encodePacked("sd", token().symbol(), " Vault"));
+    }
+
+    function symbol() public view override returns (string memory) {
+        return string(abi.encodePacked("sd", token().symbol(), "-vault"));
+    }
+
+    function decimals() public view override returns (uint8) {
+        return token().decimals();
     }
 }
