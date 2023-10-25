@@ -24,7 +24,6 @@ contract CRVPoolFactory is PoolFactory {
         } catch {
             /// Do nothing
         }
-
         return true;
     }
 }

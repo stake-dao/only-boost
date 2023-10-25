@@ -135,6 +135,10 @@ abstract contract PoolFactory {
             if (_isValidToken(_extraRewardToken)) {
                 ISDLiquidityGauge(rewardDistributor).add_reward(_extraRewardToken, address(strategy));
             }
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
