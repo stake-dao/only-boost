@@ -7,7 +7,7 @@ import "src/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
 import {Vault} from "src/staking/Vault.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
-import {CRVPoolFactory} from "src/factory/curve/CRVPoolFactory.sol";
+import {IGaugeController, PoolFactory, CRVPoolFactory} from "src/factory/curve/CRVPoolFactory.sol";
 
 abstract contract PoolFactory_Test is Test {
     ILocker public locker;
@@ -18,14 +18,14 @@ abstract contract PoolFactory_Test is Test {
     CRVStrategy strategy;
     CRVStrategy implementation;
 
-
     ERC20 public token;
     address public gauge;
 
     address[] public extraRewardTokens;
 
-
     address public constant BOOSTER = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+
+    IGaugeController public constant GAUGE_CONTROLLER = IGaugeController(0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB);
 
     address public constant VE_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
     address public constant MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
@@ -34,7 +34,7 @@ abstract contract PoolFactory_Test is Test {
     address public constant gaugeImplementation = address(0x3Dc56D46F0Bd13655EfB29594a2e44534c453BF9);
 
     constructor(uint256 _pid) {
-         /// Check if the LP token is valid
+        /// Check if the LP token is valid
         (address lpToken,, address _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
 
         gauge = _gauge;
@@ -77,8 +77,21 @@ abstract contract PoolFactory_Test is Test {
         strategy.setFactory(address(poolFactory));
     }
 
-
     function test_deploy_pool() public {
-        (address vault, address rewardDistributor) = poolFactory.create(gauge);
+        uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(gauge);
+
+        address vault;
+        address rewardDistributor;
+
+        if(weight == 0) {
+            vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);
+            (vault, rewardDistributor) = poolFactory.create(gauge);
+        }
+        else{
+            (vault, rewardDistributor) = poolFactory.create(gauge);
+            assertEq(address(Vault(vault).token()), address(token));
+            assertEq(address(Vault(vault).strategy()), address(strategy));
+            assertEq(address(Vault(vault).liquidityGauge()), rewardDistributor);
+        }
     }
 }
