@@ -12,6 +12,9 @@ evm_version = "shanghai"
   ]
 
 ffi = true
+
+# Enable before deploying.
+optimizer = false
 optimizers_runs = 200
 
 remappings = [
