@@ -269,6 +269,7 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @notice Claim protocol fees and send them to the fee receiver.
     function claimProtocolFees() external {
         if (feesAccrued == 0) return;
+        if(feeReceiver == address(0)) revert ADDRESS_NULL();
 
         uint256 _feesAccrued = feesAccrued;
         feesAccrued = 0;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import "test/Base.t.sol";
+import "test/integration/Base.t.sol";
 import "test/integration/only-boost/OnlyBoost.t.sol";
 
 uint256 constant _0_PID = 0;
