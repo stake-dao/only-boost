@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solady/tokens/ERC20.sol";
+import {IVault} from "src/interfaces/IVault.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 
@@ -24,11 +25,20 @@ abstract contract VaultFactory {
     /// @notice Liquidity Gauge implementation address.
     address public immutable liquidityGaugeImplementation;
 
+    /// @notice Stake DAO token address.
+    address public constant SDT = 0x73968b9a57c6E53d41345FD57a6E6ae27d6CDB2F;
+
+    /// @notice Voting Escrow Stake DAO token address.
+    address public constant VESDT = 0x0C30476f66034E11782938DF8e4384970B6c9e8a;
+
     /// @notice SDT VEBoost proxy address.
     address public constant VE_BOOST_PROXY = 0xD67bdBefF01Fc492f1864E61756E5FBB3f173506;
 
     /// @notice Claim helper contract address for LiquidityGauges.
     address public constant CLAIM_HELPER = 0x633120100e108F03aCe79d6C78Aac9a56db1be0F;
+
+    /// @notice Stake DAO token distributor address.
+    address public constant SDT_DISTRIBUTOR = 0x9C99dffC1De1AfF7E7C1F36fCdD49063A281e18C;
 
     /// @notice Throwed if the gauge is not valid candidate.
     error INVALID_GAUGE();
@@ -54,9 +64,40 @@ abstract contract VaultFactory {
 
         address lp = _getGaugeStakingToken(_gauge);
 
-        (string memory tokenName, string memory tokenSymbol) = _getNameAndSymbol(lp);
+        /// Clone the liquidity gauge.
+        address rewardDistributor = LibClone.clone(liquidityGaugeImplementation);
 
         /// Clone the vault.
+        bytes32 salt = keccak256(abi.encodePacked(lp, _gauge));
+        bytes memory vaultData = abi.encodePacked(lp, address(strategy), rewardDistributor);
+
+        address vault = vaultImplementation.cloneDeterministic(vaultData, salt);
+
+        /// Initialize RewardDistributor.
+        (, string memory _symbol) = _getNameAndSymbol(lp);
+        ISDLiquidityGauge(rewardDistributor).initialize(
+            vault, address(this), SDT, VESDT, VE_BOOST_PROXY, SDT_DISTRIBUTOR, vault, _symbol
+        );
+
+        /// Initialize Vault.
+        IVault(vault).initialize();
+
+        /// Initialize vault and reward distributor in strategy.
+        strategy.toggleVault(vault);
+        strategy.setGauge(lp, _gauge);
+        strategy.setRewardDistributor(_gauge, rewardDistributor);
+
+        /// Add extra rewards.
+        _addExtraRewards();
+
+        /// Set ClaimHelper as claimer.
+        ISDLiquidityGauge(rewardDistributor).set_claimer(CLAIM_HELPER);
+
+        /// Transfer ownership of the reward distributor to the strategy.
+        ISDLiquidityGauge(rewardDistributor).commit_transfer_ownership(address(strategy));
+
+        /// Accept ownership of the reward distributor.
+        strategy.acceptRewardDistributorOwnership(rewardDistributor);
     }
 
     function _addExtraRewards() internal virtual {}

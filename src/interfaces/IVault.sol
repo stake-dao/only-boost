@@ -3,7 +3,7 @@
 pragma solidity 0.8.19;
 
 interface IVault {
-    function setCurveStrategy(address _newStrat) external;
-    function deposit(address _staker, uint256 _amount, bool _earn) external;
-    function available() external view returns (uint256);
+    function deposit(address _recipient, uint256 _amount, bool _earn) external;
+    function withdraw(uint256 _shares) external;
+    function initialize() external;
 }

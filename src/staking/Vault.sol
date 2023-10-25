@@ -23,11 +23,11 @@ contract Vault is ERC20, Clone {
     /// @notice Total amount of incentive token.
     uint256 public incentiveTokenAmount;
 
-    /// @notice Throws if the contract is already initialized.
-    error ALREADY_INITIALIZED();
-
     /// @notice Throws if the sender does not have enough tokens.
     error NOT_ENOUGH_TOKENS();
+
+    /// @notice Throws if the contract is already initialized.
+    error ALREADY_INITIALIZED();
 
     //////////////////////////////////////////////////////
     /// --- IMMUTABLES
