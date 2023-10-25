@@ -33,10 +33,14 @@ interface ISDLiquidityGauge {
 
     function withdraw(uint256 _value, address _addr) external;
 
-    function lp_token() external view returns (address);
+    function staking_token() external view returns (address);
+
+    function vault() external view returns (address);
 
     // solhint-disable-next-line
     function reward_data(address _tokenReward) external view returns (Reward memory);
+
+    function reward_count() external view returns (uint256);
 
     function balanceOf(address) external returns (uint256);
 

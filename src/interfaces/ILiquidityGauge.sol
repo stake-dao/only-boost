@@ -47,12 +47,5 @@ interface ILiquidityGauge {
 
     function set_reward_distributor(address _rewardToken, address _newDistrib) external;
 
-    function initialize(
-        address staking_token,
-        address admin,
-        address SDT,
-        address voting_escrow,
-        address veBoost_proxy,
-        address distributor
-    ) external;
+    function lp_token() external view returns (address);
 }
