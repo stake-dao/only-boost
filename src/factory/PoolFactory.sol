@@ -69,7 +69,7 @@ abstract contract PoolFactory {
     }
 
     /// @notice Add new staking gauge to Stake DAO Locker.
-    function create(address _gauge) external {
+    function create(address _gauge) external returns (address vault, address rewardDistributor) {
         // check if the gauge is valid
         if (!_isValidGauge(_gauge)) revert INVALID_GAUGE();
         // check if the lp has been already used to clone a vault
@@ -78,13 +78,13 @@ abstract contract PoolFactory {
         address lp = _getGaugeStakingToken(_gauge);
 
         /// Clone the liquidity gauge.
-        address rewardDistributor = LibClone.clone(liquidityGaugeImplementation);
+        rewardDistributor = LibClone.clone(liquidityGaugeImplementation);
 
         /// Clone the vault.
         bytes32 salt = keccak256(abi.encodePacked(lp, _gauge));
         bytes memory vaultData = abi.encodePacked(lp, address(strategy), rewardDistributor);
 
-        address vault = vaultImplementation.cloneDeterministic(vaultData, salt);
+        vault = vaultImplementation.cloneDeterministic(vaultData, salt);
 
         /// Initialize RewardDistributor.
         (, string memory _symbol) = _getNameAndSymbol(lp);
@@ -125,6 +125,8 @@ abstract contract PoolFactory {
         if (!success) {
             /// Means that the gauge doesn't support extra rewards.
             strategy.setLGtype(_gauge, 1);
+
+            return;
         }
 
         for (uint8 i = 0; i < 8;) {

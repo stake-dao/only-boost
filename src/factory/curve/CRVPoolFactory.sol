@@ -22,8 +22,14 @@ contract CRVPoolFactory is PoolFactory {
         try GAUGE_CONTROLLER.gauge_types(_token) {
             return false;
         } catch {
-            /// Do nothing
+            return true;
         }
+    }
+
+    function _isValidGauge(address _gauge) internal view override returns (bool) {
+        uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(_gauge);
+        if (weight == 0) return false;
+
         return true;
     }
 }
