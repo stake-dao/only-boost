@@ -10,7 +10,7 @@ import {IStrategy} from "src/interfaces/IStrategy.sol";
 import {IFallback} from "src/interfaces/IFallback.sol";
 import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
 
-abstract contract VaultFactory {
+abstract contract PoolFactory {
     using LibClone for address;
 
     /// @notice Denominator for fixed point math.
@@ -48,6 +48,9 @@ abstract contract VaultFactory {
 
     /// @notice Throwed if the gauge has been already used.
     error GAUGE_ALREADY_USED();
+
+    /// @notice Emitted when a new pool is deployed.
+    event PoolDeployed(address vault, address rewardDistributor, address token, address gauge);
 
     constructor(address _strategy, address _vaultImplementation, address _liquidityGaugeImplementation) {
         strategy = IStrategy(_strategy);
@@ -98,6 +101,8 @@ abstract contract VaultFactory {
 
         /// Accept ownership of the reward distributor.
         strategy.acceptRewardDistributorOwnership(rewardDistributor);
+
+        emit PoolDeployed(vault, rewardDistributor, lp, _gauge);
     }
 
     function _addExtraRewards() internal virtual {}
