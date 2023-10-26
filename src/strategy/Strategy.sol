@@ -546,7 +546,14 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @param _factory Address of new Accumulator
     function setFactory(address _factory) external onlyGovernance {
         if (_factory == address(0)) revert ADDRESS_NULL();
+
+        /// Remove allocation for the old factory.
+        allowed[factory] = false;
+
         factory = _factory;
+
+        /// Allow the factory to interact with this contract.
+        allowed[_factory] = true;
     }
 
     /// @notice Set new RewardToken FeeDistributor new address

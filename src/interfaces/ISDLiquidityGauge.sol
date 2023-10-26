@@ -18,7 +18,11 @@ interface ISDLiquidityGauge {
     // solhint-disable-next-line
     function claim_rewards_for(address _user, address _recipient) external;
 
+    function claim_rewards() external;
+
     function claim_rewards(address _user) external;
+
+    function claim_rewards(address _user, address _receiver) external;
 
     // // solhint-disable-next-line
     // function claim_rewards_for(address _user) external;
@@ -41,6 +45,8 @@ interface ISDLiquidityGauge {
     function reward_data(address _tokenReward) external view returns (Reward memory);
 
     function reward_count() external view returns (uint256);
+
+    function totalSupply() external view returns (uint256);
 
     function balanceOf(address) external returns (uint256);
 

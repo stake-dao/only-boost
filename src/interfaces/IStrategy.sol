@@ -17,6 +17,7 @@ interface IStrategy {
     function toggleVault(address vault) external;
     function setGauge(address token, address gauge) external;
     function setLGtype(address gauge, uint256 gaugeType) external;
+    function addRewardToken(address _token, address _rewardDistributor) external;
     function acceptRewardDistributorOwnership(address rewardDistributor) external;
     function setRewardDistributor(address gauge, address rewardDistributor) external;
 }

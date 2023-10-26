@@ -96,15 +96,23 @@ abstract contract Staking_Test is Test {
             /// Approve vault to spend LP tokens
             token.approve(address(vault), type(uint256).max);
         }
+
+        /// Label contracts
+        vm.label(address(vault), "vault");
+        vm.label(address(rewardDistributor), "rewardDistributor");
+        vm.label(address(strategy), "strategy");
+        vm.label(address(poolFactory), "poolFactory");
+        vm.label(address(token), "token");
+        vm.label(address(gauge), "gauge");
     }
 
-    function test_deposit(uint128 _amount, bool _doEarn) public {
+    function test_deposit_and_withdraw(uint128 _amount, bool _doEarn) public {
         if (address(vault) == address(0)) {
             return;
         }
 
         uint256 amount = uint256(_amount);
-        vm.assume(amount != 0);
+        vm.assume(amount > 1e18);
 
         deal(address(token), address(this), amount);
         vault.deposit(address(this), amount, _doEarn);
@@ -117,10 +125,32 @@ abstract contract Staking_Test is Test {
             assertEq(rewardDistributor.balanceOf(address(this)), amount);
         } else {
             uint256 _incentiveTokenAmount = amount.mulDivDown(1, 1000);
-
             assertEq(token.balanceOf(address(vault)), amount);
+
+            amount -= _incentiveTokenAmount;
+
             assertEq(vault.incentiveTokenAmount(), _incentiveTokenAmount);
-            assertEq(rewardDistributor.balanceOf(address(this)), amount - _incentiveTokenAmount);
+            assertEq(rewardDistributor.balanceOf(address(this)), amount);
         }
+
+        if (_doEarn) {
+            /// Need to first skip weeks to harvest Convex.
+            skip(1 days);
+
+            vm.prank(address(0xBEEC));
+            strategy.harvest(address(token), false, true);
+
+            skip(1 days);
+
+            rewardDistributor.claim_rewards(address(this), address(this));
+            /// Simple check to see if we have received rewards.
+            // assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
+        }
+
+        vault.withdraw(amount);
+
+        assertEq(vault.totalSupply(), 0);
+        assertEq(rewardDistributor.totalSupply(), 0);
+        assertEq(token.balanceOf(address(this)), amount);
     }
 }

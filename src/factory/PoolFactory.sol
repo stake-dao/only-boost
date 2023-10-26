@@ -101,9 +101,6 @@ abstract contract PoolFactory {
         strategy.setGauge(lp, _gauge);
         strategy.setRewardDistributor(_gauge, rewardDistributor);
 
-        /// Add extra rewards.
-        _addRewards(_gauge, rewardDistributor);
-
         /// Set ClaimHelper as claimer.
         ISDLiquidityGauge(rewardDistributor).set_claimer(CLAIM_HELPER);
 
@@ -112,6 +109,9 @@ abstract contract PoolFactory {
 
         /// Accept ownership of the reward distributor.
         strategy.acceptRewardDistributorOwnership(rewardDistributor);
+
+        /// Add extra rewards.
+        _addRewards(_gauge, rewardDistributor);
 
         emit PoolDeployed(vault, rewardDistributor, lp, _gauge);
     }
@@ -136,7 +136,7 @@ abstract contract PoolFactory {
             if (_extraRewardToken == address(0)) break;
 
             if (_isValidToken(_extraRewardToken)) {
-                ISDLiquidityGauge(rewardDistributor).add_reward(_extraRewardToken, address(strategy));
+                strategy.addRewardToken(_gauge, _extraRewardToken);
             }
 
             unchecked {
