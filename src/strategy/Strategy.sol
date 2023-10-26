@@ -602,7 +602,7 @@ abstract contract Strategy is UUPSUpgradeable {
         /// Check if the address is a contract.
         int size;
         assembly { size := extcodesize(_address) }
-        if(size == 0) revert ADDRESS_NULL();
+        if(size == 0) revert NOT_CONTRACT();
 
         allowed[_address] = true;
     }
