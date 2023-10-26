@@ -101,6 +101,9 @@ abstract contract PoolFactory {
         strategy.setGauge(lp, _gauge);
         strategy.setRewardDistributor(_gauge, rewardDistributor);
 
+        /// We first add the reward token.
+        _addRewardToken(rewardDistributor);
+
         /// Set ClaimHelper as claimer.
         ISDLiquidityGauge(rewardDistributor).set_claimer(CLAIM_HELPER);
 
@@ -111,15 +114,16 @@ abstract contract PoolFactory {
         strategy.acceptRewardDistributorOwnership(rewardDistributor);
 
         /// Add extra rewards.
-        _addRewards(_gauge, rewardDistributor);
+        _addExtraRewards(_gauge);
 
         emit PoolDeployed(vault, rewardDistributor, lp, _gauge);
     }
 
-    function _addRewards(address _gauge, address rewardDistributor) internal virtual {
-        /// We first add the reward token.
+    function _addRewardToken(address rewardDistributor) internal virtual {
         ISDLiquidityGauge(rewardDistributor).add_reward(rewardToken, address(strategy));
+    }
 
+    function _addExtraRewards(address _gauge) internal virtual {
         // view function called only to recognize the gauge type
         bytes memory data = abi.encodeWithSignature("reward_tokens(uint256)", 0);
         (bool success,) = _gauge.call(data);
