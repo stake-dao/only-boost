@@ -9,6 +9,10 @@ import {Vault} from "src/staking/Vault.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/factory/curve/CRVPoolFactory.sol";
 
+interface IClaimer {
+    function claim_rewards(address[] memory _gauge) external;
+}
+
 abstract contract Staking_Test is Test {
     using FixedPointMathLib for uint256;
 
@@ -142,9 +146,14 @@ abstract contract Staking_Test is Test {
 
             skip(1 days);
 
-            rewardDistributor.claim_rewards(address(this), address(this));
+            address[] memory _gauges = new address[](1);
+            _gauges[0] = gauge;
+
+            rewardDistributor.claim_rewards();
+            console.log(rewardDistributor.reward_count());
+
             /// Simple check to see if we have received rewards.
-            // assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
+            assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
         }
 
         vault.withdraw(amount);

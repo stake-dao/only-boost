@@ -70,7 +70,7 @@ abstract contract PoolFactory {
     }
 
     /// @notice Add new staking gauge to Stake DAO Locker.
-    function create(address _gauge) external returns (address vault, address rewardDistributor) {
+    function create(address _gauge) public virtual returns (address vault, address rewardDistributor) {
         // check if the gauge is valid
         if (!_isValidGauge(_gauge)) revert INVALID_GAUGE();
         // check if the lp has been already used to clone a vault

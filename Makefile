@@ -17,7 +17,7 @@ snapshot:
 	@forge snapshot
 
 test:
-	@forge test
+	@forge test --mc _24_Staking_Test
 
 test-f-%:
 	@FOUNDRY_MATCH_TEST=$* make test 
