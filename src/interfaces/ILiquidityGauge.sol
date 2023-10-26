@@ -48,4 +48,6 @@ interface ILiquidityGauge {
     function set_reward_distributor(address _rewardToken, address _newDistrib) external;
 
     function lp_token() external view returns (address);
+
+    function is_killed() external view returns (bool);
 }

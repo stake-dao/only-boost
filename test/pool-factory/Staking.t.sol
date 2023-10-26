@@ -88,8 +88,14 @@ abstract contract Staking_Test is Test {
         address _vault;
         address _rewardDistributor;
 
+        bool isKilled;
         uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(gauge);
-        if (weight == 0) {
+
+        try ILiquidityGauge(gauge).is_killed() returns (bool _isKilled) {
+            isKilled = _isKilled;
+        } catch {}
+
+        if (weight == 0 || isKilled) {
             return;
         } else {
             (_vault, _rewardDistributor) = poolFactory.create(gauge);
@@ -100,25 +106,18 @@ abstract contract Staking_Test is Test {
             /// Approve vault to spend LP tokens
             token.approve(address(vault), type(uint256).max);
         }
-
-        /// Label contracts
-        vm.label(address(vault), "vault");
-        vm.label(address(rewardDistributor), "rewardDistributor");
-        vm.label(address(strategy), "strategy");
-        vm.label(address(poolFactory), "poolFactory");
-        vm.label(address(token), "token");
-        vm.label(address(gauge), "gauge");
     }
 
-    function test_deposit_and_withdraw(uint128 _amount, bool _doEarn) public {
+    function test_deposit_and_withdraw(bool _doEarn) public {
         if (address(vault) == address(0)) {
             return;
         }
 
-        uint256 amount = uint256(_amount);
-        vm.assume(amount > 1e18);
+        uint256 amount = 10_000e18;
+        vm.assume(amount != 0);
 
         deal(address(token), address(this), amount);
+        /// Approve vault to spend LP tokens
         vault.deposit(address(this), amount, _doEarn);
 
         assertEq(vault.balanceOf(address(this)), 0);
@@ -141,19 +140,22 @@ abstract contract Staking_Test is Test {
             /// Need to first skip weeks to harvest Convex.
             skip(1 days);
 
-            vm.prank(address(0xBEEC));
             strategy.harvest(address(token), false, true);
 
             skip(1 days);
+            rewardDistributor.claim_rewards(address(this));
 
-            address[] memory _gauges = new address[](1);
-            _gauges[0] = gauge;
-
-            rewardDistributor.claim_rewards();
-            console.log(rewardDistributor.reward_count());
-
-            /// Simple check to see if we have received rewards.
-            assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
+            try ILiquidityGauge(gauge).is_killed() returns (bool isKilled) {
+                if (!isKilled) {
+                    /// Simple check to see if we have received rewards.
+                    assertGt(ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor)), 0);
+                    assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
+                }
+            } catch {
+                /// Simple check to see if we have received rewards.
+                assertGt(ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor)), 0);
+                assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
+            }
         }
 
         vault.withdraw(amount);

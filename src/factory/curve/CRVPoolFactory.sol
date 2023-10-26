@@ -30,6 +30,12 @@ contract CRVPoolFactory is PoolFactory {
         uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(_gauge);
         if (weight == 0) return false;
 
+        /// Check if the gauge is not killed.
+        /// Not all the pools, but most of them, have this function.
+        try ILiquidityGauge(_gauge).is_killed() returns (bool isKilled) {
+            if (isKilled) return false;
+        } catch {}
+
         return true;
     }
 }
