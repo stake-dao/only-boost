@@ -112,6 +112,9 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @notice Error emitted when auth failed
     error GOVERNANCE_OR_FACTORY();
 
+    /// @notice Error emitted when trying to allow an EOA.
+    error NOT_CONTRACT();
+
     //////////////////////////////////////////////////////
     /// --- CONSTRUCTOR
     //////////////////////////////////////////////////////
@@ -589,6 +592,23 @@ abstract contract Strategy is UUPSUpgradeable {
     function updateClaimIncentiveFee(uint256 _claimIncentiveFee) external onlyGovernance {
         if (protocolFeesPercent + _claimIncentiveFee > DENOMINATOR) revert FEE_TOO_HIGH();
         claimIncentiveFee = _claimIncentiveFee;
+    }
+
+    /// @notice Allow a module to interact with the `execute` function.
+    /// @dev excodesize can be bypassed but whitelist should go through governance.
+    function allowAddress(address _address) external onlyGovernance {
+        if(_address == address(0)) revert ADDRESS_NULL();
+
+        /// Check if the address is a contract.
+        int size;
+        assembly { size := extcodesize(_address) }
+        if(size == 0) revert ADDRESS_NULL();
+
+        allowed[_address] = true;
+    }
+
+    function disallowAddress(address _address) external onlyGovernance {
+        allowed[_address] = false;
     }
 
     //////////////////////////////////////////////////////
