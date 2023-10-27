@@ -97,6 +97,9 @@ contract Optimizer is IOnlyBoost {
         _;
     }
 
+    /// @notice Constructor to set the curve strategy and proxy factory
+    /// @param _curveStrategy The address of the curve strategy
+    /// @param _proxyFactory The address of the proxy factory
     constructor(address _curveStrategy, address _proxyFactory) {
         strategy = _curveStrategy;
         proxyFactory = IConvexFactory(_proxyFactory);
@@ -149,11 +152,13 @@ contract Optimizer is IOnlyBoost {
     /// @dev This is not a view due to the cache system
     /// @param gauge Address of Liquidity Gauge corresponding to LP token
     /// @param amount Amount of LP token to deposit
+    /// @param bypassCache If true, bypass the cache system => useful when we do rebalance, so need to recalculate the optimal amount
     function getOptimalDepositAllocation(address gauge, uint256 amount, bool bypassCache)
         public
         onlyStrategy
         returns (address[] memory _depositors, uint256[] memory _allocations)
     {
+        /// Gets the fallback address via the proxy factory; one fallback (clone) per Convex pid
         address _fallback = proxyFactory.fallbacks(gauge);
 
         // If available on Convex Curve
@@ -185,7 +190,8 @@ contract Optimizer is IOnlyBoost {
                 _allocations[0] = amount - _allocations[1];
             }
         }
-        // If not available on Convex Curve
+        // If not available on Convex
+        // We only deposit on Stake DAO 
         else {
             /// Initialize arrays
             _depositors = new address[](1);
@@ -198,7 +204,9 @@ contract Optimizer is IOnlyBoost {
 
     /// @notice Calcul the optimal amount of lps that must be held by the locker or use the cached value
     /// @param gauge Address of the liquidity gauge
-    /// param balanceConvex Balance of the liquidity gauge on Convex Curve
+    /// @param gaugeBalance Balance of the liquidity gauge on Convex Curve
+    /// @param amount Amount of LP token to get the optimal amount for
+    /// @param bypassCache If true, bypass the cache system
     /// @return opt Optimal amount of LP token that must be held by the locker
     function _getOptimalAmount(address gauge, uint256 gaugeBalance, uint256 amount, bool bypassCache)
         internal
@@ -228,6 +236,9 @@ contract Optimizer is IOnlyBoost {
         }
     }
 
+    /// @notice Return the amount that need to be withdrawn from StakeDAO Liquid Locker and from Convex Curve based on the amount to withdraw
+    /// @param gauge Address of Liquidity Gauge corresponding to LP token
+    /// @param amount Amount of LP token to withdraw
     function getOptimalWithdrawalPath(address gauge, uint256 amount)
         public
         view
@@ -275,6 +286,8 @@ contract Optimizer is IOnlyBoost {
         }
     }
 
+    /// @notice Get the fallbacks address for a gauge
+    /// @param gauge Address of the gauge
     function getFallbacks(address gauge) public view returns (address[] memory _fallbacks) {
         _fallbacks = new address[](1);
         _fallbacks[0] = address(proxyFactory.fallbacks(gauge));
@@ -290,6 +303,7 @@ contract Optimizer is IOnlyBoost {
 
     /// @notice Set the cache period
     /// @param newCachePeriod New cache period
+    /// @dev Only the governance can call this
     function setCachePeriod(uint256 newCachePeriod) external onlyGovernance {
         cachePeriod = newCachePeriod;
     }
@@ -297,6 +311,7 @@ contract Optimizer is IOnlyBoost {
     /// @notice Set fees percentage.
     /// @param _stakeDaoFees Fees percentage for StakeDAO
     /// @param _convexFees Fees percentage for Convex
+    /// @dev Only the governance can call this
     function setFees(uint256 _stakeDaoFees, uint256 _convexFees) external onlyGovernance {
         stakeDaoTotalFee = _stakeDaoFees;
         convexTotalFee = _convexFees;
@@ -304,6 +319,8 @@ contract Optimizer is IOnlyBoost {
 
     /// @notice Transfer the governance to a new address.
     /// @param _governance Address of the new governance.
+    /// @dev Only the governance can call this
+    /// @dev 2 step process, first you call this function with the new governance address, then the new governance contract has to call `acceptGovernance`
     function transferGovernance(address _governance) external onlyGovernance {
         futureGovernance = _governance;
     }
