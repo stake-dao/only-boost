@@ -35,7 +35,6 @@ contract CRVPoolFactory is PoolFactory {
 
     /// inheritdoc PoolFactory
     function _isValidGauge(address _gauge) internal view override returns (bool) {
-
         /// Check for the gauge weight.
         uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(_gauge);
 

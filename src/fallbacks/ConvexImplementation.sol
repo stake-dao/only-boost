@@ -11,6 +11,8 @@ import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
 import {IBaseRewardPool} from "src/interfaces/IBaseRewardPool.sol";
 import {IStashTokenWrapper} from "src/interfaces/IStashTokenWrapper.sol";
 
+/// @notice Implementation per PID for Convex.
+/// @dev For each PID, a minimal proxy is deployed using this contract as implementation.
 contract ConvexImplementation is Clone {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -24,6 +26,55 @@ contract ConvexImplementation is Clone {
     /// @notice Error emitted when caller is not strategy
     error STRATEGY();
 
+    //////////////////////////////////////////////////////
+    /// --- IMMUTABLES
+    //////////////////////////////////////////////////////
+
+    /// @notice Address of the Minimal Proxy Factory.
+    /// @dev The protocol fee value is stored in the factory in order to easily update it for all the pools.
+    function factory() public pure returns (IConvexFactory _factory) {
+        return IConvexFactory(_getArgAddress(0));
+    }
+
+    /// @notice Staking token address.
+    function token() public pure returns (address _token) {
+        return _getArgAddress(20);
+    }
+
+    /// @notice Reward token address.
+    function rewardToken() public pure returns (address _rewardToken) {
+        return _getArgAddress(40);
+    }
+
+    /// @notice Convex Reward Token address.
+    function fallbackRewardToken() public pure returns (address _fallbackRewardToken) {
+        return _getArgAddress(60);
+    }
+
+    /// @notice Strategy address.
+    function strategy() public pure returns (address _strategy) {
+        return _getArgAddress(80);
+    }
+
+    /// @notice Convex Entry point contract.
+    function booster() public pure returns (IBooster _booster) {
+        return IBooster(_getArgAddress(100));
+    }
+
+    /// @notice Staking Convex LP contract address.
+    function baseRewardPool() public pure returns (IBaseRewardPool _baseRewardPool) {
+        return IBaseRewardPool(_getArgAddress(120));
+    }
+
+    /// @notice Identifier of the pool on Convex.
+    function pid() public pure returns (uint256 _pid) {
+        return _getArgUint256(140);
+    }
+
+    //////////////////////////////////////////////////////
+    /// --- MODIFIERS & INITIALIZATION
+    //////////////////////////////////////////////////////
+
     modifier onlyStrategy() {
         if (msg.sender != strategy()) revert STRATEGY();
         _;
@@ -34,35 +85,49 @@ contract ConvexImplementation is Clone {
         _;
     }
 
+    /// @notice Initialize the contract by approving the ConvexCurve booster to spend the LP token.
     function initialize() external onlyFactory {
         SafeTransferLib.safeApproveWithRetry(token(), address(booster()), type(uint256).max);
     }
 
-    /// @notice Main gateway to deposit LP token into ConvexCurve
-    /// @dev Only callable by the strategy
-    /// @param amount Amount of LP token to deposit
+    //////////////////////////////////////////////////////
+    /// --- DEPOSIT/WITHDRAW/CLAIM
+    //////////////////////////////////////////////////////
+
+    /// @notice Deposit LP token into Convex.
+    /// @param amount Amount of LP token to deposit.
+    /// @dev The reason there's an empty address parameter is to keep flexibility for future implementations.
+    /// Not all fallbacks will be minimal proxies, so we need to keep the same function signature.
+    /// Only callable by the strategy.
     function deposit(address, uint256 amount) external onlyStrategy {
-        // Deposit the amount into pid from ConvexCurve and stake it into gauge (true)
+        /// Deposit the LP token into Convex and stake it (true) to receive rewards.
         booster().deposit(pid(), amount, true);
     }
 
-    /// @notice Main gateway to withdraw LP token from ConvexCurve
-    /// @dev Only callable by the strategy
-    /// @param amount Amount of LP token to withdraw
+    /// @notice Withdraw LP token from Convex.
+    /// @param amount Amount of LP token to withdraw.
+    /// Only callable by the strategy.
     function withdraw(address, uint256 amount) external onlyStrategy {
-        // Withdraw from Convex gauge without claiming rewards.
+        /// Withdraw from Convex gauge without claiming rewards (false).
         baseRewardPool().withdrawAndUnwrap(amount, false);
 
-        // Transfer the amount
+        /// Send the LP token to the strategy.
         SafeTransferLib.safeTransfer(token(), msg.sender, amount);
     }
 
+    /// @notice Claim rewards from Convex.
+    /// @param _claimExtraRewards If true, claim extra rewards.
+    /// @return rewardTokenAmount Amount of reward token claimed.
+    /// @return fallbackRewardTokenAmount Amount of fallback reward token claimed.
+    /// @return protocolFees Amount of protocol fees charged.
+    /// @dev These amounts are used by the strategy to keep track of the rewards, and fees.
     function claim(bool _claimExtraRewards)
         external
         onlyStrategy
         returns (uint256 rewardTokenAmount, uint256 fallbackRewardTokenAmount, uint256 protocolFees)
     {
         address[] memory extraRewardTokens;
+
         /// We can save gas by not claiming extra rewards if we don't need them, there's no extra rewards, or not enough rewards worth to claim.
         if (_claimExtraRewards) {
             extraRewardTokens = getRewardTokens();
@@ -77,13 +142,15 @@ contract ConvexImplementation is Clone {
         /// Charge Fees.
         protocolFees = _chargeProtocolFees(rewardTokenAmount);
 
+        /// Send the reward token and fallback reward token to the strategy.
         SafeTransferLib.safeTransfer(rewardToken(), msg.sender, rewardTokenAmount);
         SafeTransferLib.safeTransfer(fallbackRewardToken(), msg.sender, fallbackRewardTokenAmount);
 
+        /// Handle the extra reward tokens.
         for (uint256 i = 0; i < extraRewardTokens.length;) {
             uint256 _balance = ERC20(extraRewardTokens[i]).balanceOf(address(this));
             if (_balance > 0) {
-                // Transfer the reward token to the claimer.
+                /// Send the whole balance to the strategy.
                 SafeTransferLib.safeTransfer(extraRewardTokens[i], msg.sender, _balance);
             }
 
@@ -93,8 +160,8 @@ contract ConvexImplementation is Clone {
         }
     }
 
-    /// @notice Get all the rewards tokens from pid corresponding to `token`
-    /// @return Array of rewards tokens address
+    /// @notice Get the reward tokens from the base reward pool.
+    /// @return Array of all extra reward tokens.
     function getRewardTokens() public view returns (address[] memory) {
         // Check if there is extra rewards
         uint256 extraRewardsLength = baseRewardPool().extraRewardsLength();
@@ -103,9 +170,12 @@ contract ConvexImplementation is Clone {
 
         address _token;
         for (uint256 i; i < extraRewardsLength;) {
-            // Add the extra reward token to the array
+            /// Get the address of the virtual balance pool.
             _token = baseRewardPool().extraRewards(i);
 
+            /// For PIDs greater than 150, the virtual balance pool also has a wrapper.
+            /// So we need to get the token from the wrapper.
+            /// More: https://docs.convexfinance.com/convexfinanceintegration/baserewardpool
             if (pid() >= 151) {
                 address wrapper = IBaseRewardPool(_token).rewardToken();
                 tokens[i] = IStashTokenWrapper(wrapper).token();
@@ -131,46 +201,8 @@ contract ConvexImplementation is Clone {
         _feeAccrued = _amount.mulDiv(protocolFeesPercent, DENOMINATOR);
     }
 
-    /// @notice Get the balance of the LP token on ConvexCurve
-    /// @return Balance of the LP token on ConvexCurve
+    /// @notice Get the balance of the LP token on Convex held by this contract.
     function balanceOf(address) public view returns (uint256) {
-        // Return the balance of the LP token on ConvexCurve if initialized, else 0
         return baseRewardPool().balanceOf(address(this));
-    }
-
-    //////////////////////////////////////////////////////
-    /// --- IMMUTABLES
-    //////////////////////////////////////////////////////
-
-    function factory() public pure returns (IConvexFactory _factory) {
-        return IConvexFactory(_getArgAddress(0));
-    }
-
-    function token() public pure returns (address _token) {
-        return _getArgAddress(20);
-    }
-
-    function rewardToken() public pure returns (address _rewardToken) {
-        return _getArgAddress(40);
-    }
-
-    function fallbackRewardToken() public pure returns (address _fallbackRewardToken) {
-        return _getArgAddress(60);
-    }
-
-    function strategy() public pure returns (address _strategy) {
-        return _getArgAddress(80);
-    }
-
-    function booster() public pure returns (IBooster _booster) {
-        return IBooster(_getArgAddress(100));
-    }
-
-    function baseRewardPool() public pure returns (IBaseRewardPool _baseRewardPool) {
-        return IBaseRewardPool(_getArgAddress(120));
-    }
-
-    function pid() public pure returns (uint256 _pid) {
-        return _getArgUint256(140);
     }
 }
