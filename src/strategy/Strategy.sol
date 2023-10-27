@@ -433,7 +433,7 @@ abstract contract Strategy is UUPSUpgradeable {
     //////////////////////////////////////////////////////
 
     function _transferFromLocker(address _asset, address _recipient, uint256 _amount) internal {
-        locker.execute(_asset, 0, abi.encodeWithSignature("transfer(address,uint256)", _recipient, _amount));
+        locker.safeExecute(_asset, 0, abi.encodeWithSignature("transfer(address,uint256)", _recipient, _amount));
     }
 
     //////////////////////////////////////////////////////
@@ -470,7 +470,7 @@ abstract contract Strategy is UUPSUpgradeable {
         uint256 amount = ERC20(gauge).balanceOf(address(locker));
 
         // Locker withdraw all from the gauge
-        locker.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
+        locker.safeExecute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
 
         // Locker transfer the LP token to the vault
         _transferFromLocker(_asset, msg.sender, amount);
@@ -497,8 +497,8 @@ abstract contract Strategy is UUPSUpgradeable {
         gauges[token] = gauge;
 
         /// Approve trough the locker.
-        locker.execute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, 0));
-        locker.execute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, type(uint256).max));
+        locker.safeExecute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, 0));
+        locker.safeExecute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, type(uint256).max));
     }
 
     /// @notice Set type for a Liquidity gauge
