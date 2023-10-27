@@ -19,9 +19,13 @@ contract CRVPoolFactory is PoolFactory {
         address _liquidityGaugeImplementation
     ) PoolFactory(_strategy, _rewardToken, _vaultImplementation, _liquidityGaugeImplementation) {}
 
+    /// @inheritdoc PoolFactory
     function _isValidToken(address _token) internal view override returns (bool) {
+        /// We can't add the reward token as extra reward.
+        /// We can't add special pools like the Ve Funder.
         if (_token == rewardToken || _token == VE_FUNDER) return false;
 
+        /// If the token is available as an inflation receiver, it's not valid.
         try GAUGE_CONTROLLER.gauge_types(_token) {
             return false;
         } catch {
@@ -29,8 +33,13 @@ contract CRVPoolFactory is PoolFactory {
         }
     }
 
+    /// inheritdoc PoolFactory
     function _isValidGauge(address _gauge) internal view override returns (bool) {
+
+        /// Check for the gauge weight.
         uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(_gauge);
+
+        /// There's no point in deploying a pool with a gauge with no weight.
         if (weight == 0) return false;
 
         /// Check if the gauge is not killed.
@@ -39,6 +48,7 @@ contract CRVPoolFactory is PoolFactory {
             if (isKilled) return false;
         } catch {}
 
+        /// If the gauge doesn't support the is_killed function, but is unofficially killed, it can be deployed.
         return true;
     }
 }
