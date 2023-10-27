@@ -2,7 +2,6 @@
 pragma solidity 0.8.19;
 
 import "src/strategy/Strategy.sol";
-
 import {IFallback} from "src/interfaces/IFallback.sol";
 import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";
 
