@@ -11,5 +11,6 @@ library SafeExecute {
         returns (bool success)
     {
         (success,) = locker.execute(to, value, data);
+        if (!success) revert CALL_FAILED();
     }
 }
