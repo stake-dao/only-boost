@@ -6,7 +6,7 @@ import "src/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
-import {IConvexToken} from "src/interfaces/IConvexToken.sol";
+import {IConvexToken} from "test/interfaces/IConvexToken.sol";
 import {ICVXLocker, Optimizer} from "src/optimizer/Optimizer.sol";
 
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";

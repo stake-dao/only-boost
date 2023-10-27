@@ -126,7 +126,7 @@ abstract contract OnlyBoost is Strategy {
         /// 6. Distribute SDT
         // Distribute SDT to the related gauge
         if (_distributeSDT) {
-            ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
+            ISDTDistributor(SDTDistributor).distribute(rewardDistributor);
         }
 
         /// 7. Distribute the rewardToken.

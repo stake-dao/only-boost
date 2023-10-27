@@ -9,7 +9,7 @@ import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {SafeExecute} from "src/libraries/SafeExecute.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
-import {ISdtDistributorV2} from "src/interfaces/ISdtDistributorV2.sol";
+import {ISDTDistributor} from "src/interfaces/ISDTDistributor.sol";
 
 /// @title Strategy
 /// @author Stake DAO
@@ -235,7 +235,7 @@ abstract contract Strategy is UUPSUpgradeable {
         /// 2. Distribute SDT
         // Distribute SDT to the related gauge
         if (_distributeSDT) {
-            ISdtDistributorV2(SDTDistributor).distribute(rewardDistributor);
+            ISDTDistributor(SDTDistributor).distribute(rewardDistributor);
         }
 
         /// 3. Check for additional rewards from the Locker.
