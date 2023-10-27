@@ -5,7 +5,7 @@ import {Clone} from "solady/utils/Clone.sol";
 import {ERC20} from "solady/tokens/ERC20.sol";
 import {IStrategy} from "src/interfaces/IStrategy.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
+import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
 
 /// @notice Vault implementation for Stake DAO.
@@ -57,7 +57,7 @@ contract Vault is ERC20, Clone {
 
         if (!_doEarn) {
             /// If doEarn is false, take a fee from the deposit to incentivize next call to earn.
-            uint256 _incentiveTokenAmount = _amount.mulDivDown(EARN_INCENTIVE_FEE, DENOMINATOR);
+            uint256 _incentiveTokenAmount = _amount.mulDiv(EARN_INCENTIVE_FEE, DENOMINATOR);
 
             /// Subtract incentive token amount from the total amount.
             _amount -= _incentiveTokenAmount;

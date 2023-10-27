@@ -247,10 +247,10 @@ abstract contract Strategy_Test is Test {
         uint256 _protocolFee;
 
         /// Compute the fees.
-        _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+        _protocolFee = _expectedLockerRewardTokenAmount.mulDiv(17, 100);
         _totalRewardTokenAmount -= _protocolFee;
 
-        _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
+        _claimerFee = _totalRewardTokenAmount.mulDiv(1, 100);
         _totalRewardTokenAmount -= _claimerFee;
 
         assertEq(_balanceOf(REWARD_TOKEN, address(0xBEEC)), _claimerFee);
@@ -286,12 +286,12 @@ abstract contract Strategy_Test is Test {
         uint256 claimerFee,
         uint256 _expectedLockerRewardTokenAmount
     ) internal virtual returns (uint256, uint256, uint256) {
-        uint256 protocolFeeForThisHarvest = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+        uint256 protocolFeeForThisHarvest = _expectedLockerRewardTokenAmount.mulDiv(17, 100);
 
         totalProtocolFeesAccrued += protocolFeeForThisHarvest;
         uint256 _totalRewardTokenAmount = _expectedLockerRewardTokenAmount - protocolFeeForThisHarvest;
 
-        uint256 _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
+        uint256 _claimerFee = _totalRewardTokenAmount.mulDiv(1, 100);
         claimerFee += _claimerFee;
 
         _totalRewardTokenAmount -= _claimerFee;

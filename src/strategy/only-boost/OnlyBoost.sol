@@ -46,7 +46,7 @@ abstract contract OnlyBoost is Strategy {
                 _depositIntoLocker(_asset, gauge, allocations[i]);
             } else {
                 /// Else, transfer the asset to the fallback recipient and call deposit.
-                ERC20(_asset).safeTransfer(fundsManagers[i], allocations[i]);
+                SafeTransferLib.safeTransfer(_asset, fundsManagers[i], allocations[i]);
                 IFallback(fundsManagers[i]).deposit(_asset, allocations[i]);
             }
         }
@@ -179,7 +179,7 @@ abstract contract OnlyBoost is Strategy {
                 _depositIntoLocker(_asset, gauge, allocations[i]);
             } else {
                 /// Else, transfer the asset to the fallback recipient and call deposit.
-                ERC20(_asset).safeTransfer(fundsManagers[i], allocations[i]);
+                SafeTransferLib.safeTransfer(_asset, fundsManagers[i], allocations[i]);
                 IFallback(fundsManagers[i]).deposit(_asset, allocations[i]);
             }
         }
@@ -203,7 +203,7 @@ abstract contract OnlyBoost is Strategy {
         if (protocolFeesPercent == 0 && _totalProtocolFeesFromFallbacks == 0) return _amount + _claimedFromFallbacks;
 
         // Calculate the fees accrued from the claimed amount
-        uint256 _feeAccrued = _amount.mulDivDown(protocolFeesPercent, DENOMINATOR);
+        uint256 _feeAccrued = _amount.mulDiv(protocolFeesPercent, DENOMINATOR);
 
         // Update the total fees accrued with the fee accrued from this claim and the protocol fees from fallbacks
         feesAccrued += _feeAccrued + _totalProtocolFeesFromFallbacks;

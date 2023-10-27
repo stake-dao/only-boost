@@ -166,7 +166,7 @@ contract ConvexMinimalProxyTest is Test {
         assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(cloneFallback)), 0);
 
         /// Check correct accounting.
-        assertEq(protocolFees, ERC20(REWARD_TOKEN).balanceOf(address(this)).mulDivDown(1_000, 10_000));
+        assertEq(protocolFees, ERC20(REWARD_TOKEN).balanceOf(address(this)).mulDiv(1_000, 10_000));
     }
 
     function test_externalClaim() public {
@@ -208,6 +208,6 @@ contract ConvexMinimalProxyTest is Test {
         assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(cloneFallback)), 0);
 
         /// Check correct accounting.
-        assertEq(protocolFees, ERC20(REWARD_TOKEN).balanceOf(address(this)).mulDivDown(1_000, 10_000));
+        assertEq(protocolFees, ERC20(REWARD_TOKEN).balanceOf(address(this)).mulDiv(1_000, 10_000));
     }
 }

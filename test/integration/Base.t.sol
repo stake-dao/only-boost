@@ -299,16 +299,16 @@ abstract contract Base_Test is Test {
         uint256 _earned,
         bool _setFallbackFees
     ) internal returns (uint256, uint256, uint256) {
-        uint256 protocolFeeForThisHarvest = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+        uint256 protocolFeeForThisHarvest = _expectedLockerRewardTokenAmount.mulDiv(17, 100);
 
         if (_setFallbackFees && _earned > 0) {
-            protocolFeeForThisHarvest += _earned.mulDivDown(17, 100);
+            protocolFeeForThisHarvest += _earned.mulDiv(17, 100);
         }
 
         totalProtocolFeesAccrued += protocolFeeForThisHarvest;
         uint256 _totalRewardTokenAmount = _expectedLockerRewardTokenAmount + _earned - protocolFeeForThisHarvest;
 
-        uint256 _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
+        uint256 _claimerFee = _totalRewardTokenAmount.mulDiv(1, 100);
         claimerFee += _claimerFee;
 
         _totalRewardTokenAmount -= _claimerFee;
@@ -359,14 +359,14 @@ abstract contract Base_Test is Test {
 
         /// Compute the fees.
         if (_setFallbackFees && _claimFallbacks) {
-            _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
-            _protocolFee += _earned.mulDivDown(17, 100);
+            _protocolFee = _expectedLockerRewardTokenAmount.mulDiv(17, 100);
+            _protocolFee += _earned.mulDiv(17, 100);
         } else {
-            _protocolFee = _expectedLockerRewardTokenAmount.mulDivDown(17, 100);
+            _protocolFee = _expectedLockerRewardTokenAmount.mulDiv(17, 100);
         }
         _totalRewardTokenAmount -= _protocolFee;
 
-        _claimerFee = _totalRewardTokenAmount.mulDivDown(1, 100);
+        _claimerFee = _totalRewardTokenAmount.mulDiv(1, 100);
         _totalRewardTokenAmount -= _claimerFee;
 
         assertEq(_balanceOf(REWARD_TOKEN, address(0xBEEC)), _claimerFee);
