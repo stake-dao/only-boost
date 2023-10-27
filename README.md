@@ -5,6 +5,7 @@
 This repository contains the implementation of the OnlyBoost white paper, focusing on smart contracts for the CRV Liquid Locker. These contracts optimize the fund distribution between Stake DAO and Convex to maximize the boost.
 
 ## Installation
+
     
 ## Architecture
 
