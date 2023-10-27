@@ -71,7 +71,7 @@ abstract contract Base_Test is Test {
     }
 
     function setUp() public virtual {
-        vm.rollFork({blockNumber: 18_377_451});
+        vm.rollFork({blockNumber: 18_383_019});
 
         /// Initialize Locker
         locker = ILocker(SD_VOTER_PROXY);
