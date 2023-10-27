@@ -2,14 +2,14 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import "src/CRV_OB_Strategy.sol";
+import "src/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
 
 contract UUPSUpgradeableTest is Test {
     using FixedPointMathLib for uint256;
 
-    CRV_OB_Strategy proxy;
-    CRV_OB_Strategy implementation;
+    CRVStrategy proxy;
+    CRVStrategy implementation;
 
     bytes32 internal constant _ERC1967_IMPLEMENTATION_SLOT =
         0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
@@ -37,7 +37,7 @@ contract UUPSUpgradeableTest is Test {
     address public constant MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
 
     function setUp() public {
-        implementation = new CRV_OB_Strategy(
+        implementation = new CRVStrategy(
             address(this),
             SD_VOTER_PROXY,
             VE_CRV,
@@ -46,7 +46,7 @@ contract UUPSUpgradeableTest is Test {
         );
 
         address _proxy = LibClone.deployERC1967(address(implementation));
-        proxy = CRV_OB_Strategy(payable(_proxy));
+        proxy = CRVStrategy(payable(_proxy));
 
         proxy.initialize(address(this));
     }
@@ -90,7 +90,7 @@ contract UUPSUpgradeableTest is Test {
     }
 
     function test_UpgradeTo() public {
-        CRV_OB_Strategy impl2 = new CRV_OB_Strategy(
+        CRVStrategy impl2 = new CRVStrategy(
              address(this),
              SD_VOTER_PROXY,
              VE_CRV,
