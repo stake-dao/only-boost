@@ -35,11 +35,13 @@ contract CRVPoolFactory is PoolFactory {
 
     /// inheritdoc PoolFactory
     function _isValidGauge(address _gauge) internal view override returns (bool) {
-        /// Check for the gauge weight.
-        uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(_gauge);
-
-        /// There's no point in deploying a pool with a gauge with no weight.
-        if (weight == 0) return false;
+        bool isValid;
+        /// Check if the gauge is a valid candidate and available as an inflation receiver.
+        try GAUGE_CONTROLLER.gauge_types(_gauge) {
+            isValid = true;
+        } catch {
+            return false;
+        }
 
         /// Check if the gauge is not killed.
         /// Not all the pools, but most of them, have this function.
@@ -48,6 +50,6 @@ contract CRVPoolFactory is PoolFactory {
         } catch {}
 
         /// If the gauge doesn't support the is_killed function, but is unofficially killed, it can be deployed.
-        return true;
+        return isValid;
     }
 }

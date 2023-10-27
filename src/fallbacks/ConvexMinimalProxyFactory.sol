@@ -45,6 +45,15 @@ contract ConvexMinimalProxyFactory {
     /// @notice Error emitted when sum of fees is above 100%
     error FEE_TOO_HIGH();
 
+    /// @notice Error emitted when pool id is invalid
+    error INVALID_PID();
+
+    /// @notice Error emitted when token is invalid
+    error INVALID_TOKEN();
+
+    /// @notice Error emitted when pool is shutdown
+    error SHUTDOWN();
+
     /// @notice Event emitted when governance is changed.
     /// @param newGovernance Address of the new governance.
     event GovernanceChanged(address indexed newGovernance);
@@ -76,14 +85,14 @@ contract ConvexMinimalProxyFactory {
     /// @param _pid Pool id from Convex
     /// @return _fallback New ConvexFallback contract address
     function create(address _token, uint256 _pid) external returns (address _fallback) {
-        /// Check if the pool id is valid
-        require(IBooster(booster).poolLength() > _pid, "INVALID_PID");
+        /// Check if the pool id is valid.
+        if(IBooster(booster).poolLength() <= _pid) revert INVALID_PID();
 
         /// Check if the LP token is valid
         (address lpToken,, address gauge, address _baseRewardPool,, bool isShutdown) = IBooster(booster).poolInfo(_pid);
 
-        require(!isShutdown, "SHUTDOWN");
-        require(lpToken == _token, "INVALID_TOKEN");
+        if(isShutdown) revert SHUTDOWN();
+        if(lpToken != _token) revert INVALID_TOKEN();
 
         /// Encode the immutable arguments for the clone.
         bytes memory data = abi.encodePacked(
