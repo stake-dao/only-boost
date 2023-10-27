@@ -6,7 +6,6 @@ import {IGaugeController} from "src/interfaces/IGaugeController.sol";
 
 /// @notice Inherit from PoolFactory to deploy a pool compatible with CRV gauges and check if the token is a valid extra rewards to add.
 contract CRVPoolFactory is PoolFactory {
-
     /// @notice Ve Funder is a special gauge not valid to be deployed as a pool.
     address public constant VE_FUNDER = 0xbAF05d7aa4129CA14eC45cC9d4103a9aB9A9fF60;
 
