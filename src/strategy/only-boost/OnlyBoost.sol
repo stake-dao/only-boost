@@ -5,9 +5,7 @@ import "src/strategy/Strategy.sol";
 import {IFallback} from "src/interfaces/IFallback.sol";
 import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";
 
-/// @title OnlyBoost Strategy Contract
-/// @author Stake DAO
-/// @notice OnlyBoost Compatible Strategy Proxy Contract to interact with Stake DAO Locker.
+/// @notice Override the deposit/withdrawal logic to use the Optimizer contract.
 abstract contract OnlyBoost is Strategy {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
@@ -15,21 +13,23 @@ abstract contract OnlyBoost is Strategy {
     /// @notice Optimizer address for deposit/withdrawal allocations.
     IOnlyBoost public optimizer;
 
+    /// @notice Throwed if the rebalance gone wrong.
     error REBALANCE_FAILED();
 
     constructor(address _owner, address _locker, address _veToken, address _rewardToken, address _minter)
         Strategy(_owner, _locker, _veToken, _rewardToken, _minter)
     {}
 
-    function _deposit(address _asset, uint256 amount) internal override {
+    /// @notice Deposit `_amount` of `_asset` splitted into the fallbacks.
+    /// @param asset Asset to deposit.
+    /// @param amount Amount to deposit.
+    function _deposit(address asset, uint256 amount) internal override {
         // If optimizer is not set, use default deposit
         if (address(optimizer) == address(0)) {
-            return super._deposit(_asset, amount);
+            return super._deposit(asset, amount);
         }
 
-        // Get the gauge address
-        address gauge = gauges[_asset];
-        // Revert if the gauge is not set
+        address gauge = gauges[asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         /// Get the optimal allocation for the deposit.
@@ -42,116 +42,121 @@ abstract contract OnlyBoost is Strategy {
 
             /// Deposit into the locker if the recipient is the locker.
             if (fundsManagers[i] == address(locker)) {
-                _depositIntoLocker(_asset, gauge, allocations[i]);
+                _depositIntoLocker(asset, gauge, allocations[i]);
             } else {
                 /// Else, transfer the asset to the fallback recipient and call deposit.
-                SafeTransferLib.safeTransfer(_asset, fundsManagers[i], allocations[i]);
-                IFallback(fundsManagers[i]).deposit(_asset, allocations[i]);
+                SafeTransferLib.safeTransfer(asset, fundsManagers[i], allocations[i]);
+                IFallback(fundsManagers[i]).deposit(asset, allocations[i]);
             }
         }
     }
 
-    function _withdraw(address _asset, uint256 amount) internal override {
+    /// @notice Withdraw `_amount` of `_asset` splitted into the fallbacks.
+    /// @param asset Asset to withdraw.
+    /// @param amount Amount to withdraw.
+    /// @dev The optimizer contract would make sure to always withdraw from the biggest pool first.
+    function _withdraw(address asset, uint256 amount) internal override {
         /// If optimzer is not set, use default withdraw.
         if (address(optimizer) == address(0)) {
-            return super._withdraw(_asset, amount);
+            return super._withdraw(asset, amount);
         }
 
-        // Get the gauge address
-        address gauge = gauges[_asset];
+        address gauge = gauges[asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
-        // Call the Optimizor contract
+        /// Get the optimal withdrawal path.
         (address[] memory fundsManagers, uint256[] memory allocations) =
             optimizer.getOptimalWithdrawalPath(gauge, amount);
 
         for (uint256 i; i < fundsManagers.length; ++i) {
-            // Skip if the optimized amount is 0
+            /// Skip if the optimized amount is 0.
             if (allocations[i] == 0) continue;
 
-            // Special process for Stake DAO locker
+
+            /// If the recipient is the locker, withdraw from the locker.
             if (fundsManagers[i] == address(locker)) {
-                _withdrawFromLocker(_asset, gauge, allocations[i]);
+                _withdrawFromLocker(asset, gauge, allocations[i]);
             }
-            // Withdraw from other fallback
+
+            /// Else, call withdraw on the fallback.
             else {
-                IFallback(fundsManagers[i]).withdraw(_asset, allocations[i]);
+                IFallback(fundsManagers[i]).withdraw(asset, allocations[i]);
             }
         }
     }
 
     /// @notice Claim rewards from gauge & fallbacks.
-    /// @param _asset _asset staked to claim for.
-    /// @param _claimExtra True to claim extra rewards. False can save gas.
-    /// @param _claimFallbacksRewards  True to claim fallbacks, False can save gas.
-    function harvest(address _asset, bool _distributeSDT, bool _claimExtra, bool _claimFallbacksRewards) public {
+    /// @param asset _asset staked to claim for.
+    /// @param claimExtra True to claim extra rewards. False can save gas.
+    /// @param claimFallbacksRewards  True to claim fallbacks, False can save gas.
+    function harvest(address asset, bool distributeSDT, bool claimExtra, bool claimFallbacksRewards) public {
         /// If optimzer is not set, use default withdraw.
         if (address(optimizer) == address(0)) {
-            return super.harvest(_asset, _distributeSDT, _claimExtra);
+            return super.harvest(asset, distributeSDT, claimExtra);
         }
 
-        // Get the gauge address
-        address gauge = gauges[_asset];
+        address gauge = gauges[asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         /// Cache the rewardDistributor address.
         address rewardDistributor = rewardDistributors[gauge];
 
         /// 1. Claim `rewardToken` from the Gauge.
-        uint256 _claimed = _claimRewardToken(gauge);
+        uint256 claimed = _claimRewardToken(gauge);
 
-        uint256 _claimedFromFallbacks;
-        uint256 _protocolFeesFromFallbacks;
+        uint256 claimedFromFallbacks;
+        uint256 protocolFeesFromFallbacks;
 
         /// 2. Claim from the fallbacks if requested.
-        if (_claimFallbacksRewards) {
-            (_claimedFromFallbacks, _protocolFeesFromFallbacks) = _claimFallbacks(gauge, rewardDistributor, _claimExtra);
+        if (claimFallbacksRewards) {
+            (claimedFromFallbacks, protocolFeesFromFallbacks) = _claimFallbacks(gauge, rewardDistributor, claimExtra);
         }
 
         /// 3. Claim extra rewards if requested.
-        if (_claimExtra) {
+        if (claimExtra) {
             /// We assume that the extra rewards are the same for all the fallbacks since we deposit in the same destination gauge.
             /// So we claim the extra rewards from the fallbacks first and then claim the extra rewards from the gauge.
             /// Finally, we distribute all in once.
-            _claimed += _claimExtraRewards(gauge, rewardDistributor);
+            claimed += _claimExtraRewards(gauge, rewardDistributor);
         }
 
         /// 4. Take Fees from _claimed amount.
-        _claimed = _chargeProtocolFees(_claimed, _claimedFromFallbacks, _protocolFeesFromFallbacks);
+        claimed = _chargeProtocolFees(claimed, claimedFromFallbacks, protocolFeesFromFallbacks);
 
         /// 5. Distribute Claim Incentive
-        _claimed = _distributeClaimIncentive(_claimed);
+        claimed = _distributeClaimIncentive(claimed);
 
         /// 6. Distribute SDT
         // Distribute SDT to the related gauge
-        if (_distributeSDT) {
+        if (distributeSDT) {
             ISDTDistributor(SDTDistributor).distribute(rewardDistributor);
         }
 
         /// 7. Distribute the rewardToken.
-        ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, _claimed);
+        ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, claimed);
     }
 
-    function rebalance(address _asset) public {
+    /// @notice Rebalance `_asset` splitted into the fallbacks.
+    /// @param asset Asset to rebalance.
+    function rebalance(address asset) public {
         if (address(optimizer) == address(0)) revert ADDRESS_NULL();
 
-        // Get the gauge address
-        address gauge = gauges[_asset];
+        address gauge = gauges[asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         /// Snapshot the current balance.
-        uint256 _snapshotBalance = balanceOf(_asset);
+        uint256 _snapshotBalance = balanceOf(asset);
 
         /// Get Fallbacks.
         address[] memory fallbacks = optimizer.getFallbacks(gauge);
 
         for (uint256 i; i < fallbacks.length; ++i) {
             /// Get the current balance of the fallbacks.
-            uint256 _balanceOfFallback = IFallback(fallbacks[i]).balanceOf(_asset);
+            uint256 _balanceOfFallback = IFallback(fallbacks[i]).balanceOf(asset);
 
             if (_balanceOfFallback > 0) {
                 /// Withdraw from the fallbacks.
-                IFallback(fallbacks[i]).withdraw(_asset, _balanceOfFallback);
+                IFallback(fallbacks[i]).withdraw(asset, _balanceOfFallback);
             }
         }
 
@@ -160,10 +165,10 @@ abstract contract OnlyBoost is Strategy {
 
         if (_balanceOfGauge > 0) {
             /// Withdraw from the locker.
-            _withdrawFromLocker(_asset, gauge, _balanceOfGauge);
+            _withdrawFromLocker(asset, gauge, _balanceOfGauge);
         }
 
-        uint256 _currentBalance = ERC20(_asset).balanceOf(address(this));
+        uint256 _currentBalance = ERC20(asset).balanceOf(address(this));
 
         /// Get the optimal allocation for the deposit.
         (address[] memory fundsManagers, uint256[] memory allocations) =
@@ -175,68 +180,75 @@ abstract contract OnlyBoost is Strategy {
 
             /// Deposit into the locker if the recipient is the locker.
             if (fundsManagers[i] == address(locker)) {
-                _depositIntoLocker(_asset, gauge, allocations[i]);
+                _depositIntoLocker(asset, gauge, allocations[i]);
             } else {
                 /// Else, transfer the asset to the fallback recipient and call deposit.
-                SafeTransferLib.safeTransfer(_asset, fundsManagers[i], allocations[i]);
-                IFallback(fundsManagers[i]).deposit(_asset, allocations[i]);
+                SafeTransferLib.safeTransfer(asset, fundsManagers[i], allocations[i]);
+                IFallback(fundsManagers[i]).deposit(asset, allocations[i]);
             }
         }
 
-        _currentBalance = balanceOf(_asset);
+        _currentBalance = balanceOf(asset);
 
+        /// This invariant should never be broken.
         if (_currentBalance < _snapshotBalance) revert REBALANCE_FAILED();
     }
 
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
     /// @return _amount Amount left after charging protocol fees.
     function _chargeProtocolFees(
-        uint256 _amount,
-        uint256 _claimedFromFallbacks,
-        uint256 _totalProtocolFeesFromFallbacks
+        uint256 amount,
+        uint256 claimedFromFallbacks,
+        uint256 totalProtocolFeesFromFallbacks
     ) internal returns (uint256) {
         // If there's no amount and no protocol fees from fallbacks, return the amount claimed from fallbacks
-        if (_amount == 0 && _totalProtocolFeesFromFallbacks == 0) return _claimedFromFallbacks;
+        if (amount == 0 && totalProtocolFeesFromFallbacks == 0) return claimedFromFallbacks;
 
         // If there's no protocol fees set and there's no protocol fees from fallbacks, return the total amount
-        if (protocolFeesPercent == 0 && _totalProtocolFeesFromFallbacks == 0) return _amount + _claimedFromFallbacks;
+        if (protocolFeesPercent == 0 && totalProtocolFeesFromFallbacks == 0) return amount + claimedFromFallbacks;
 
         // Calculate the fees accrued from the claimed amount
-        uint256 _feeAccrued = _amount.mulDiv(protocolFeesPercent, DENOMINATOR);
+        uint256 _feeAccrued = amount.mulDiv(protocolFeesPercent, DENOMINATOR);
 
         // Update the total fees accrued with the fee accrued from this claim and the protocol fees from fallbacks
-        feesAccrued += _feeAccrued + _totalProtocolFeesFromFallbacks;
+        feesAccrued += _feeAccrued + totalProtocolFeesFromFallbacks;
 
         // Reduce the amount by the fees accrued but add back the protocol fees from fallbacks and the amount claimed from fallbacks
-        uint256 _netAmount = _amount + _claimedFromFallbacks - _feeAccrued - _totalProtocolFeesFromFallbacks;
+        uint256 _netAmount = amount + claimedFromFallbacks - _feeAccrued - totalProtocolFeesFromFallbacks;
 
         return _netAmount;
     }
 
-    function _claimFallbacks(address gauge, address rewardDistributor, bool _claimExtra)
+    /// @notice Claim rewards from the fallbacks.
+    /// @param gauge Address of the liquidity gauge.
+    /// @param rewardDistributor Address of the reward distributor.
+    /// @param claimExtra True to claim extra rewards.
+    /// @return claimed RewardToken amount claimed from the fallbacks to add to the total claimed amount and avoid double distribution.
+    /// @return totalProtocolFees Total protocol fees claimed from the fallbacks.
+    function _claimFallbacks(address gauge, address rewardDistributor, bool claimExtra)
         internal
-        returns (uint256 _claimed, uint256 _totalProtocolFees)
+        returns (uint256 claimed, uint256 totalProtocolFees)
     {
         /// Get the fallback addresses.
         address[] memory fallbacks;
         fallbacks = optimizer.getFallbacks(gauge);
 
-        address _fallbackRewardToken;
+        address fallbackRewardToken;
 
         for (uint256 i; i < fallbacks.length;) {
             // Do the claim
             (uint256 rewardTokenAmount, uint256 fallbackRewardTokenAmount, uint256 protocolFees) =
-                IFallback(fallbacks[i]).claim(_claimExtra);
+                IFallback(fallbacks[i]).claim(claimExtra);
 
             // Add the rewardTokenAmount to the _claimed amount.
-            _claimed += rewardTokenAmount;
-            _totalProtocolFees += protocolFees;
+            claimed += rewardTokenAmount;
+            totalProtocolFees += protocolFees;
 
             /// Distribute the fallbackRewardToken.
-            _fallbackRewardToken = IFallback(fallbacks[i]).fallbackRewardToken();
-            if (_fallbackRewardToken != address(0) && fallbackRewardTokenAmount > 0) {
+            fallbackRewardToken = IFallback(fallbacks[i]).fallbackRewardToken();
+            if (fallbackRewardToken != address(0) && fallbackRewardTokenAmount > 0) {
                 /// Distribute the fallbackRewardToken.
-                ILiquidityGauge(rewardDistributor).deposit_reward_token(_fallbackRewardToken, fallbackRewardTokenAmount);
+                ILiquidityGauge(rewardDistributor).deposit_reward_token(fallbackRewardToken, fallbackRewardTokenAmount);
             }
 
             unchecked {
@@ -245,15 +257,16 @@ abstract contract OnlyBoost is Strategy {
         }
     }
 
-    function balanceOf(address _asset) public view override returns (uint256 _balanceOf) {
-        address gauge = gauges[_asset];
+    /// @notice Balance of asset in the locker and fallbacks.
+    function balanceOf(address asset) public view override returns (uint256 _balanceOf) {
+        address gauge = gauges[asset];
         if (gauge == address(0)) revert ADDRESS_NULL();
 
         _balanceOf = ILiquidityGauge(gauge).balanceOf(address(locker));
         address[] memory _fallbacks = optimizer.getFallbacks(gauge);
 
         for (uint256 i; i < _fallbacks.length; ++i) {
-            _balanceOf += IFallback(_fallbacks[i]).balanceOf(_asset);
+            _balanceOf += IFallback(_fallbacks[i]).balanceOf(asset);
         }
     }
 
