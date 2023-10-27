@@ -9,9 +9,9 @@ import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {IStrategy} from "src/interfaces/IStrategy.sol";
 import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
 
-/// @title Vault Implementation for Stake DAO
+/// @title Vault Implementation for Stake DAO.
 /// @notice This contract allows users to deposit LP tokens into Stake DAO and receive sdGauge tokens in return.
-/// @dev Is an ERC20 token and Clonable
+/// @dev Is an ERC20 Token and Clonable.
 contract Vault is ERC20, Clone {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;

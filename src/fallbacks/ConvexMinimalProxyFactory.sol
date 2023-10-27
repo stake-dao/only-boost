@@ -14,6 +14,7 @@ contract ConvexMinimalProxyFactory {
 
     /// @notice Convex like booster contract address.
     address public immutable booster;
+
     /// @notice Stake DAO strategy contract address.
     address public immutable strategy;
 
@@ -84,22 +85,27 @@ contract ConvexMinimalProxyFactory {
         require(!isShutdown, "SHUTDOWN");
         require(lpToken == _token, "INVALID_TOKEN");
 
+        /// Encode the immutable arguments for the clone.
         bytes memory data = abi.encodePacked(
             address(this), _token, rewardToken, fallbackRewardToken, strategy, booster, _baseRewardPool, _pid
         );
 
+        /// We use the LP token and the gauge address as salt to generate the fallback address.
+        /// There can't be two fallbacks with the same LP token and gauge.
         bytes32 salt = keccak256(abi.encodePacked(_token, gauge));
-        // Clone the implementation
+
+        // Clone the implementation contract.
         _fallback = implementation.cloneDeterministic(data, salt);
 
         /// Initialize the contract.
         IFallback(_fallback).initialize();
 
-        /// Set the fallback contract in the mapping.
+        /// Store the fallback address.
+        /// It will be queried by the Optimizer contract to check if the pool is supported/created.
         fallbacks[gauge] = _fallback;
     }
 
-    /// @notice Update protocol fees.
+    /// @notice Update protocol fees for all fallbacks.
     /// @param _protocolFee New protocol fee.
     function updateProtocolFee(uint256 _protocolFee) external onlyGovernance {
         if (_protocolFee > DENOMINATOR) revert FEE_TOO_HIGH();
