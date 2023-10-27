@@ -37,6 +37,7 @@ contract CRVPoolFactory is PoolFactory {
     function _isValidGauge(address _gauge) internal view override returns (bool) {
         bool isValid;
         /// Check if the gauge is a valid candidate and available as an inflation receiver.
+        /// This call always reverts if the gauge is not valid.
         try GAUGE_CONTROLLER.gauge_types(_gauge) {
             isValid = true;
         } catch {
