@@ -191,7 +191,7 @@ contract Optimizer is IOnlyBoost {
             }
         }
         // If not available on Convex
-        // We only deposit on Stake DAO 
+        // We only deposit on Stake DAO
         else {
             /// Initialize arrays
             _depositors = new address[](1);
