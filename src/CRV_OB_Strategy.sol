@@ -6,7 +6,7 @@ import "src/strategy/only-boost/OnlyBoost.sol";
 /// @title OnlyBoost Strategy Contract
 /// @author Stake DAO
 /// @notice OnlyBoost Compatible Strategy Proxy Contract to interact with Stake DAO Locker.
-contract CRVStrategy is OnlyBoost {
+contract CRV_OB_Strategy is OnlyBoost {
     constructor(address _owner, address _locker, address _veToken, address _rewardToken, address _minter)
         OnlyBoost(_owner, _locker, _veToken, _rewardToken, _minter)
     {}

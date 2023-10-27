@@ -86,6 +86,11 @@ abstract contract OnlyBoost is Strategy {
     /// @param _claimExtra True to claim extra rewards. False can save gas.
     /// @param _claimFallbacksRewards  True to claim fallbacks, False can save gas.
     function harvest(address _asset, bool _distributeSDT, bool _claimExtra, bool _claimFallbacksRewards) public {
+        /// If optimzer is not set, use default withdraw.
+        if (address(optimizer) == address(0)) {
+            return super.harvest(_asset, _distributeSDT, _claimExtra);
+        }
+
         // Get the gauge address
         address gauge = gauges[_asset];
         if (gauge == address(0)) revert ADDRESS_NULL();

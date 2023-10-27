@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 
-import "src/CRVStrategy.sol";
+import "src/CRV_OB_Strategy.sol";
 import "solady/utils/LibClone.sol";
 import {Vault} from "src/staking/Vault.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
@@ -24,8 +24,8 @@ abstract contract Staking_Test is Test {
     Vault vaultImplementation;
     CRVPoolFactory poolFactory;
 
-    CRVStrategy strategy;
-    CRVStrategy implementation;
+    CRV_OB_Strategy strategy;
+    CRV_OB_Strategy implementation;
 
     ERC20 public token;
     address public gauge;
@@ -51,10 +51,10 @@ abstract contract Staking_Test is Test {
     }
 
     function setUp() public {
-        vm.rollFork({blockNumber: 18_341_841});
+        vm.rollFork({blockNumber: 18_383_019});
 
         /// Deploy Strategy
-        implementation = new CRVStrategy(
+        implementation = new CRV_OB_Strategy(
             address(this),
             SD_VOTER_PROXY,
             VE_CRV,
@@ -63,7 +63,7 @@ abstract contract Staking_Test is Test {
         );
 
         address _proxy = LibClone.deployERC1967(address(implementation));
-        strategy = CRVStrategy(payable(_proxy));
+        strategy = CRV_OB_Strategy(payable(_proxy));
 
         strategy.initialize(address(this));
 

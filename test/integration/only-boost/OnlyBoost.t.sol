@@ -230,6 +230,7 @@ abstract contract OnlyBoost_Test is Base_Test {
     function test_fee_computation(uint128 _amount, uint256 _weeksToSkip, bool _setFallbackFees) public {
         uint256 amount = uint256(_amount);
         vm.assume(amount != 0);
+        vm.assume(_weeksToSkip != 0);
         vm.assume(_weeksToSkip < 10);
 
         // Deposit

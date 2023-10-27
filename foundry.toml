@@ -6,7 +6,7 @@ libs = ['lib']
 verbosity = 3
 evm_version = "shanghai"
   gas_reports = [
-    "CRVStrategy",
+    "CRV_OB_Strategy",
     "ConvexImplementation",
     "ConvexMinimalProxyFactory"
   ]

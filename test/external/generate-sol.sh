@@ -19,4 +19,4 @@ import "test/integration/only-boost/OnlyBoost.t.sol";
 EOF
 
 # Parse the JSON and generate the solidity contracts
-jq -r '.[] | "uint256 constant \(.name)_PID = \(.pid);\naddress constant \(.name)_REWARD_DISTRIBUTOR = \(.rewardDistributor);\n\ncontract \(.name)_Deposit_Test is OnlyBoost_Test(\(.name)_PID, \(.name)_REWARD_DISTRIBUTOR) {}\n"' $json_file
+jq -r '.[] | "uint256 constant \(.name)_PID = \(.pid);\naddress constant \(.name)_REWARD_DISTRIBUTOR = \(.rewardDistributor);\n\ncontract \(.name)_OnlyBoost_Test is OnlyBoost_Test(\(.name)_PID, \(.name)_REWARD_DISTRIBUTOR) {}\n"' $json_file

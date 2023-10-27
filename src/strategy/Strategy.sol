@@ -42,15 +42,12 @@ abstract contract Strategy is UUPSUpgradeable {
     address public futureGovernance;
 
     /// @notice Interface for Stake DAO token Accumulator
-    //address public accumulator = 0xa44bFD194Fd7185ebecEcE4F7fA87a47DaA01c6A;
     address public accumulator;
 
     /// @notice Curve DAO token Fee Distributor
-    //address public feeDistributor = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc;
     address public feeDistributor;
 
     /// @notice Reward Token for veCRV holders.
-    /// address public feeRewardToken = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     address public feeRewardToken;
 
     /// @notice Stake DAO SDT Distributor
@@ -222,13 +219,6 @@ abstract contract Strategy is UUPSUpgradeable {
     function claimNativeRewards() external {
         /// Claim from the Fee Distributor.
         _claimNativeRewads();
-
-        /// Check if there is something to send.
-        uint256 _claimed = ERC20(feeRewardToken).balanceOf(address(locker));
-        if (_claimed == 0) return;
-
-        /// Transfer the rewards to the Accumulator contract.
-        _transferFromLocker(feeRewardToken, accumulator, _claimed);
     }
 
     function harvest(address _asset, bool _distributeSDT, bool _claimExtra) public virtual {
@@ -335,6 +325,13 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @notice Internal implementation of native reward claim compatible with FeeDistributor.vy like contracts.
     function _claimNativeRewads() internal virtual {
         locker.execute(feeDistributor, 0, abi.encodeWithSignature("claim()"));
+
+        /// Check if there is something to send.
+        uint256 _claimed = ERC20(feeRewardToken).balanceOf(address(locker));
+        if (_claimed == 0) return;
+
+        /// Transfer the rewards to the Accumulator contract.
+        _transferFromLocker(feeRewardToken, accumulator, _claimed);
     }
 
     function _claimRewardToken(address _gauge) internal virtual returns (uint256 _claimed) {
@@ -578,6 +575,11 @@ abstract contract Strategy is UUPSUpgradeable {
     function setSdtDistributor(address newSdtDistributor) external onlyGovernance {
         if (newSdtDistributor == address(0)) revert ADDRESS_NULL();
         SDTDistributor = newSdtDistributor;
+    }
+
+    function setFeeReceiver(address _feeReceiver) external onlyGovernance {
+        if (_feeReceiver == address(0)) revert ADDRESS_NULL();
+        feeReceiver = _feeReceiver;
     }
 
     /// @notice Update protocol fees.

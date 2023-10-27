@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import "src/CRVStrategy.sol";
+import "src/CRV_OB_Strategy.sol";
 import "solady/utils/LibClone.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
@@ -20,8 +20,8 @@ abstract contract Base_Test is Test {
     ILocker public locker;
     Optimizer public optimizer;
 
-    CRVStrategy public strategy;
-    CRVStrategy public stratImplementation;
+    CRV_OB_Strategy public strategy;
+    CRV_OB_Strategy public stratImplementation;
 
     ConvexMinimalProxyFactory public factory;
 
@@ -76,7 +76,7 @@ abstract contract Base_Test is Test {
         /// Initialize Locker
         locker = ILocker(SD_VOTER_PROXY);
 
-        stratImplementation = new CRVStrategy(
+        stratImplementation = new CRV_OB_Strategy(
             address(this),
             SD_VOTER_PROXY,
             VE_CRV,
@@ -85,7 +85,7 @@ abstract contract Base_Test is Test {
         );
 
         address _proxy = LibClone.deployERC1967(address(stratImplementation));
-        strategy = CRVStrategy(payable(_proxy));
+        strategy = CRV_OB_Strategy(payable(_proxy));
         strategy.initialize(address(this));
 
         // Give strategy roles from depositor to new strategy
