@@ -50,4 +50,6 @@ interface ILiquidityGauge {
     function lp_token() external view returns (address);
 
     function is_killed() external view returns (bool);
+
+    function staking_token() external view returns (address);
 }

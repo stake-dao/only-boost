@@ -78,8 +78,6 @@ abstract contract PoolFactory_Test is Test {
     }
 
     function test_deploy_pool() public {
-        uint256 weight = IGaugeController(GAUGE_CONTROLLER).get_gauge_weight(gauge);
-
         address vault;
         address rewardDistributor;
 
@@ -90,7 +88,7 @@ abstract contract PoolFactory_Test is Test {
             isKilled = _isKilled;
         } catch {}
 
-        if (weight == 0 || isKilled) {
+        if (isKilled) {
             vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);
             (vault, rewardDistributor) = poolFactory.create(gauge);
         } else {

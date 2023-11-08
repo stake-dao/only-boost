@@ -89,6 +89,38 @@ contract UUPSUpgradeableTest is Test {
         implementation.upgradeTo(address(1));
     }
 
+    function test_UpgradeToWrongCaller() public {
+        vm.prank(address(0xCAFE));
+        vm.expectRevert(Strategy.GOVERNANCE.selector);
+        proxy.upgradeTo(address(1));
+    }
+
+    function test_updateGovernanceAndUpdate() public {
+        CRVStrategy impl2 = new CRVStrategy(
+             address(this),
+             SD_VOTER_PROXY,
+             VE_CRV,
+             REWARD_TOKEN,
+             MINTER
+         );
+
+        proxy.transferGovernance(address(0xCAFE));
+
+        vm.prank(address(0xCAFE));
+        proxy.acceptGovernance();
+
+        assertEq(proxy.governance(), address(0xCAFE));
+
+        vm.expectRevert(Strategy.GOVERNANCE.selector);
+        proxy.upgradeTo(address(impl2));
+
+        vm.prank(address(0xCAFE));
+        proxy.upgradeTo(address(impl2));
+
+        bytes32 v = vm.load(address(proxy), _ERC1967_IMPLEMENTATION_SLOT);
+        assertEq(address(uint160(uint256(v))), address(impl2));
+    }
+
     function test_UpgradeTo() public {
         CRVStrategy impl2 = new CRVStrategy(
              address(this),

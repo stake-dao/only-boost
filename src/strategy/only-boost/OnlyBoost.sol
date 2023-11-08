@@ -72,12 +72,10 @@ abstract contract OnlyBoost is Strategy {
             /// Skip if the optimized amount is 0.
             if (allocations[i] == 0) continue;
 
-
             /// If the recipient is the locker, withdraw from the locker.
             if (fundsManagers[i] == address(locker)) {
                 _withdrawFromLocker(asset, gauge, allocations[i]);
             }
-
             /// Else, call withdraw on the fallback.
             else {
                 IFallback(fundsManagers[i]).withdraw(asset, allocations[i]);
@@ -196,11 +194,10 @@ abstract contract OnlyBoost is Strategy {
 
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
     /// @return _amount Amount left after charging protocol fees.
-    function _chargeProtocolFees(
-        uint256 amount,
-        uint256 claimedFromFallbacks,
-        uint256 totalProtocolFeesFromFallbacks
-    ) internal returns (uint256) {
+    function _chargeProtocolFees(uint256 amount, uint256 claimedFromFallbacks, uint256 totalProtocolFeesFromFallbacks)
+        internal
+        returns (uint256)
+    {
         // If there's no amount and no protocol fees from fallbacks, return the amount claimed from fallbacks
         if (amount == 0 && totalProtocolFeesFromFallbacks == 0) return claimedFromFallbacks;
 

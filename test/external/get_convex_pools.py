@@ -51,18 +51,17 @@ def build_pools():
 
         multi_gauge = strategy.functions.multiGauges(gauge).call()
         if pool[5] == False and multi_gauge != ZERO_ADDRESS:
-
             pool_list.append(
-                {"pid": i, "rewardDistributor": multi_gauge, "name": "_" + str(i)}
+                {"pid": i, "gauge": gauge,  "rewardDistributor": multi_gauge, "name": "_" + str(i)}
             )
 
     # Dump to JSON
-    with open("test/external/pools.json", "w") as f:
+    with open("test/external/sd_pools.json", "w") as f:
         json.dump(pool_list, f, indent=4)
 
 
 def main():
-    return get_all_pools()
+    return build_pools()
 
 
 __name__ == "__main__" and main()
