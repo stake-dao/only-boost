@@ -23,7 +23,8 @@ contract CRVPoolFactory is PoolFactory {
     function _isValidToken(address _token) internal view override returns (bool) {
         /// We can't add the reward token as extra reward.
         /// We can't add special pools like the Ve Funder.
-        if (_token == rewardToken || _token == VE_FUNDER) return false;
+        /// We can't add SDT as extra reward, as it's already added by default.
+        if (_token == rewardToken || _token == VE_FUNDER || _token == SDT) return false;
 
         /// If the token is available as an inflation receiver, it's not valid.
         try GAUGE_CONTROLLER.gauge_types(_token) {
