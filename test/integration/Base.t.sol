@@ -71,18 +71,12 @@ abstract contract Base_Test is Test {
     }
 
     function setUp() public virtual {
-        vm.rollFork({blockNumber: 18_383_019});
+        vm.rollFork({blockNumber: 18_756_211});
 
         /// Initialize Locker
         locker = ILocker(SD_VOTER_PROXY);
 
-        stratImplementation = new CRVStrategy(
-            address(this),
-            SD_VOTER_PROXY,
-            VE_CRV,
-            REWARD_TOKEN,
-            MINTER
-        );
+        stratImplementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
 
         address _proxy = LibClone.deployERC1967(address(stratImplementation));
         strategy = CRVStrategy(payable(_proxy));
@@ -93,8 +87,9 @@ abstract contract Base_Test is Test {
         locker.setStrategy(payable(address(strategy)));
 
         implementation = new ConvexImplementation();
-        factory =
-        new ConvexMinimalProxyFactory(BOOSTER, address(strategy), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation));
+        factory = new ConvexMinimalProxyFactory(
+            BOOSTER, address(strategy), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation)
+        );
 
         optimizer = new Optimizer(address(strategy), address(factory));
         strategy.setOptimizer(address(optimizer));
@@ -231,7 +226,7 @@ abstract contract Base_Test is Test {
         uint256 id = vm.snapshot();
         _sdExtraRewardsEarned = new uint256[](extraRewardTokens.length);
 
-        uint256[] memory _snapshotBalances = new uint[](extraRewardTokens.length);
+        uint256[] memory _snapshotBalances = new uint256[](extraRewardTokens.length);
         for (uint256 i = 0; i < extraRewardTokens.length; i++) {
             _snapshotBalances[i] = ERC20(extraRewardTokens[i]).balanceOf(address(locker));
         }

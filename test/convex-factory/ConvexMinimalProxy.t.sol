@@ -32,8 +32,9 @@ contract ConvexMinimalProxyTest is Test {
         vm.rollFork({blockNumber: 18_341_841});
 
         implementation = new ConvexImplementation();
-        factory =
-        new ConvexMinimalProxyFactory(BOOSTER, address(this), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation));
+        factory = new ConvexMinimalProxyFactory(
+            BOOSTER, address(this), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation)
+        );
 
         cloneFallback = ConvexImplementation(factory.create(address(token), pid));
 

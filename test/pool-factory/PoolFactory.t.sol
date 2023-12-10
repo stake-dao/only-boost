@@ -45,13 +45,7 @@ abstract contract PoolFactory_Test is Test {
         vm.rollFork({blockNumber: 18_383_019});
 
         /// Deploy Strategy
-        implementation = new CRVStrategy(
-            address(this),
-            SD_VOTER_PROXY,
-            VE_CRV,
-            REWARD_TOKEN,
-            MINTER
-        );
+        implementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
 
         address _proxy = LibClone.deployERC1967(address(implementation));
         strategy = CRVStrategy(payable(_proxy));
@@ -67,12 +61,8 @@ abstract contract PoolFactory_Test is Test {
 
         vaultImplementation = new Vault();
 
-        poolFactory = new CRVPoolFactory(
-            address(strategy),
-            REWARD_TOKEN,
-            address(vaultImplementation),
-            gaugeImplementation
-        );
+        poolFactory =
+            new CRVPoolFactory(address(strategy), REWARD_TOKEN, address(vaultImplementation), gaugeImplementation);
 
         strategy.setFactory(address(poolFactory));
     }

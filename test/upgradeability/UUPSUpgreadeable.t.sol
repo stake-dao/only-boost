@@ -37,13 +37,7 @@ contract UUPSUpgradeableTest is Test {
     address public constant MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
 
     function setUp() public {
-        implementation = new CRVStrategy(
-            address(this),
-            SD_VOTER_PROXY,
-            VE_CRV,
-            REWARD_TOKEN,
-            MINTER
-        );
+        implementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
 
         address _proxy = LibClone.deployERC1967(address(implementation));
         proxy = CRVStrategy(payable(_proxy));
@@ -96,13 +90,7 @@ contract UUPSUpgradeableTest is Test {
     }
 
     function test_updateGovernanceAndUpdate() public {
-        CRVStrategy impl2 = new CRVStrategy(
-             address(this),
-             SD_VOTER_PROXY,
-             VE_CRV,
-             REWARD_TOKEN,
-             MINTER
-         );
+        CRVStrategy impl2 = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
 
         proxy.transferGovernance(address(0xCAFE));
 
@@ -122,13 +110,7 @@ contract UUPSUpgradeableTest is Test {
     }
 
     function test_UpgradeTo() public {
-        CRVStrategy impl2 = new CRVStrategy(
-             address(this),
-             SD_VOTER_PROXY,
-             VE_CRV,
-             REWARD_TOKEN,
-             MINTER
-         );
+        CRVStrategy impl2 = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
 
         vm.expectEmit(true, true, true, true);
 

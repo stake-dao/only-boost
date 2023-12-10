@@ -395,13 +395,7 @@ contract Deployment is Script, Test {
         vm.startBroadcast(DEPLOYER);
 
         /// 1. Deploy the Strategy and Proxy.
-        stratImplementation = new CRVStrategy(
-            address(this),
-            SD_VOTER_PROXY,
-            VE_CRV,
-            REWARD_TOKEN,
-            MINTER
-        );
+        stratImplementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
         address _proxy = LibClone.deployERC1967(address(stratImplementation));
         strategy = CRVStrategy(payable(_proxy));
 
@@ -421,8 +415,9 @@ contract Deployment is Script, Test {
 
         /// 4. Deploy ConvexMinimalProxy Factory.
         implementation = new ConvexImplementation();
-        factory =
-        new ConvexMinimalProxyFactory(BOOSTER, address(strategy), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation));
+        factory = new ConvexMinimalProxyFactory(
+            BOOSTER, address(strategy), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation)
+        );
 
         /// 5. Deploy the Optimizer and set it in the strategy.
         optimizer = new Optimizer(address(strategy), address(factory));

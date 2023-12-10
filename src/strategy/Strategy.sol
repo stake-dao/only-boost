@@ -377,6 +377,8 @@ abstract contract Strategy is UUPSUpgradeable {
         address[8] memory extraRewardTokens;
         uint256[8] memory snapshotLockerRewardBalances;
 
+        uint256 snapshotRewardTokenBalance = ERC20(rewardToken).balanceOf(address(this));
+
         uint8 i;
         address extraRewardToken;
         /// There can be up to 8 extra reward tokens.
@@ -387,8 +389,11 @@ abstract contract Strategy is UUPSUpgradeable {
 
             // Add the reward token address on the array
             extraRewardTokens[i] = extraRewardToken;
+
+            uint256 balance = ERC20(extraRewardToken).balanceOf(address(locker));
+
             // Add the reward token balance ot the locker on the array
-            snapshotLockerRewardBalances[i] = ERC20(extraRewardToken).balanceOf(address(locker));
+            snapshotLockerRewardBalances[i] = balance;
 
             unchecked {
                 ++i;
@@ -420,6 +425,7 @@ abstract contract Strategy is UUPSUpgradeable {
             }
 
             if (extraRewardToken == rewardToken) {
+                claimed = ERC20(extraRewardToken).balanceOf(address(this)) - snapshotRewardTokenBalance;
                 _rewardTokenClaimed += claimed;
             } else {
                 claimed = ERC20(extraRewardToken).balanceOf(address(this));
