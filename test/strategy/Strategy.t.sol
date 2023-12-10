@@ -63,13 +63,7 @@ abstract contract Strategy_Test is Test {
         /// Initialize Locker
         locker = ILocker(SD_VOTER_PROXY);
 
-        stratImplementation = new CRVStrategy(
-            address(this),
-            SD_VOTER_PROXY,
-            VE_CRV,
-            REWARD_TOKEN,
-            MINTER
-        );
+        stratImplementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
 
         address _proxy = LibClone.deployERC1967(address(stratImplementation));
         strategy = CRVStrategy(payable(_proxy));
@@ -109,6 +103,36 @@ abstract contract Strategy_Test is Test {
 
         /// We need to overwrite the locker balance.
         deal(address(gauge), address(locker), 0);
+    }
+
+    function test_replaceGaugeAndRewardDistributor() public {
+        address _newGauge = address(0x1);
+        address _oldGauge = gauge;
+
+        /// Check allowance before setting the new gauge.
+        assertEq(token.allowance(address(locker), _newGauge), 0);
+        assertEq(token.allowance(address(locker), _oldGauge), type(uint256).max);
+
+        strategy.setGauge(address(token), _newGauge);
+
+        assertEq(token.allowance(address(locker), _oldGauge), 0);
+        assertEq(token.allowance(address(locker), _newGauge), type(uint256).max);
+
+        assertEq(strategy.gauges(address(token)), _newGauge);
+
+        address _newRewardDistributor = address(0x2);
+        address _oldRewardDistributor = rewardDistributor;
+
+        /// Check allowance before setting the new reward distributor.
+        assertEq(ERC20(REWARD_TOKEN).allowance(address(strategy), _newRewardDistributor), 0);
+        assertEq(ERC20(REWARD_TOKEN).allowance(address(strategy), _oldRewardDistributor), type(uint256).max);
+
+        strategy.setRewardDistributor(address(gauge), _newRewardDistributor);
+
+        assertEq(ERC20(REWARD_TOKEN).allowance(address(strategy), _oldRewardDistributor), 0);
+        assertEq(ERC20(REWARD_TOKEN).allowance(address(strategy), _newRewardDistributor), type(uint256).max);
+
+        assertEq(strategy.rewardDistributors(address(gauge)), _newRewardDistributor);
     }
 
     function test_deposit(uint128 _amount) public {
@@ -329,7 +353,7 @@ abstract contract Strategy_Test is Test {
         uint256 id = vm.snapshot();
         _sdExtraRewardsEarned = new uint256[](extraRewardTokens.length);
 
-        uint256[] memory _snapshotBalances = new uint[](extraRewardTokens.length);
+        uint256[] memory _snapshotBalances = new uint256[](extraRewardTokens.length);
         for (uint256 i = 0; i < extraRewardTokens.length; i++) {
             _snapshotBalances[i] = ERC20(extraRewardTokens[i]).balanceOf(address(locker));
         }

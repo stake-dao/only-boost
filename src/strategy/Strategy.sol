@@ -496,6 +496,11 @@ abstract contract Strategy is UUPSUpgradeable {
         if (token == address(0)) revert ADDRESS_NULL();
         if (gauge == address(0)) revert ADDRESS_NULL();
 
+        /// Revoke approval for the old gauge.
+        address oldGauge = gauges[token];
+        if (oldGauge != address(0)) {
+            locker.safeExecute(token, 0, abi.encodeWithSignature("approve(address,uint256)", oldGauge, 0));
+        }
         gauges[token] = gauge;
 
         /// Approve trough the locker.
@@ -516,6 +521,13 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @param rewardDistributor Address of rewardDistributor
     function setRewardDistributor(address gauge, address rewardDistributor) external onlyGovernanceOrFactory {
         if (gauge == address(0) || rewardDistributor == address(0)) revert ADDRESS_NULL();
+
+        /// Revoke approval for the old rewardDistributor.
+        address oldRewardDistributor = rewardDistributors[gauge];
+        if (oldRewardDistributor != address(0)) {
+            SafeTransferLib.safeApprove(rewardToken, oldRewardDistributor, 0);
+        }
+
         rewardDistributors[gauge] = rewardDistributor;
 
         /// Approve the rewardDistributor to spend token.
