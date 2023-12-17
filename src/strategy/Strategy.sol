@@ -200,7 +200,7 @@ abstract contract Strategy is UUPSUpgradeable {
         SafeTransferLib.safeTransfer(asset, address(locker), amount);
 
         /// Deposit into the Gauge trough the Locker.
-        locker.execute(gauge, 0, abi.encodeWithSignature("deposit(uint256)", amount));
+        locker.safeExecute(gauge, 0, abi.encodeWithSignature("deposit(uint256)", amount));
     }
 
     /// @notice Withdraw from the gauge trhoug the Locker.
@@ -209,7 +209,7 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @param amount Amount of LP token to withdraw.
     function _withdrawFromLocker(address asset, address gauge, uint256 amount) internal virtual {
         /// Withdraw from the Gauge trough the Locker.
-        locker.execute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
+        locker.safeExecute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
 
         /// Transfer the _asset_ from the Locker to this contract.
         _transferFromLocker(asset, address(this), amount);
@@ -324,7 +324,7 @@ abstract contract Strategy is UUPSUpgradeable {
 
     /// @notice Internal implementation of native reward claim compatible with FeeDistributor.vy like contracts.
     function _claimNativeRewards() internal virtual {
-        locker.execute(feeDistributor, 0, abi.encodeWithSignature("claim()"));
+        locker.safeExecute(feeDistributor, 0, abi.encodeWithSignature("claim()"));
 
         /// Check if there is something to send.
         uint256 _claimed = ERC20(feeRewardToken).balanceOf(address(locker));
@@ -341,7 +341,7 @@ abstract contract Strategy is UUPSUpgradeable {
         uint256 _snapshotBalance = ERC20(rewardToken).balanceOf(address(locker));
 
         /// Claim.
-        locker.execute(minter, 0, abi.encodeWithSignature("mint(address)", gauge));
+        locker.safeExecute(minter, 0, abi.encodeWithSignature("mint(address)", gauge));
 
         /// Snapshot after claim.
         _claimed = ERC20(rewardToken).balanceOf(address(locker)) - _snapshotBalance;
