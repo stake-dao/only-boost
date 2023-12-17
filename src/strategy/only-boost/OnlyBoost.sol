@@ -119,10 +119,7 @@ abstract contract OnlyBoost is Strategy {
         }
 
         /// 4. Take Fees from _claimed amount.
-        claimed = _chargeProtocolFees(claimed, claimedFromFallbacks, protocolFeesFromFallbacks);
-
-        /// 5. Distribute Claim Incentive
-        claimed = _distributeClaimIncentive(claimed);
+        claimed = claimed + claimedFromFallbacks - _chargeProtocolFees(claimed, claimedFromFallbacks, protocolFeesFromFallbacks);
 
         /// 6. Distribute SDT
         // Distribute SDT to the related gauge
@@ -198,11 +195,9 @@ abstract contract OnlyBoost is Strategy {
         internal
         returns (uint256)
     {
-        // If there's no amount and no protocol fees from fallbacks, return the amount claimed from fallbacks
-        if (amount == 0 && totalProtocolFeesFromFallbacks == 0) return claimedFromFallbacks;
-
+        if (amount == 0 && claimedFromFallbacks == 0) return 0;
         // If there's no protocol fees set and there's no protocol fees from fallbacks, return the total amount
-        if (protocolFeesPercent == 0 && totalProtocolFeesFromFallbacks == 0) return amount + claimedFromFallbacks;
+        if (protocolFeesPercent == 0 && totalProtocolFeesFromFallbacks == 0 && claimIncentiveFee == 0) return 0;
 
         // Calculate the fees accrued from the claimed amount
         uint256 _feeAccrued = amount.mulDiv(protocolFeesPercent, DENOMINATOR);
@@ -210,10 +205,13 @@ abstract contract OnlyBoost is Strategy {
         // Update the total fees accrued with the fee accrued from this claim and the protocol fees from fallbacks
         feesAccrued += _feeAccrued + totalProtocolFeesFromFallbacks;
 
-        // Reduce the amount by the fees accrued but add back the protocol fees from fallbacks and the amount claimed from fallbacks
-        uint256 _netAmount = amount + claimedFromFallbacks - _feeAccrued - totalProtocolFeesFromFallbacks;
+        /// Distribute Claim Incentive Fees to the caller.
+        if (claimIncentiveFee == 0) return _feeAccrued + totalProtocolFeesFromFallbacks;
 
-        return _netAmount;
+        uint256 claimerIncentive = (amount + claimedFromFallbacks).mulDiv(claimIncentiveFee, DENOMINATOR);
+        SafeTransferLib.safeTransfer(rewardToken, msg.sender, claimerIncentive);
+
+        return _feeAccrued + totalProtocolFeesFromFallbacks + claimerIncentive;
     }
 
     /// @notice Claim rewards from the fallbacks.

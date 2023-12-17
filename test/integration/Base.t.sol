@@ -301,19 +301,18 @@ abstract contract Base_Test is Test {
         }
 
         totalProtocolFeesAccrued += protocolFeeForThisHarvest;
-        uint256 _totalRewardTokenAmount = _expectedLockerRewardTokenAmount + _earned - protocolFeeForThisHarvest;
+        uint256 _totalRewardTokenAmount = _expectedLockerRewardTokenAmount + _earned;
 
         uint256 _claimerFee = _totalRewardTokenAmount.mulDiv(1, 100);
         claimerFee += _claimerFee;
 
-        _totalRewardTokenAmount -= _claimerFee;
-
+        _totalRewardTokenAmount -= (_claimerFee + protocolFeeForThisHarvest);
         totalRewardTokenAmount += _totalRewardTokenAmount;
 
         assertEq(strategy.feesAccrued(), totalProtocolFeesAccrued);
         assertEq(_balanceOf(REWARD_TOKEN, address(0xBEEC)), claimerFee);
         assertEq(_balanceOf(REWARD_TOKEN, address(strategy)), totalProtocolFeesAccrued);
-        assertEq(ERC20(REWARD_TOKEN).balanceOf(address(rewardDistributor)), totalRewardTokenAmount);
+        assertEq(_balanceOf(REWARD_TOKEN, address(rewardDistributor)), totalRewardTokenAmount);
 
         return (totalProtocolFeesAccrued, claimerFee, totalRewardTokenAmount);
     }
@@ -359,10 +358,9 @@ abstract contract Base_Test is Test {
         } else {
             _protocolFee = _expectedLockerRewardTokenAmount.mulDiv(17, 100);
         }
-        _totalRewardTokenAmount -= _protocolFee;
 
         _claimerFee = _totalRewardTokenAmount.mulDiv(1, 100);
-        _totalRewardTokenAmount -= _claimerFee;
+        _totalRewardTokenAmount -= (_claimerFee + _protocolFee);
 
         assertEq(_balanceOf(REWARD_TOKEN, address(0xBEEC)), _claimerFee);
 

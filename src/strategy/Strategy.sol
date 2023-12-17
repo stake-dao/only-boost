@@ -255,10 +255,7 @@ abstract contract Strategy is UUPSUpgradeable {
         }
 
         /// 4. Take Fees from _claimed amount.
-        claimed = _chargeProtocolFees(claimed);
-
-        /// 5. Distribute Claim Incentive
-        claimed = _distributeClaimIncentive(claimed);
+        claimed -= _chargeProtocolFees(claimed);
 
         /// 5. Distribute the rewardToken.
         ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, claimed);
@@ -280,28 +277,21 @@ abstract contract Strategy is UUPSUpgradeable {
     }
 
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
-    /// @return _amount Amount left after charging protocol fees.
+    /// @return _amount Total Fees charged for the operation.
     function _chargeProtocolFees(uint256 amount) internal returns (uint256) {
         if (amount == 0) return 0;
-        if (protocolFeesPercent == 0) return amount;
+        if (protocolFeesPercent == 0 && claimIncentiveFee == 0) return 0;
 
         uint256 _feeAccrued = amount.mulDiv(protocolFeesPercent, DENOMINATOR);
         feesAccrued += _feeAccrued;
 
-        return amount -= _feeAccrued;
-    }
-
-    /// @notice Distribute claim incentive to the claimer to incentivize claiming.
-    /// @return _amount Amount left after distributing claim incentive.
-    function _distributeClaimIncentive(uint256 amount) internal returns (uint256) {
-        if (amount == 0) return 0;
-        if (claimIncentiveFee == 0) return amount;
+        /// Distribute Claim Incentive Fees to the caller.
+        if (claimIncentiveFee == 0) return _feeAccrued;
 
         uint256 claimerIncentive = amount.mulDiv(claimIncentiveFee, DENOMINATOR);
-
         SafeTransferLib.safeTransfer(rewardToken, msg.sender, claimerIncentive);
 
-        return amount - claimerIncentive;
+        return _feeAccrued + claimerIncentive;
     }
 
     //////////////////////////////////////////////////////
