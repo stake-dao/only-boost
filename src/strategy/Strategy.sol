@@ -221,6 +221,7 @@ abstract contract Strategy is UUPSUpgradeable {
 
     /// @notice Claim `FeeRewardToken` from the Fee Distributor and send it to the Accumulator contract.
     function claimNativeRewards() external {
+        if(accumulator == address(0)) revert ADDRESS_NULL();
         /// Claim from the Fee Distributor.
         _claimNativeRewards();
     }
