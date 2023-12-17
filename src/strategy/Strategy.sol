@@ -561,6 +561,10 @@ abstract contract Strategy is UUPSUpgradeable {
         if (msg.sender != futureGovernance) revert GOVERNANCE();
 
         governance = msg.sender;
+
+        /// Reset the future governance.
+        futureGovernance = address(0);
+
         emit GovernanceChanged(msg.sender);
     }
 
