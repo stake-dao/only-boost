@@ -119,7 +119,8 @@ abstract contract OnlyBoost is Strategy {
         }
 
         /// 4. Take Fees from _claimed amount.
-        claimed = claimed + claimedFromFallbacks - _chargeProtocolFees(claimed, claimedFromFallbacks, protocolFeesFromFallbacks);
+        claimed = claimed + claimedFromFallbacks
+            - _chargeProtocolFees(claimed, claimedFromFallbacks, protocolFeesFromFallbacks);
 
         /// 6. Distribute SDT
         // Distribute SDT to the related gauge

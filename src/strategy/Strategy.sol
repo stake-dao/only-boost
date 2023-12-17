@@ -405,6 +405,7 @@ abstract contract Strategy is UUPSUpgradeable {
         for (i = 0; i < 8;) {
             extraRewardToken = extraRewardTokens[i];
             if (extraRewardToken == address(0)) break;
+
             uint256 claimed;
             if (!isRewardReceived) {
                 claimed = ERC20(extraRewardToken).balanceOf(address(locker)) - snapshotLockerRewardBalances[i];
@@ -413,6 +414,10 @@ abstract contract Strategy is UUPSUpgradeable {
                     _transferFromLocker(extraRewardToken, address(this), claimed);
                 }
             }
+
+            /// Check if the rewardDistributor is valid. 
+            /// Else, there'll be some extra rewards that are not valid to distribute left in the strategy.
+            if (ILiquidityGauge(rewardDistributor).reward_data(extraRewardToken).distributor != address(this)) break;
 
             if (extraRewardToken == rewardToken) {
                 claimed = ERC20(extraRewardToken).balanceOf(address(this)) - snapshotRewardTokenBalance;
