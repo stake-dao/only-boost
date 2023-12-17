@@ -332,12 +332,4 @@ contract Optimizer is IOnlyBoost {
         governance = msg.sender;
         emit GovernanceChanged(msg.sender);
     }
-
-    /// @notice Get absolute difference between two uint256
-    /// @param a First uint256
-    /// @param b Second uint256
-    /// @return The absolute difference between a and b
-    function absDiff(uint256 a, uint256 b) private pure returns (uint256) {
-        return (a > b) ? a - b : b - a;
-    }
 }
