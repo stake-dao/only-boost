@@ -10,12 +10,17 @@ import "solady/utils/LibClone.sol";
 import {IVault} from "script/utils/IVault.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
+import {IStrategy} from "src/interfaces/IStrategy.sol";
 import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
 
 import {ICVXLocker, Optimizer} from "src/optimizer/Optimizer.sol";
 import {IBaseRewardPool, ConvexImplementation} from "src/fallbacks/ConvexImplementation.sol";
 import {IBooster, ConvexMinimalProxyFactory} from "src/fallbacks/ConvexMinimalProxyFactory.sol";
+
+interface IOldStrategy is IStrategy {
+    function multiGauges(address) external view returns (address);
+}
 
 contract Deployment is Script, Test {
     using FixedPointMathLib for uint256;
@@ -388,7 +393,9 @@ contract Deployment is Script, Test {
         0x3D92968C1cb89Dc769E75Ba7C0D9Cd65505e021E,
         0x27Ed381A396125a8E53Cc1eF2117B68fd0ABEc8a,
         0x0CCd6f6F7FbD09aC2BC3241a1A1c707a69A63b2a,
-        0xA2eEabfD28468d1402Be2112613946C8A2f3FbDe
+        0xA2eEabfD28468d1402Be2112613946C8A2f3FbDe,
+        0x4Db01E7893A6193dD4923BD9EdcC40924b0e38CD,
+        0x36341DEf45b1a153Bbd4e99BcB41722887e9eEcD
     ];
 
     function run() public {
@@ -432,7 +439,12 @@ contract Deployment is Script, Test {
         /// 6. For each pool:
         /// . Toggle the vault to the new strategy.
         /// . Set the reward distributor to the new strategy.
+        require(rewardDistributors.length == gauges.length, "Invalid length");
+
         for (uint256 i = 0; i < rewardDistributors.length; i++) {
+            IOldStrategy oldStrategy = IOldStrategy(locker.governance());
+            require(oldStrategy.multiGauges(gauges[i]) == rewardDistributors[i], "Invalid distributor"); 
+
             address token = ILiquidityGauge(gauges[i]).lp_token();
             address vault = ILiquidityGauge(rewardDistributors[i]).staking_token();
 
