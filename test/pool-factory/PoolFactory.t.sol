@@ -31,6 +31,8 @@ abstract contract PoolFactory_Test is Test {
     address public constant MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
     address public constant SD_VOTER_PROXY = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6;
     address public constant REWARD_TOKEN = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    address public constant FALLBACK_REWARD_TOKEN = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+
     address public constant gaugeImplementation = address(0x3Dc56D46F0Bd13655EfB29594a2e44534c453BF9);
 
     constructor(uint256 _pid) {
@@ -98,6 +100,7 @@ abstract contract PoolFactory_Test is Test {
 
             assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(0), poolFactory.SDT());
             assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
+            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(2), FALLBACK_REWARD_TOKEN);
 
             /// Check if there's extra rewards in the gauge.
             _checkExtraRewards(rewardDistributor);
@@ -111,7 +114,7 @@ abstract contract PoolFactory_Test is Test {
         if (!success) {
             assertEq(strategy.lGaugeType(gauge), 1);
         } else {
-            uint256 _count = 2; // 2 because we already checked for SDT and CRV
+            uint256 _count = 3; // 3 because we already checked for SDT and CRV
             for (uint8 i = 0; i < 8;) {
                 // Get reward token
                 address _extraRewardToken = ISDLiquidityGauge(gauge).reward_tokens(i);
@@ -123,7 +126,7 @@ abstract contract PoolFactory_Test is Test {
                     ISDLiquidityGauge(rewardDistributor).reward_data(_extraRewardToken);
                 assertEq(reward.distributor, address(strategy));
 
-                if (_extraRewardToken != REWARD_TOKEN && _extraRewardToken != poolFactory.SDT()) {
+                if (_extraRewardToken != REWARD_TOKEN && _extraRewardToken != poolFactory.SDT() && _extraRewardToken != FALLBACK_REWARD_TOKEN) {
                     _count += 1;
                 }
 

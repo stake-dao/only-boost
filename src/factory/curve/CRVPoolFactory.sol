@@ -7,6 +7,9 @@ import {IGaugeController} from "src/interfaces/IGaugeController.sol";
 /// @notice Inherit from PoolFactory to deploy a pool compatible with CRV gauges and check if the token is a valid extra rewards to add.
 contract CRVPoolFactory is PoolFactory {
     /// @notice Ve Funder is a special gauge not valid to be deployed as a pool.
+    address public constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+
+    /// @notice Ve Funder is a special gauge not valid to be deployed as a pool.
     address public constant VE_FUNDER = 0xbAF05d7aa4129CA14eC45cC9d4103a9aB9A9fF60;
 
     /// @notice Curve Gauge Controller.
@@ -18,6 +21,18 @@ contract CRVPoolFactory is PoolFactory {
         address _vaultImplementation,
         address _liquidityGaugeImplementation
     ) PoolFactory(_strategy, _rewardToken, _vaultImplementation, _liquidityGaugeImplementation) {}
+
+       /// @notice Add the main reward token to the reward distributor.
+    /// @param rewardDistributor Address of the reward distributor.
+    function _addRewardToken(address rewardDistributor) internal override {
+        /// The strategy should claim through the locker the reward token,
+        /// and distribute it to the reward distributor every harvest.
+        ISDLiquidityGauge(rewardDistributor).add_reward(rewardToken, address(strategy));
+
+        /// Add CVX in the case where Only Boost is enabled.
+        ISDLiquidityGauge(rewardDistributor).add_reward(CVX, address(strategy));
+    }
+
 
     /// @inheritdoc PoolFactory
     function _isValidToken(address _token) internal view override returns (bool) {
