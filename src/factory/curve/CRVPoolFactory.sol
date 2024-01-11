@@ -22,7 +22,7 @@ contract CRVPoolFactory is PoolFactory {
         address _liquidityGaugeImplementation
     ) PoolFactory(_strategy, _rewardToken, _vaultImplementation, _liquidityGaugeImplementation) {}
 
-       /// @notice Add the main reward token to the reward distributor.
+    /// @notice Add the main reward token to the reward distributor.
     /// @param rewardDistributor Address of the reward distributor.
     function _addRewardToken(address rewardDistributor) internal override {
         /// The strategy should claim through the locker the reward token,
@@ -32,7 +32,6 @@ contract CRVPoolFactory is PoolFactory {
         /// Add CVX in the case where Only Boost is enabled.
         ISDLiquidityGauge(rewardDistributor).add_reward(CVX, address(strategy));
     }
-
 
     /// @inheritdoc PoolFactory
     function _isValidToken(address _token) internal view override returns (bool) {

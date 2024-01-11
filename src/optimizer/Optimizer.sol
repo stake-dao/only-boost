@@ -236,53 +236,40 @@ contract Optimizer is IOnlyBoost {
         }
     }
 
-    /// @notice Return the amount that need to be withdrawn from StakeDAO Liquid Locker and from Convex Curve based on the amount to withdraw
+    /// @notice Return the amount that need to be withdrawn from StakeDAO Liquid Locker and from Convex Curve based on the amount to withdraw and boost optimization
     /// @param gauge Address of Liquidity Gauge corresponding to LP token
     /// @param amount Amount of LP token to withdraw
     function getOptimalWithdrawalPath(address gauge, uint256 amount)
         public
         view
-        returns (address[] memory _fallbacks, uint256[] memory _allocations)
+        returns (address[] memory _withdrawalTargets, uint256[] memory _allocations)
     {
-        _fallbacks = new address[](2);
+        _withdrawalTargets = new address[](2);
         _allocations = new uint256[](2);
 
-        _fallbacks[1] = VOTER_PROXY_SD;
+        _withdrawalTargets[1] = VOTER_PROXY_SD;
+        _withdrawalTargets[0] = proxyFactory.fallbacks(gauge);
 
-        /// Get the fallback address based on the gauge address.
-        IFallback _fallback = IFallback(proxyFactory.fallbacks(gauge));
+        uint256 balanceSD = ERC20(gauge).balanceOf(VOTER_PROXY_SD);
+        uint256 balanceConvex = IFallback(_withdrawalTargets[0]).balanceOf(gauge);
 
-        /// Query the gauge balance of the Stake DAO Locker address.
-        uint256 balanceOfStakeDAO = ERC20(gauge).balanceOf(VOTER_PROXY_SD);
+        // Calculate optimal boost for both pools
+        uint256 optimalSD = cachedOptimizations[gauge].value;
+        uint256 totalBalance = balanceSD + balanceConvex;
 
-        uint256 balanceOfConvexCurve;
-        if (address(_fallback) != address(0)) {
-            _fallbacks[0] = address(_fallback);
-            /// We give gauge as parameter but it's not used in the fallback.
-            balanceOfConvexCurve = _fallback.balanceOf(gauge);
-        }
-
-        /// If there's more asset on Convex than Stake DAO, then we prioritize Convex.
-        if (balanceOfConvexCurve >= balanceOfStakeDAO) {
-            /// The withdrawal amount is the minimum between the amount and the balance of the fallback.
-            _allocations[0] = FixedPointMathLib.min(amount, balanceOfConvexCurve);
-            amount -= _allocations[0];
-
-            /// If not enough, then we withdraw from Stake DAO.
-            if (amount > 0) {
-                _allocations[1] = FixedPointMathLib.min(amount, balanceOfStakeDAO);
-                amount -= _allocations[1];
-            }
+        // Adjust the withdrawal based on the optimal amount for Stake DAO
+        if (totalBalance <= amount) {
+            // If the total balance is less than or equal to the withdrawal amount, withdraw everything
+            _allocations[0] = balanceConvex;
+            _allocations[1] = balanceSD;
+        } else if (optimalSD >= balanceSD) {
+            // If Stake DAO balance is below optimal, prioritize withdrawing from Convex
+            _allocations[0] = FixedPointMathLib.min(amount, balanceConvex);
+            _allocations[1] = amount > _allocations[0] ? amount - _allocations[0] : 0;
         } else {
-            /// The withdrawal amount is the minimum between the amount and the balance of the fallback.
-            _allocations[1] = FixedPointMathLib.min(amount, balanceOfStakeDAO);
-            amount -= _allocations[1];
-
-            /// If not enough, then we withdraw from Convex.
-            if (amount > 0) {
-                _allocations[0] = FixedPointMathLib.min(amount, balanceOfConvexCurve);
-                amount -= _allocations[0];
-            }
+            // If Stake DAO balance is above optimal, prioritize withdrawing from Stake DAO
+            _allocations[1] = FixedPointMathLib.min(amount, balanceSD);
+            _allocations[0] = amount > _allocations[1] ? amount - _allocations[1] : 0;
         }
     }
 

@@ -443,7 +443,7 @@ contract Deployment is Script, Test {
 
         for (uint256 i = 0; i < rewardDistributors.length; i++) {
             IOldStrategy oldStrategy = IOldStrategy(locker.governance());
-            require(oldStrategy.multiGauges(gauges[i]) == rewardDistributors[i], "Invalid distributor"); 
+            require(oldStrategy.multiGauges(gauges[i]) == rewardDistributors[i], "Invalid distributor");
 
             address token = ILiquidityGauge(gauges[i]).lp_token();
             address vault = ILiquidityGauge(rewardDistributors[i]).staking_token();

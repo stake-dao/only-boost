@@ -19,7 +19,8 @@ library SafeExecute {
         returns (bool success)
     {
         bytes memory returnData;
-        (success, returnData) = locker.execute(to, 0, abi.encodeWithSignature("transfer(address,uint256)", recipient, amount));
+        (success, returnData) =
+            locker.execute(to, 0, abi.encodeWithSignature("transfer(address,uint256)", recipient, amount));
 
         if (!success) revert CALL_FAILED();
         if (returnData.length != 0 && !abi.decode(returnData, (bool))) revert CALL_FAILED();

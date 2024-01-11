@@ -105,7 +105,9 @@ abstract contract Base_Test is Test {
         strategy.setGauge(address(token), address(gauge));
         strategy.setRewardDistributor(address(gauge), address(rewardDistributor));
 
-        vm.prank(ILiquidityGauge(address(rewardDistributor)).admin());
+        address _admin = ILiquidityGauge(address(rewardDistributor)).admin();
+
+        vm.prank(_admin);
         /// Transfer Ownership of the gauge to the strategy.
         ILiquidityGauge(address(rewardDistributor)).commit_transfer_ownership(address(strategy));
 
@@ -132,7 +134,6 @@ abstract contract Base_Test is Test {
         /// Reset Balance of the rewardDistributor for each reward token.
         deal(REWARD_TOKEN, address(rewardDistributor), 0);
         deal(FALLBACK_REWARD_TOKEN, address(rewardDistributor), 0);
-
         /// Add the reward token to the rewardDistributor.
         strategy.addRewardToken(gauge, FALLBACK_REWARD_TOKEN);
 

@@ -126,7 +126,10 @@ abstract contract PoolFactory_Test is Test {
                     ISDLiquidityGauge(rewardDistributor).reward_data(_extraRewardToken);
                 assertEq(reward.distributor, address(strategy));
 
-                if (_extraRewardToken != REWARD_TOKEN && _extraRewardToken != poolFactory.SDT() && _extraRewardToken != FALLBACK_REWARD_TOKEN) {
+                if (
+                    _extraRewardToken != REWARD_TOKEN && _extraRewardToken != poolFactory.SDT()
+                        && _extraRewardToken != FALLBACK_REWARD_TOKEN
+                ) {
                     _count += 1;
                 }
 

@@ -4,9 +4,12 @@ out = 'out'
 tests = 'test'
 libs = ['lib']
 verbosity = 3
-evm_version = "shanghai"
+evm_version = 'shanghai'
+
   gas_reports = [
-    "CRV_OB_Strategy",
+    "Strategy",
+    "OnlyBoost",
+    "CRVStrategy",
     "ConvexImplementation",
     "ConvexMinimalProxyFactory"
   ]
@@ -14,7 +17,7 @@ evm_version = "shanghai"
 ffi = true
 
 # Enable before deploying.
-optimizer = false
+optimizer = true
 optimizers_runs = 200
 
 remappings = [

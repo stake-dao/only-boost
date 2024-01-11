@@ -16,6 +16,9 @@ abstract contract OnlyBoost_Test is Base_Test {
         uint256 amount = uint256(_amount);
         vm.assume(amount != 0);
 
+        uint256 totalSupply = ILiquidityGauge(gauge).totalSupply();
+        vm.assume(amount <= totalSupply);
+
         deal(address(token), address(this), amount);
 
         /// Snapshot optimal SD balance before deposit.
@@ -64,6 +67,9 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         vm.assume(amount != 0);
         vm.assume(toWithdraw != 0);
+
+        uint256 totalSupply = ILiquidityGauge(gauge).totalSupply();
+        vm.assume(amount <= totalSupply);
         vm.assume(amount >= toWithdraw);
 
         deal(address(token), address(this), amount);
@@ -76,11 +82,7 @@ abstract contract OnlyBoost_Test is Base_Test {
         uint256 workingBalance = ILiquidityGauge(gauge).working_balances(CONVEX_VOTER_PROXY);
 
         strategy.deposit(address(token), amount);
-
         /// Snapshot balances
-        uint256 proxyBalance = proxy.balanceOf(address(token));
-        uint256 sdBalance = ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY));
-
         strategy.withdraw(address(token), toWithdraw);
 
         /// Means that Convex has maxboost.
@@ -100,33 +102,15 @@ abstract contract OnlyBoost_Test is Base_Test {
             assertEq(token.balanceOf(address(SD_VOTER_PROXY)), 0);
             assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), amount - toWithdraw);
         } else {
-            /// If proxy has more tokens than SD, we expect that everything will be withdrawn from Convex.
-            // Or a mix of Convex and SD.
-            // Compute convexBalance between optimal balance and amount.
             uint256 convexBalance = amount - optimalSDBalance;
-
-            if (proxyBalance > sdBalance) {
-                /// If we withdraw less than convexBalance, we expect that everything will be withdrawn from Convex.
-                if (convexBalance > toWithdraw) {
-                    assertEq(proxy.balanceOf(address(token)), convexBalance - toWithdraw);
-                    assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance);
-                } else {
-                    assertEq(proxy.balanceOf(address(token)), 0);
-                    uint256 leftToWithdraw = toWithdraw - convexBalance;
-                    assertEq(
-                        ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance - leftToWithdraw
-                    );
-                }
+            /// If we withdraw less than convexBalance, we expect that everything will be withdrawn from Convex.
+            if (convexBalance > toWithdraw) {
+                assertEq(proxy.balanceOf(address(token)), convexBalance - toWithdraw);
+                assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance);
             } else {
-                /// If we withdraw less than convexBalance, we expect that everything will be withdrawn from Convex.
-                if (optimalSDBalance > toWithdraw) {
-                    assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance - toWithdraw);
-                    assertEq(proxy.balanceOf(address(token)), convexBalance);
-                } else {
-                    assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), 0);
-                    uint256 leftToWithdraw = toWithdraw - optimalSDBalance;
-                    assertEq(proxy.balanceOf(address(token)), convexBalance - leftToWithdraw);
-                }
+                assertEq(proxy.balanceOf(address(token)), 0);
+                uint256 leftToWithdraw = toWithdraw - convexBalance;
+                assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance - leftToWithdraw);
             }
         }
     }

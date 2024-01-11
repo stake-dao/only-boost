@@ -292,12 +292,6 @@ contract _47_Factory_Test is PoolFactory_Test(_47_PID) {}
 
 contract _47_Staking_Test is Staking_Test(_47_PID) {}
 
-uint256 constant _48_PID = 48;
-
-contract _48_Factory_Test is PoolFactory_Test(_48_PID) {}
-
-contract _48_Staking_Test is Staking_Test(_48_PID) {}
-
 uint256 constant _49_PID = 49;
 
 contract _49_Factory_Test is PoolFactory_Test(_49_PID) {}
@@ -1479,18 +1473,6 @@ uint256 constant _245_PID = 245;
 contract _245_Factory_Test is PoolFactory_Test(_245_PID) {}
 
 contract _245_Staking_Test is Staking_Test(_245_PID) {}
-
-uint256 constant _246_PID = 246;
-
-contract _246_Factory_Test is PoolFactory_Test(_246_PID) {}
-
-contract _246_Staking_Test is Staking_Test(_246_PID) {}
-
-uint256 constant _247_PID = 247;
-
-contract _247_Factory_Test is PoolFactory_Test(_247_PID) {}
-
-contract _247_Staking_Test is Staking_Test(_247_PID) {}
 
 uint256 constant _248_PID = 248;
 
