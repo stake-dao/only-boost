@@ -173,7 +173,7 @@ contract Optimizer is IOnlyBoost {
             // If Convex Curve has max boost, no need to optimize
             if (
                 ILiquidityGauge(gauge).working_balances(VOTER_PROXY_CONVEX)
-                    == ERC20(gauge).balanceOf(VOTER_PROXY_CONVEX)
+                    == ERC20(gauge).balanceOf(VOTER_PROXY_CONVEX) && !bypassCache
             ) {
                 _allocations[0] = amount;
             } else {

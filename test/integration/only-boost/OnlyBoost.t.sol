@@ -281,22 +281,22 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         vm.stopPrank();
 
-        (bool _hasMaxBoost, uint256 optimalSDBalance) = _hasMaxBoost();
-
+        (, uint256 optimalSDBalance) = _hasMaxBoost();
         strategy.rebalance(address(token));
 
-        if (_hasMaxBoost) {
-            assertEq(proxy.balanceOf(address(token)), amount);
-            assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), 0);
-        } else if (optimalSDBalance >= amount) {
-            assertEq(proxy.balanceOf(address(token)), 0);
-            assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), amount);
-        } else {
-            uint256 convexBalance = amount - optimalSDBalance;
+        uint256 sdBalance;
+        uint256 convexBalance;
+
+        if(amount > optimalSDBalance){
+            sdBalance = optimalSDBalance;
+            convexBalance = amount - optimalSDBalance;
 
             assertGt(convexBalance, 0);
-            assertEq(proxy.balanceOf(address(token)), convexBalance);
-            assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), optimalSDBalance);
+        } else {
+            sdBalance = amount;
         }
+
+        assertEq(proxy.balanceOf(address(token)), convexBalance);
+        assertEq(ILiquidityGauge(gauge).balanceOf(address(SD_VOTER_PROXY)), sdBalance);
     }
 }
