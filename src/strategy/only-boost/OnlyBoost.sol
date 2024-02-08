@@ -34,7 +34,7 @@ abstract contract OnlyBoost is Strategy {
 
         /// Get the optimal allocation for the deposit.
         (address[] memory fundsManagers, uint256[] memory allocations) =
-            optimizer.getOptimalDepositAllocation(gauge, amount, false);
+            optimizer.getOptimalDepositAllocation(gauge, amount);
 
         for (uint256 i; i < fundsManagers.length; ++i) {
             // Skip if the allocation amount is 0.
@@ -146,6 +146,10 @@ abstract contract OnlyBoost is Strategy {
         /// Get Fallbacks.
         address[] memory fallbacks = optimizer.getFallbacks(gauge);
 
+        /// Get the optimal allocation for the deposit.
+        (address[] memory fundsManagers, uint256[] memory allocations) =
+            optimizer.getRebalancedAllocation(gauge, _snapshotBalance);
+
         for (uint256 i; i < fallbacks.length; ++i) {
             /// Get the current balance of the fallbacks.
             uint256 _balanceOfFallback = IFallback(fallbacks[i]).balanceOf(asset);
@@ -164,12 +168,6 @@ abstract contract OnlyBoost is Strategy {
             _withdrawFromLocker(asset, gauge, _balanceOfGauge);
         }
 
-        uint256 _currentBalance = ERC20(asset).balanceOf(address(this));
-
-        /// Get the optimal allocation for the deposit.
-        (address[] memory fundsManagers, uint256[] memory allocations) =
-            optimizer.getOptimalDepositAllocation(gauge, _currentBalance, true);
-
         for (uint256 i; i < fundsManagers.length; ++i) {
             // Skip if the allocation amount is 0.
             if (allocations[i] == 0) continue;
@@ -184,10 +182,7 @@ abstract contract OnlyBoost is Strategy {
             }
         }
 
-        _currentBalance = balanceOf(asset);
-
-        /// This invariant should never be broken.
-        if (_currentBalance < _snapshotBalance) revert REBALANCE_FAILED();
+        if (balanceOf(asset) < _snapshotBalance) revert REBALANCE_FAILED();
     }
 
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.

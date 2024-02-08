@@ -269,6 +269,10 @@ abstract contract OnlyBoost_Test is Base_Test {
         vm.assume(amount != 0);
         vm.assume(randomAmountFallback != 0);
 
+        uint256 totalSupply = ILiquidityGauge(gauge).totalSupply();
+        vm.assume(amount <= totalSupply);
+        vm.assume(randomAmountFallback <= totalSupply);
+
         deal(address(token), address(this), amount);
         strategy.deposit(address(token), amount);
 
@@ -281,13 +285,15 @@ abstract contract OnlyBoost_Test is Base_Test {
 
         vm.stopPrank();
 
-        (, uint256 optimalSDBalance) = _hasMaxBoost();
+        /// Get the optimal allocation for the deposit.
+        uint256 optimalSDBalance = optimizer.computeOptimalDepositAmount(gauge);
+
         strategy.rebalance(address(token));
 
         uint256 sdBalance;
         uint256 convexBalance;
 
-        if(amount > optimalSDBalance){
+        if (amount > optimalSDBalance) {
             sdBalance = optimalSDBalance;
             convexBalance = amount - optimalSDBalance;
 

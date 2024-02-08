@@ -152,8 +152,7 @@ contract Optimizer is IOnlyBoost {
     /// @dev This is not a view due to the cache system
     /// @param gauge Address of Liquidity Gauge corresponding to LP token
     /// @param amount Amount of LP token to deposit
-    /// @param bypassCache If true, bypass the cache system => useful when we do rebalance, so need to recalculate the optimal amount
-    function getOptimalDepositAllocation(address gauge, uint256 amount, bool bypassCache)
+    function getOptimalDepositAllocation(address gauge, uint256 amount)
         public
         onlyStrategy
         returns (address[] memory _depositors, uint256[] memory _allocations)
@@ -173,7 +172,7 @@ contract Optimizer is IOnlyBoost {
             // If Convex Curve has max boost, no need to optimize
             if (
                 ILiquidityGauge(gauge).working_balances(VOTER_PROXY_CONVEX)
-                    == ERC20(gauge).balanceOf(VOTER_PROXY_CONVEX) && !bypassCache
+                    == ERC20(gauge).balanceOf(VOTER_PROXY_CONVEX)
             ) {
                 _allocations[0] = amount;
             } else {
@@ -181,7 +180,7 @@ contract Optimizer is IOnlyBoost {
                 uint256 gaugeBalance = ERC20(gauge).balanceOf(address(VOTER_PROXY_SD));
 
                 // Get the optimal amount of lps that must be held by the locker
-                uint256 opt = _getOptimalAmount(gauge, gaugeBalance, amount, bypassCache);
+                uint256 opt = _getOptimalAmount(gauge, gaugeBalance, amount);
 
                 // Stake DAO Curve
                 _allocations[1] = opt > gaugeBalance ? FixedPointMathLib.min(opt - gaugeBalance, amount) : 0;
@@ -202,23 +201,63 @@ contract Optimizer is IOnlyBoost {
         }
     }
 
+    /// @notice Return the amount that need to be deposited StakeDAO Liquid Locker and on each fallback
+    /// @dev This is not a view due to the cache system
+    /// @param gauge Address of Liquidity Gauge corresponding to LP token
+    /// @param amount Amount of LP token to deposit
+    function getRebalancedAllocation(address gauge, uint256 amount)
+        public
+        onlyStrategy
+        returns (address[] memory _depositors, uint256[] memory _allocations)
+    {
+        /// Gets the fallback address via the proxy factory; one fallback (clone) per Convex pid
+        address _fallback = proxyFactory.fallbacks(gauge);
+
+        // If available on Convex Curve
+        if (_fallback != address(0)) {
+            /// Initialize arrays
+            _depositors = new address[](2);
+            _allocations = new uint256[](2);
+
+            _depositors[0] = _fallback;
+            _depositors[1] = VOTER_PROXY_SD;
+
+            // Calculate optimal amount
+            uint256 opt = computeOptimalDepositAmount(gauge);
+
+            // Cache only if needed
+            if (cachePeriod != 0) {
+                // Update the cache for Classic Pool
+                cachedOptimizations[gauge] = CachedOptimization(opt, block.timestamp);
+            }
+
+            // Stake DAO Curve
+            _allocations[1] = amount > opt ? opt : amount;
+
+            // Convex Curve
+            _allocations[0] = amount - _allocations[1];
+        } else {
+            /// Initialize arrays
+            _depositors = new address[](1);
+            _depositors[0] = VOTER_PROXY_SD;
+
+            _allocations = new uint256[](1);
+            _allocations[0] = amount;
+        }
+    }
+
     /// @notice Calcul the optimal amount of lps that must be held by the locker or use the cached value
     /// @param gauge Address of the liquidity gauge
     /// @param gaugeBalance Balance of the liquidity gauge on Convex Curve
     /// @param amount Amount of LP token to get the optimal amount for
-    /// @param bypassCache If true, bypass the cache system
     /// @return opt Optimal amount of LP token that must be held by the locker
-    function _getOptimalAmount(address gauge, uint256 gaugeBalance, uint256 amount, bool bypassCache)
-        internal
-        returns (uint256 opt)
-    {
+    function _getOptimalAmount(address gauge, uint256 gaugeBalance, uint256 amount) internal returns (uint256 opt) {
         CachedOptimization memory cachedOptimization = cachedOptimizations[gauge];
 
         if (
-            !bypassCache
-                && cachedOptimization
-                    /// If the cache is enabled
-                    .timestamp + cachePeriod > block.timestamp
+            cachedOptimization
+                /// If the cache is enabled
+                .timestamp + cachePeriod > block.timestamp
             /// And the new deposit is lower than the cached optimal amount
             && cachedOptimization.value >= amount + gaugeBalance
         ) {

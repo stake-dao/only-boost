@@ -2,7 +2,11 @@
 pragma solidity 0.8.19;
 
 interface IOnlyBoost {
-    function getOptimalDepositAllocation(address gauge, uint256 amount, bool bypassCache)
+    function getOptimalDepositAllocation(address gauge, uint256 amount)
+        external
+        returns (address[] memory, uint256[] memory);
+
+    function getRebalancedAllocation(address gauge, uint256 amount)
         external
         returns (address[] memory, uint256[] memory);
 
