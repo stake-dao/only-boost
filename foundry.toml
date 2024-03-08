@@ -14,8 +14,6 @@ evm_version = 'shanghai'
     "ConvexMinimalProxyFactory"
   ]
 
-ffi = true
-
 # Enable before deploying.
 optimizer = true
 optimizers_runs = 200

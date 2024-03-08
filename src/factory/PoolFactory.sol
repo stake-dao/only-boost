@@ -27,6 +27,9 @@ abstract contract PoolFactory {
     /// @notice Staking Deposit implementation address.
     address public immutable vaultImplementation;
 
+    /// @notice Reward Receiver implementation address.
+    address public immutable rewardReceiverImplementation;
+
     /// @notice Liquidity Gauge implementation address.
     address public immutable liquidityGaugeImplementation;
 
@@ -66,12 +69,14 @@ abstract contract PoolFactory {
         address _strategy,
         address _rewardToken,
         address _vaultImplementation,
-        address _liquidityGaugeImplementation
+        address _liquidityGaugeImplementation,
+        address _rewardReceiverImplementation
     ) {
         rewardToken = _rewardToken;
         strategy = IStrategy(_strategy);
         vaultImplementation = _vaultImplementation;
         liquidityGaugeImplementation = _liquidityGaugeImplementation;
+        rewardReceiverImplementation = _rewardReceiverImplementation;
     }
 
     /// @notice Add new staking gauge to Stake DAO Locker.
@@ -134,7 +139,7 @@ abstract contract PoolFactory {
         strategy.acceptRewardDistributorOwnership(rewardDistributor);
 
         /// Add extra rewards if any.
-        _addExtraRewards(_gauge);
+        _addExtraRewards(_gauge, rewardDistributor);
 
         emit PoolDeployed(vault, rewardDistributor, lp, _gauge);
     }
@@ -149,7 +154,7 @@ abstract contract PoolFactory {
 
     /// @notice Add extra reward tokens to the reward distributor.
     /// @param _gauge Address of the liquidity gauge.
-    function _addExtraRewards(address _gauge) internal virtual {
+    function _addExtraRewards(address _gauge, address _rewardDistributor) internal virtual {
         /// Check if the gauge supports extra rewards.
         /// This function is not supported on all gauges, depending on when they were deployed.
         bytes memory data = abi.encodeWithSignature("reward_tokens(uint256)", 0);
@@ -162,6 +167,23 @@ abstract contract PoolFactory {
             strategy.setLGtype(_gauge, 1);
 
             return;
+        }
+
+        address rewardReceiver;
+
+        /// Check if the gauge supports receivers.
+        data = abi.encodeWithSignature("rewards_receiver(address)", strategy.locker());
+        (success,) = _gauge.call(data);
+
+        if (success) {
+            bytes memory rewardReceiverData =
+                abi.encodePacked(_gauge, strategy.locker(), address(rewardToken), address(strategy), _rewardDistributor);
+
+            /// Clone the Vault.
+            rewardReceiver = rewardReceiverImplementation.clone(rewardReceiverData);
+
+            /// If it supports receivers, we add the reward receiver to the reward distributor.
+            strategy.addRewardReceiver(_gauge, rewardReceiver);
         }
 
         /// Loop through the extra reward tokens.

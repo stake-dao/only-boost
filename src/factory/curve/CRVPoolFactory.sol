@@ -19,8 +19,17 @@ contract CRVPoolFactory is PoolFactory {
         address _strategy,
         address _rewardToken,
         address _vaultImplementation,
-        address _liquidityGaugeImplementation
-    ) PoolFactory(_strategy, _rewardToken, _vaultImplementation, _liquidityGaugeImplementation) {}
+        address _liquidityGaugeImplementation,
+        address _rewardReceiverImplementation
+    )
+        PoolFactory(
+            _strategy,
+            _rewardToken,
+            _vaultImplementation,
+            _liquidityGaugeImplementation,
+            _rewardReceiverImplementation
+        )
+    {}
 
     /// @notice Add the main reward token to the reward distributor.
     /// @param rewardDistributor Address of the reward distributor.

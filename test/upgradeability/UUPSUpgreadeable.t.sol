@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import "src/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
 
+import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 contract UUPSUpgradeableTest is Test {
     using FixedPointMathLib for uint256;
 
@@ -39,7 +41,8 @@ contract UUPSUpgradeableTest is Test {
     function setUp() public {
         implementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
 
-        address _proxy = LibClone.deployERC1967(address(implementation));
+        address _proxy = address(new ERC1967Proxy(address(implementation), ""));
+
         proxy = CRVStrategy(payable(_proxy));
 
         proxy.initialize(address(this));

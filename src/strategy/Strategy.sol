@@ -8,6 +8,7 @@ import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {SafeExecute} from "src/libraries/SafeExecute.sol";
+import {IRewardReceiver} from "src/interfaces/IRewardReceiver.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 import {ISDTDistributor} from "src/interfaces/ISDTDistributor.sol";
 
@@ -75,6 +76,9 @@ abstract contract Strategy is UUPSUpgradeable {
 
     /// @notice Map liquidity gauge address -> gauge type (0,1,2,3).
     mapping(address => uint256) public lGaugeType;
+
+    /// @notice Map native liquidity gauge to Stake DAO Reward Distributor.
+    mapping(address => address) public rewardReceivers;
 
     /// @notice Map native liquidity gauge to Stake DAO Reward Distributor.
     mapping(address => address) public rewardDistributors;
@@ -252,7 +256,13 @@ abstract contract Strategy is UUPSUpgradeable {
         /// If there's the `rewardToken` as extra reward, we add it to the `_claimed` amount in order to distribute it only
         /// once.
         if (claimExtra) {
-            claimed += _claimExtraRewards(gauge, rewardDistributor);
+            address rewardReceiver = rewardReceivers[gauge];
+
+            if (rewardReceiver != address(0)) {
+                claimed += IRewardReceiver(rewardReceiver).notifyAll();
+            } else {
+                claimed += _claimExtraRewards(gauge, rewardDistributor);
+            }
         }
 
         /// 4. Take Fees from _claimed amount.
@@ -465,20 +475,7 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @dev Only callable by the vault.
     /// @param asset Address of LP token to migrate.
     /// @dev Built only to support the old implementation of the vault, but it will be killed.
-    function migrateLP(address asset) public virtual onlyVault {
-        // Get gauge address
-        address gauge = gauges[asset];
-        if (gauge == address(0)) revert ADDRESS_NULL();
-
-        // Get the amount of LP token staked in the gauge by the locker
-        uint256 amount = ERC20(gauge).balanceOf(address(locker));
-
-        // Locker withdraw all from the gauge
-        locker.safeExecute(gauge, 0, abi.encodeWithSignature("withdraw(uint256)", amount));
-
-        // Locker transfer the LP token to the vault
-        _transferFromLocker(asset, msg.sender, amount);
-    }
+    function migrateLP(address asset) public virtual onlyVault {}
 
     //////////////////////////////////////////////////////
     /// --- FACTORY STRATEGY SETTERS
@@ -489,6 +486,14 @@ abstract contract Strategy is UUPSUpgradeable {
     function toggleVault(address vault) external onlyGovernanceOrFactory {
         if (vault == address(0)) revert ADDRESS_NULL();
         vaults[vault] = !vaults[vault];
+    }
+
+    /// @notice Add a reward receiver contract for a gauge.
+    function addRewardReceiver(address gauge, address rewardReceiver) external onlyGovernanceOrFactory {
+        /// Add the reward receiver to the gauge trough the locker.
+        locker.safeExecute(gauge, 0, abi.encodeWithSignature("set_rewards_receiver(address)", rewardReceiver));
+
+        rewardReceivers[gauge] = rewardReceiver;
     }
 
     /// @notice Set gauge address for a LP token
@@ -664,11 +669,22 @@ abstract contract Strategy is UUPSUpgradeable {
         /// Get the rewardDistributor address to add the reward token to.
         address _rewardDistributor = rewardDistributors[gauge];
 
-        /// Approve the rewardDistributor to spend token.
-        SafeTransferLib.safeApproveWithRetry(extraRewardToken, _rewardDistributor, type(uint256).max);
+        /// Get the rewardReceiver address to add the reward token to.
+        address _rewardReceiver = rewardReceivers[gauge];
 
-        /// Add it to the Gauge with Distributor as this contract.
-        ILiquidityGauge(_rewardDistributor).add_reward(extraRewardToken, address(this));
+        if (_rewardReceiver != address(0)) {
+            /// If the gauge has a rewardReceiver, we add the reward token to the rewardReceiver.
+            IRewardReceiver(_rewardReceiver).approveRewardToken(extraRewardToken);
+
+            /// Add it to the Gauge with Distributor as this contract.
+            ILiquidityGauge(_rewardDistributor).add_reward(extraRewardToken, _rewardReceiver);
+        } else {
+            /// Approve the rewardDistributor to spend token.
+            SafeTransferLib.safeApproveWithRetry(extraRewardToken, _rewardDistributor, type(uint256).max);
+
+            /// Add it to the Gauge with Distributor as this contract.
+            ILiquidityGauge(_rewardDistributor).add_reward(extraRewardToken, address(this));
+        }
     }
 
     /// @notice Execute a function.
