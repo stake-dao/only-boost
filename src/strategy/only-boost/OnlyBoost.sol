@@ -115,7 +115,13 @@ abstract contract OnlyBoost is Strategy {
             /// We assume that the extra rewards are the same for all the fallbacks since we deposit in the same destination gauge.
             /// So we claim the extra rewards from the fallbacks first and then claim the extra rewards from the gauge.
             /// Finally, we distribute all in once.
-            claimed += _claimExtraRewards(gauge, rewardDistributor);
+            address rewardReceiver = rewardReceivers[gauge];
+
+            if (rewardReceiver != address(0)) {
+                claimed += IRewardReceiver(rewardReceiver).notifyAll();
+            } else {
+                claimed += _claimExtraRewards(gauge, rewardDistributor);
+            }
         }
 
         /// 4. Take Fees from _claimed amount.

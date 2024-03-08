@@ -137,14 +137,13 @@ abstract contract PoolFactory_Test is Test {
 
                 ISDLiquidityGauge.Reward memory reward =
                     ISDLiquidityGauge(rewardDistributor).reward_data(_extraRewardToken);
-                
+
                 address rewardReceiver = strategy.rewardReceivers(gauge);
-                if(rewardReceiver != address(0) &&  _extraRewardToken != REWARD_TOKEN) {
+                if (rewardReceiver != address(0) && _extraRewardToken != REWARD_TOKEN) {
                     assertEq(reward.distributor, rewardReceiver);
                 } else {
                     assertEq(reward.distributor, address(strategy));
                 }
-
 
                 if (
                     _extraRewardToken != REWARD_TOKEN && _extraRewardToken != poolFactory.SDT()

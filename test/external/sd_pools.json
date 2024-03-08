@@ -60,12 +60,6 @@
         "name": "_56"
     },
     {
-        "pid": 74,
-        "gauge": "0xC95bdf13A08A547E4dD9f29B00aB7fF08C5d093d",
-        "rewardDistributor": "0x24520cdD0A0Cd242e78C6C5133A4a6a235d5A783",
-        "name": "_74"
-    },
-    {
         "pid": 81,
         "gauge": "0x8Fa728F393588E8D8dD1ca397E9a710E53fA553a",
         "rewardDistributor": "0x4a1C13D3887AE6e7289c4e0Cd7Ed1a4d1A3e21AE",
@@ -238,6 +232,12 @@
         "gauge": "0x6a69FfD1353Fa129f7F9932BB68Fa7bE88F3888A",
         "rewardDistributor": "0x31539d93f3504571A5ec85510ae15289A3b299De",
         "name": "_203"
+    },
+    {
+        "pid": 204,
+        "gauge": "0x6D787113F23bED1D5e1530402B3f364D0A6e5Af3",
+        "rewardDistributor": "0xc4649B184dBd1A4448c4d529fFbD1AD130289678",
+        "name": "_204"
     },
     {
         "pid": 213,
@@ -490,6 +490,12 @@
         "gauge": "0x20e783242415A589B7E533a46A24FDA240590a18",
         "rewardDistributor": "0x9bbF31E99F30c38a5003952206C31EEa77540BeF",
         "name": "_340"
+    },
+    {
+        "pid": 342,
+        "gauge": "0xF42E2b73Ea79812a7c3E4bA8ed052c523765719f",
+        "rewardDistributor": "0xaA81e655e0611597c75142f4030121093EF2c12A",
+        "name": "_342"
     },
     {
         "pid": 343,
