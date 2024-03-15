@@ -17,7 +17,7 @@ snapshot:
 	@forge snapshot
 
 test:
-	@forge test # --match-contract _189_OnlyBoost_Test # --gas-report
+	@forge test
 
 test-f-%:
 	@FOUNDRY_MATCH_TEST=$* make test 
