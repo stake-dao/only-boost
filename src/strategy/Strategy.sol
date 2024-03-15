@@ -230,7 +230,7 @@ abstract contract Strategy is UUPSUpgradeable {
         _claimNativeRewards();
     }
 
-    /// @notice Harvest rewards from the gauge trhoug the Locker.
+    /// @notice Harvest rewards from the gauge through the Locker.
     /// @param asset Address of LP token to harvest.
     /// @param distributeSDT Boolean indicating if SDT should be distributed to the rewarDistributor.
     /// @dev distributeSDT Should be called only if the rewardDistributor is valid to receive SDT inflation.

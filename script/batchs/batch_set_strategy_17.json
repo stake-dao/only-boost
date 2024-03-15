@@ -1,0 +1,54 @@
+{
+    "version": "1.0",
+    "chainId": "1",
+    "createdAt": 1710161661080,
+    "meta": {
+        "name": "Set Curve Strategy",
+        "description": "",
+        "txBuilderVersion": "1.16.3",
+        "createdFromSafeAddress": "0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063",
+        "createdFromOwnerAddress": ""
+    },
+    "transactions": [
+        {
+            "to": "0x5A76A7Fd20dDe55ceCEfB0803ac3A1051C954EaA",
+            "value": 0,
+            "data": "0x46a518e400000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
+        },
+        {
+            "to": "0x44b4e01c249e35B2803f947C5CcB9868C3421437",
+            "value": 0,
+            "data": "0x058a3a24000000000000000000000000d533a949740bb3306d119cc777fa900ba034cd5200000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
+        },
+        {
+            "to": "0xc60347F8dAB2511326981710c689Da9F7Fe4E375",
+            "value": 0,
+            "data": "0x46a518e400000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
+        },
+        {
+            "to": "0xE94aFF2Bd6A12DD16C21648Cae71D2B47E405a9C",
+            "value": 0,
+            "data": "0x058a3a24000000000000000000000000d533a949740bb3306d119cc777fa900ba034cd5200000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
+        },
+        {
+            "to": "0x41bd96ad3cB2a96329a88559E055e56bD559461B",
+            "value": 0,
+            "data": "0x46a518e400000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
+        },
+        {
+            "to": "0x608E4105e49ce2562521e31936815e2E20dA6609",
+            "value": 0,
+            "data": "0x058a3a24000000000000000000000000d533a949740bb3306d119cc777fa900ba034cd5200000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
+        },
+        {
+            "to": "0xA2742CeCf2f4C315D96E9420fA4Dd2F58BdC3C08",
+            "value": 0,
+            "data": "0x46a518e400000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
+        },
+        {
+            "to": "0x82d69F18C66278D59507610274DbC070F30AB009",
+            "value": 0,
+            "data": "0x058a3a24000000000000000000000000d533a949740bb3306d119cc777fa900ba034cd5200000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
+        }
+    ]
+}

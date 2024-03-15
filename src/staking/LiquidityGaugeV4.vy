@@ -71,7 +71,7 @@ struct Reward:
     integral: uint256
 
 
-MAX_REWARDS: constant(uint256) = 10
+MAX_REWARDS: constant(uint256) = 11
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 WEEK: constant(uint256) = 604800
 

@@ -4,10 +4,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BOOSTER = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
 STRATEGY = "0x20F1d4Fed24073a9b9d388AfA2735Ac91f079ED6"
 NEW_STRATEGY = "0x20F1d4Fed24073a9b9d388AfA2735Ac91f079ED6"
 CONTROLLER = "0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB"
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 # Addresses that were used to test new strategies with small deposits.
 BLACKLIST = [
@@ -18,13 +18,9 @@ BLACKLIST = [
     "0xb4d27b87a09ab76c47e342535a309a1176051481",
 ]
 
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
 with open("test/external/controller.json", "r") as f:
     CONTROLLER_ABI = json.load(f)
 
-with open("test/external/booster.json", "r") as f:
-    BOOSTER_ABI = json.load(f)
 
 with open("test/external/lgv5.json", "r") as f:
     GAUGE_ABI = json.load(f)
@@ -42,33 +38,14 @@ with open("test/external/batch_set_strategy.json", "r") as f:
 INFURA_URL = "https://mainnet.infura.io/v3/" + os.getenv("INFURA_KEY")
 w3 = Web3(Web3.HTTPProvider(INFURA_URL))
 
-# Query all pools on Convex.
-booster = w3.eth.contract(address=BOOSTER, abi=BOOSTER_ABI)
 strategy = w3.eth.contract(address=STRATEGY, abi=STRATEGY_ABI)
 controller = w3.eth.contract(address=CONTROLLER, abi=CONTROLLER_ABI)
 
 
-def get_all_pools():
-    pool_length = booster.functions.poolLength().call()
-
-    pool_list = []
-
-    for i in range(pool_length):
-        pool = booster.functions.poolInfo(i).call()
-
-        pool_list.append(
-            {"pid": i, "rewardDistributor": ZERO_ADDRESS, "name": "_" + str(i)}
-        )
-
-    # Dump to JSON
-    with open("test/external/all_pools.json", "w") as f:
-        json.dump(pool_list, f, indent=4)
-
-
-def build_pools():
+def generate_pool_list():
     pool_length = controller.functions.n_gauges().call()
 
-    transactions = []
+    pool_list = []
 
     for i in range(pool_length):
         gauge = controller.functions.gauges(i).call()
@@ -89,36 +66,18 @@ def build_pools():
 
             if ts > 0:
                 vault = _mg.functions.staking_token().call()
-                vault_contract = w3.eth.contract(address=vault, abi=VAULT_ABI)
-                data = vault_contract.functions.setCurveStrategy(
-                    STRATEGY
-                ).build_transaction(
-                    {"from": "0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063"}
-                )[
-                    "data"
-                ]
 
-                print("Building transaction for: ", multi_gauge, vault)
-
-                transactions.append(
-                    {
-                        "to": vault,
-                        "value": "0",
-                        "data": data,
-                    }
+                pool_list.append(
+                    {"gauge": gauge, "vault": vault, "rewardDistributor": multi_gauge}
                 )
 
-    print(len(transactions))
-    BATCH["transactions"] = transactions
-
-    # Dump to JSON
-    with open("test/external/batch_set_strategy.json", "w") as f:
-        json.dump(BATCH, f, indent=4)
-    # print(len(pool_list))
+        # Dump to JSON
+    with open("script/python/pools_migration.json", "w") as f:
+        json.dump(pool_list, f, indent=4)
 
 
 def main():
-    pool_list = build_pools()
+    return generate_pool_list()
 
 
 __name__ == "__main__" and main()

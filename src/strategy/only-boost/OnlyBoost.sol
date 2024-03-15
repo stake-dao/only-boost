@@ -20,69 +20,6 @@ abstract contract OnlyBoost is Strategy {
         Strategy(_owner, _locker, _veToken, _rewardToken, _minter)
     {}
 
-    /// @notice Deposit `_amount` of `_asset` splitted into the fallbacks.
-    /// @param asset Asset to deposit.
-    /// @param amount Amount to deposit.
-    function _deposit(address asset, uint256 amount) internal override {
-        // If optimizer is not set, use default deposit
-        if (address(optimizer) == address(0)) {
-            return super._deposit(asset, amount);
-        }
-
-        address gauge = gauges[asset];
-        if (gauge == address(0)) revert ADDRESS_NULL();
-
-        /// Get the optimal allocation for the deposit.
-        (address[] memory fundsManagers, uint256[] memory allocations) =
-            optimizer.getOptimalDepositAllocation(gauge, amount);
-
-        for (uint256 i; i < fundsManagers.length; ++i) {
-            // Skip if the allocation amount is 0.
-            if (allocations[i] == 0) continue;
-
-            /// Deposit into the locker if the recipient is the locker.
-            if (fundsManagers[i] == address(locker)) {
-                _depositIntoLocker(asset, gauge, allocations[i]);
-            } else {
-                /// Else, transfer the asset to the fallback recipient and call deposit.
-                SafeTransferLib.safeTransfer(asset, fundsManagers[i], allocations[i]);
-                IFallback(fundsManagers[i]).deposit(asset, allocations[i]);
-            }
-        }
-    }
-
-    /// @notice Withdraw `_amount` of `_asset` splitted into the fallbacks.
-    /// @param asset Asset to withdraw.
-    /// @param amount Amount to withdraw.
-    /// @dev The optimizer contract would make sure to always withdraw from the biggest pool first.
-    function _withdraw(address asset, uint256 amount) internal override {
-        /// If optimzer is not set, use default withdraw.
-        if (address(optimizer) == address(0)) {
-            return super._withdraw(asset, amount);
-        }
-
-        address gauge = gauges[asset];
-        if (gauge == address(0)) revert ADDRESS_NULL();
-
-        /// Get the optimal withdrawal path.
-        (address[] memory fundsManagers, uint256[] memory allocations) =
-            optimizer.getOptimalWithdrawalPath(gauge, amount);
-
-        for (uint256 i; i < fundsManagers.length; ++i) {
-            /// Skip if the optimized amount is 0.
-            if (allocations[i] == 0) continue;
-
-            /// If the recipient is the locker, withdraw from the locker.
-            if (fundsManagers[i] == address(locker)) {
-                _withdrawFromLocker(asset, gauge, allocations[i]);
-            }
-            /// Else, call withdraw on the fallback.
-            else {
-                IFallback(fundsManagers[i]).withdraw(asset, allocations[i]);
-            }
-        }
-    }
-
     /// @notice Claim rewards from gauge & fallbacks.
     /// @param asset _asset staked to claim for.
     /// @param claimExtra True to claim extra rewards. False can save gas.
@@ -191,7 +128,89 @@ abstract contract OnlyBoost is Strategy {
         if (balanceOf(asset) < _snapshotBalance) revert REBALANCE_FAILED();
     }
 
+    ////////////////////////////////////////////////////////////////
+    /// --- FUNCTIONS OVERRIDE
+    ///////////////////////////////////////////////////////////////
+
+    /// @notice Deposit `_amount` of `_asset` splitted into the fallbacks.
+    /// @param asset Asset to deposit.
+    /// @param amount Amount to deposit.
+    function _deposit(address asset, uint256 amount) internal override {
+        // If optimizer is not set, use default deposit
+        if (address(optimizer) == address(0)) {
+            return super._deposit(asset, amount);
+        }
+
+        address gauge = gauges[asset];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        /// Get the optimal allocation for the deposit.
+        (address[] memory fundsManagers, uint256[] memory allocations) =
+            optimizer.getOptimalDepositAllocation(gauge, amount);
+
+        for (uint256 i; i < fundsManagers.length;) {
+            // Skip if the allocation amount is 0.
+            if (allocations[i] == 0) continue;
+
+            /// Deposit into the locker if the recipient is the locker.
+            if (fundsManagers[i] == address(locker)) {
+                _depositIntoLocker(asset, gauge, allocations[i]);
+            } else {
+                /// Else, transfer the asset to the fallback recipient and call deposit.
+                SafeTransferLib.safeTransfer(asset, fundsManagers[i], allocations[i]);
+                IFallback(fundsManagers[i]).deposit(asset, allocations[i]);
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @notice Withdraw `_amount` of `_asset` splitted into the fallbacks.
+    /// @param asset Asset to withdraw.
+    /// @param amount Amount to withdraw.
+    /// @dev The optimizer contract would make sure to always withdraw from the biggest pool first.
+    function _withdraw(address asset, uint256 amount) internal override {
+        /// If optimzer is not set, use default withdraw.
+        if (address(optimizer) == address(0)) {
+            return super._withdraw(asset, amount);
+        }
+
+        address gauge = gauges[asset];
+        if (gauge == address(0)) revert ADDRESS_NULL();
+
+        /// Get the optimal withdrawal path.
+        (address[] memory fundsManagers, uint256[] memory allocations) =
+            optimizer.getOptimalWithdrawalPath(gauge, amount);
+
+        for (uint256 i; i < fundsManagers.length;) {
+            /// Skip if the optimized amount is 0.
+            if (allocations[i] == 0) continue;
+
+            /// If the recipient is the locker, withdraw from the locker.
+            if (fundsManagers[i] == address(locker)) {
+                _withdrawFromLocker(asset, gauge, allocations[i]);
+            }
+            /// Else, call withdraw on the fallback.
+            else {
+                IFallback(fundsManagers[i]).withdraw(asset, allocations[i]);
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////
+    /// --- ONLYBOOST RELATED FUNCTIONS
+    ///////////////////////////////////////////////////////////////
+
     /// @notice Internal function to charge protocol fees from `rewardToken` claimed by the locker.
+    /// @param amount Amount to charge protocol fees.
+    /// @param claimedFromFallbacks Amount claimed from the fallbacks.
+    /// @param totalProtocolFeesFromFallbacks Total protocol fees claimed taken from the fallbacks.
     /// @return _amount Amount left after charging protocol fees.
     function _chargeProtocolFees(uint256 amount, uint256 claimedFromFallbacks, uint256 totalProtocolFeesFromFallbacks)
         internal

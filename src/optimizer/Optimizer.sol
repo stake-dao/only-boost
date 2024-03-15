@@ -110,7 +110,7 @@ contract Optimizer is IOnlyBoost {
     //////////////////////////////////////////////////////
 
     /// @notice Return the optimal amount of LP token that must be held by Stake DAO Liquidity Locker
-    /// @param gauge Addres of the gauge.
+    /// @param gauge Address of the gauge.
     /// @return Optimal amount of LP token
     function computeOptimalDepositAmount(address gauge) public view returns (uint256) {
         // Stake DAO
@@ -118,11 +118,11 @@ contract Optimizer is IOnlyBoost {
 
         // veCRV
         uint256 veCRVConvex = ERC20(veToken).balanceOf(VOTER_PROXY_CONVEX);
-        uint256 veCRVTotal = ERC20(veToken).totalSupply(); // New
+        uint256 veCRVTotal = ERC20(veToken).totalSupply();
 
         // Liquidity Gauge
         uint256 balanceConvex = ERC20(gauge).balanceOf(VOTER_PROXY_CONVEX);
-        uint256 totalSupply = ERC20(gauge).totalSupply(); // New
+        uint256 totalSupply = ERC20(gauge).totalSupply();
 
         // CVX
         uint256 cvxTotal = CVX.totalSupply();
@@ -130,11 +130,8 @@ contract Optimizer is IOnlyBoost {
 
         // Additional boost
         uint256 boost = adjustmentFactor * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
-
-        // Fees
         uint256 feeDiff = boost + stakeDaoTotalFee > convexTotalFee ? stakeDaoTotalFee + boost - convexTotalFee : 0;
 
-        // Result
         return (
             3 * (1e18 - stakeDaoTotalFee) * balanceConvex * veCRVStakeDAO
                 / (
@@ -145,7 +142,7 @@ contract Optimizer is IOnlyBoost {
     }
 
     //////////////////////////////////////////////////////
-    /// --- OPTIMIZATION FOR STRATEGIE DEPOSIT & WITHDRAW
+    /// --- OPTIMIZATION FOR STRATEGY DEPOSIT & WITHDRAW
     //////////////////////////////////////////////////////
 
     /// @notice Return the amount that need to be deposited StakeDAO Liquid Locker and on each fallback
@@ -356,6 +353,8 @@ contract Optimizer is IOnlyBoost {
         if (msg.sender != futureGovernance) revert GOVERNANCE();
 
         governance = msg.sender;
+        futureGovernance = address(0);
+
         emit GovernanceChanged(msg.sender);
     }
 }
