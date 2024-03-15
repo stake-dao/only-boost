@@ -55,7 +55,7 @@ def main():
 
         transactions.append({
             "to": vault_address,
-            "value": 0,
+            "value": "0",
             "data": data
         })
 
@@ -65,7 +65,7 @@ def main():
 
         transactions.append({
             "to": reward_distributor_address,
-            "value": 0,
+            "value": "0",
             "data": data
         })
 

@@ -12,42 +12,42 @@
     "transactions": [
         {
             "to": "0xfB5312107c4150c86228e8fd719b8b0Ae2db581d",
-            "value": 0,
+            "value": "0",
             "data": "0x46a518e400000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
         },
         {
             "to": "0x3794C7C69B9c761ede266A9e8B8bb0f6cdf4E3E5",
-            "value": 0,
+            "value": "0",
             "data": "0x058a3a24000000000000000000000000d533a949740bb3306d119cc777fa900ba034cd5200000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
         },
         {
             "to": "0xE67b54bF07F5dFD3c7a992627F6bB8C35B239FB4",
-            "value": 0,
+            "value": "0",
             "data": "0x46a518e400000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
         },
         {
             "to": "0x0bDabcDc2d2d41789A8F225F66ADbdc0CbDF6641",
-            "value": 0,
+            "value": "0",
             "data": "0x058a3a24000000000000000000000000d533a949740bb3306d119cc777fa900ba034cd5200000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
         },
         {
             "to": "0x903f3c7B4c3b18DF9A06157F9FD5176E6a1fDe68",
-            "value": 0,
+            "value": "0",
             "data": "0x46a518e400000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
         },
         {
             "to": "0x4D69ad5F243571AA9628bd88ebfFA2C913427b0b",
-            "value": 0,
+            "value": "0",
             "data": "0x058a3a24000000000000000000000000d533a949740bb3306d119cc777fa900ba034cd5200000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
         },
         {
             "to": "0x98dd95D0ac5b70B0F4ae5080a1C2EeA8c5c48387",
-            "value": 0,
+            "value": "0",
             "data": "0x46a518e400000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
         },
         {
             "to": "0x28766020a5A8D3325863Bf533459130DDb0c3657",
-            "value": 0,
+            "value": "0",
             "data": "0x058a3a24000000000000000000000000d533a949740bb3306d119cc777fa900ba034cd5200000000000000000000000020f1d4fed24073a9b9d388afa2735ac91f079ed6"
         }
     ]

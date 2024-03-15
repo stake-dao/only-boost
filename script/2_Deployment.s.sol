@@ -70,31 +70,11 @@ contract Deployment is Script, Test, RewardDistributors {
     function run() public {
         vm.startBroadcast(DEPLOYER);
 
-        /// 1. Deploy the Strategy and Proxy.
-        stratImplementation = new CRVStrategy(DEPLOYER, SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
-
-        // Clone strategy
-        address _proxy = address(new ERC1967Proxy(address(stratImplementation), ""));
-
-        strategy = CRVStrategy(payable(_proxy));
-
-        /// 2. Initialize the Strategy.
-        strategy.initialize(DEPLOYER);
-
-        /// 3. Deploy ConvexMinimalProxy Factory.
-        implementation = new ConvexImplementation();
-
-        factory = new ConvexMinimalProxyFactory(
-            BOOSTER, address(strategy), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation)
-        );
-
-        /// 4. Deploy the Optimizer and set it in the strategy.
-        optimizer = new Optimizer(address(strategy), address(factory));
-        strategy.setOptimizer(address(optimizer));
-
-        /// 5. Transfer the ownership of the new strategy to governance.
-        /// It should be accepted after all the scripts are executed.
-        strategy.transferGovernance(GOVERNANCE);
+        /// Set the strategy as `strategy` in the locker. This mean the depositor would not work anymore.
+        /// TODO: This action requires multisig action. The locker governance is the old strategy.
+        /// Now we have the old strategy as `governance` and the new strategy as `strategy`
+        vm.broadcast(locker.governance());
+        locker.setStrategy(payable(address(strategy)));
 
         /// 6. For each pool:
         /// . Toggle the vault to the new strategy.
@@ -108,19 +88,13 @@ contract Deployment is Script, Test, RewardDistributors {
             address token = ILiquidityGauge(gauges[i]).lp_token();
             address vault = ILiquidityGauge(rewardDistributors[i]).staking_token();
 
-            /// . Toggle the vault to the new strategy.
+            /// Toggle the vault to the new strategy.
             strategy.toggleVault(vault);
             strategy.setGauge(token, gauges[i]);
             strategy.setRewardDistributor(gauges[i], rewardDistributors[i]);
 
             /// STEPS TO MIGRATE FUNDS FROM OLD STRATEGY TO NEW STRATEGY
             /// USING MULTISIG
-
-            /// Set the strategy as `strategy` in the locker. This mean the depositor would not work anymore.
-            /// TODO: This action requires multisig action. The locker governance is the old strategy.
-            /// Now we have the old strategy as `governance` and the new strategy as `strategy`
-            /// vm.broadcast(locker.governance());
-            //// locker.setStrategy(payable(address(strategy)));
 
             /// Last step is to migrate the funds from the old strategy to the new one.
             /// vm.broadcast(GOVERNANCE);
