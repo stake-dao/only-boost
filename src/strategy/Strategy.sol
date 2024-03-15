@@ -511,10 +511,8 @@ abstract contract Strategy is UUPSUpgradeable {
         gauges[token] = gauge;
 
         /// Approve trough the locker.
-        if (ERC20(token).allowance(address(locker), gauge) != type(uint256).max) {
-            locker.safeExecute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, 0));
-            locker.safeExecute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, type(uint256).max));
-        }
+        locker.safeExecute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, 0));
+        locker.safeExecute(token, 0, abi.encodeWithSignature("approve(address,uint256)", gauge, type(uint256).max));
     }
 
     /// @notice Set type for a Liquidity gauge
