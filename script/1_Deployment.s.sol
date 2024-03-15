@@ -20,10 +20,6 @@ import {ICVXLocker, Optimizer} from "src/optimizer/Optimizer.sol";
 import {IBaseRewardPool, ConvexImplementation} from "src/fallbacks/ConvexImplementation.sol";
 import {IBooster, ConvexMinimalProxyFactory} from "src/fallbacks/ConvexMinimalProxyFactory.sol";
 
-interface IOldStrategy is IStrategy {
-    function multiGauges(address) external view returns (address);
-}
-
 contract Deployment is Script, Test {
     using FixedPointMathLib for uint256;
 

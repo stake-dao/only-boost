@@ -32,40 +32,14 @@ contract Deployment is Script, Test, RewardDistributors {
     address public constant GOVERNANCE = 0xF930EBBd05eF8b25B1797b9b2109DDC9B0d43063;
 
     //////////////////////////////////////////////////////
-    /// --- CONVEX ADDRESSES
-    //////////////////////////////////////////////////////
-
-    address public constant BOOSTER = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    address public constant REWARD_TOKEN = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant FALLBACK_REWARD_TOKEN = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-
-    //////////////////////////////////////////////////////
     /// --- VOTER PROXY ADDRESSES
     //////////////////////////////////////////////////////
 
     address public constant SD_VOTER_PROXY = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6;
-    address public constant CONVEX_VOTER_PROXY = 0x989AEb4d175e16225E39E87d0D97A3360524AD80;
-
-    //////////////////////////////////////////////////////
-    /// --- CURVE ADDRESSES
-    //////////////////////////////////////////////////////
-
-    address public constant VE_CRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
-    address public constant MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
 
     ILocker locker = ILocker(SD_VOTER_PROXY);
 
-    CRVStrategy public strategy;
-    CRVStrategy public stratImplementation;
-
-    Optimizer public optimizer;
-    ConvexMinimalProxyFactory public factory;
-
-    /// @notice Implementation contract to clone.
-    ConvexImplementation public implementation;
-
-    /// @notice Convex Depositor.
-    ConvexImplementation public proxy;
+    CRVStrategy public strategy = CRVStrategy(payable(address(0xBEEF)));
 
     function run() public {
         vm.startBroadcast(DEPLOYER);

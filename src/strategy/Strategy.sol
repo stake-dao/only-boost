@@ -705,5 +705,9 @@ abstract contract Strategy is UUPSUpgradeable {
     /// UUPS Upgradeability.
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 
+    function getVersion() external pure virtual returns (string memory) {
+        return "1.0";
+    }
+
     receive() external payable {}
 }

@@ -83,13 +83,13 @@ contract UUPSUpgradeableTest is Test {
 
     function test_OnlyProxyGuard() public {
         vm.expectRevert(UUPSUpgradeable.UnauthorizedCallContext.selector);
-        implementation.upgradeTo(address(1));
+        implementation.upgradeToAndCall(address(1), "");
     }
 
     function test_UpgradeToWrongCaller() public {
         vm.prank(address(0xCAFE));
         vm.expectRevert(Strategy.GOVERNANCE.selector);
-        proxy.upgradeTo(address(1));
+        proxy.upgradeToAndCall(address(1), "");
     }
 
     function test_updateGovernanceAndUpdate() public {
@@ -103,10 +103,10 @@ contract UUPSUpgradeableTest is Test {
         assertEq(proxy.governance(), address(0xCAFE));
 
         vm.expectRevert(Strategy.GOVERNANCE.selector);
-        proxy.upgradeTo(address(impl2));
+        proxy.upgradeToAndCall(address(impl2), "");
 
         vm.prank(address(0xCAFE));
-        proxy.upgradeTo(address(impl2));
+        proxy.upgradeToAndCall(address(impl2), "");
 
         bytes32 v = vm.load(address(proxy), _ERC1967_IMPLEMENTATION_SLOT);
         assertEq(address(uint160(uint256(v))), address(impl2));
@@ -118,7 +118,7 @@ contract UUPSUpgradeableTest is Test {
         vm.expectEmit(true, true, true, true);
 
         emit Upgraded(address(impl2));
-        proxy.upgradeTo(address(impl2));
+        proxy.upgradeToAndCall(address(impl2), "");
 
         bytes32 v = vm.load(address(proxy), _ERC1967_IMPLEMENTATION_SLOT);
         assertEq(address(uint160(uint256(v))), address(impl2));

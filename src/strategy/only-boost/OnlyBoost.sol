@@ -148,7 +148,7 @@ abstract contract OnlyBoost is Strategy {
         (address[] memory fundsManagers, uint256[] memory allocations) =
             optimizer.getOptimalDepositAllocation(gauge, amount);
 
-        for (uint256 i; i < fundsManagers.length;) {
+        for (uint256 i; i < fundsManagers.length;++i) {
             // Skip if the allocation amount is 0.
             if (allocations[i] == 0) continue;
 
@@ -159,10 +159,6 @@ abstract contract OnlyBoost is Strategy {
                 /// Else, transfer the asset to the fallback recipient and call deposit.
                 SafeTransferLib.safeTransfer(asset, fundsManagers[i], allocations[i]);
                 IFallback(fundsManagers[i]).deposit(asset, allocations[i]);
-            }
-
-            unchecked {
-                ++i;
             }
         }
     }
@@ -184,7 +180,7 @@ abstract contract OnlyBoost is Strategy {
         (address[] memory fundsManagers, uint256[] memory allocations) =
             optimizer.getOptimalWithdrawalPath(gauge, amount);
 
-        for (uint256 i; i < fundsManagers.length;) {
+        for (uint256 i; i < fundsManagers.length;++i) {
             /// Skip if the optimized amount is 0.
             if (allocations[i] == 0) continue;
 
@@ -195,10 +191,6 @@ abstract contract OnlyBoost is Strategy {
             /// Else, call withdraw on the fallback.
             else {
                 IFallback(fundsManagers[i]).withdraw(asset, allocations[i]);
-            }
-
-            unchecked {
-                ++i;
             }
         }
     }
@@ -284,6 +276,10 @@ abstract contract OnlyBoost is Strategy {
         for (uint256 i; i < _fallbacks.length; ++i) {
             _balanceOf += IFallback(_fallbacks[i]).balanceOf(asset);
         }
+    }
+
+    function getVersion() external pure override returns (string memory) {
+        return "1.0";
     }
 
     //////////////////////////////////////////////////////
