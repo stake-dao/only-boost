@@ -4,7 +4,7 @@ out = 'out'
 tests = 'test'
 libs = ['lib']
 verbosity = 3
-evm_version = 'shanghai'
+evm_version = 'cancun'
 
   gas_reports = [
     "Strategy",
