@@ -39,16 +39,10 @@ contract Deployment is Script, Test, RewardDistributors {
 
     ILocker locker = ILocker(SD_VOTER_PROXY);
 
-    CRVStrategy public strategy = CRVStrategy(payable(address(0xBEEF)));
+    CRVStrategy public strategy = CRVStrategy(payable(address(0x69D61428d089C2F35Bf6a472F540D0F82D1EA2cd)));
 
     function run() public {
         vm.startBroadcast(DEPLOYER);
-
-        /// Set the strategy as `strategy` in the locker. This mean the depositor would not work anymore.
-        /// TODO: This action requires multisig action. The locker governance is the old strategy.
-        /// Now we have the old strategy as `governance` and the new strategy as `strategy`
-        vm.broadcast(locker.governance());
-        locker.setStrategy(payable(address(strategy)));
 
         /// 6. For each pool:
         /// . Toggle the vault to the new strategy.
@@ -66,16 +60,6 @@ contract Deployment is Script, Test, RewardDistributors {
             strategy.toggleVault(vault);
             strategy.setGauge(token, gauges[i]);
             strategy.setRewardDistributor(gauges[i], rewardDistributors[i]);
-
-            /// STEPS TO MIGRATE FUNDS FROM OLD STRATEGY TO NEW STRATEGY
-            /// USING MULTISIG
-
-            /// Last step is to migrate the funds from the old strategy to the new one.
-            /// vm.broadcast(GOVERNANCE);
-            /// IVault(vault).setCurveStrategy(address(strategy));
-
-            /// vm.broadcast(GOVERNANCE);
-            /// ILiquidityGauge(rewardDistributors[i]).set_reward_distributor(REWARD_TOKEN, address(strategy));
         }
 
         vm.stopBroadcast();

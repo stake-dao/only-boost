@@ -19,10 +19,12 @@ BLACKLIST = [
     "0xb4d27b87a09ab76c47e342535a309a1176051481",
 ]
 
+
 # Load contract ABIs
 def load_abi(file_name):
     with open(f"test/external/{file_name}", "r") as f:
         return json.load(f)
+
 
 CONTROLLER_ABI = load_abi("controller.json")
 GAUGE_ABI = load_abi("lgv5.json")
@@ -37,6 +39,7 @@ w3 = Web3(Web3.HTTPProvider(INFURA_URL))
 controller = w3.eth.contract(address=CONTROLLER, abi=CONTROLLER_ABI)
 strategy = w3.eth.contract(address=STRATEGY, abi=STRATEGY_ABI)
 
+
 def generate_pool_list():
     pool_length = controller.functions.n_gauges().call()
     pool_list = []
@@ -49,15 +52,20 @@ def generate_pool_list():
 
         _mg = w3.eth.contract(address=multi_gauge, abi=GAUGE_ABI)
         total_supply = _mg.functions.totalSupply().call()
-        balance_of_blacklist = sum(_mg.functions.balanceOf(w3.toChecksumAddress(b)).call() for b in BLACKLIST)
+        balance_of_blacklist = sum(
+            _mg.functions.balanceOf(w3.to_checksum_address(b)).call() for b in BLACKLIST
+        )
 
         if total_supply > 0 and total_supply != balance_of_blacklist:
             vault = _mg.functions.staking_token().call()
-            pool_list.append({"gauge": gauge, "vault": vault, "rewardDistributor": multi_gauge})
+            pool_list.append(
+                {"gauge": gauge, "vault": vault, "rewardDistributor": multi_gauge}
+            )
 
     # Dump the list to JSON
     with open("pools_migration.json", "w") as f:
         json.dump(pool_list, f, indent=4)
+
 
 if __name__ == "__main__":
     generate_pool_list()
