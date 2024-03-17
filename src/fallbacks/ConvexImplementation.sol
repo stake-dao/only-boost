@@ -14,7 +14,6 @@ import {IStashTokenWrapper} from "src/interfaces/IStashTokenWrapper.sol";
 /// @notice Implementation per PID for Convex.
 /// @dev For each PID, a minimal proxy is deployed using this contract as implementation.
 contract ConvexImplementation is Clone {
-    using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
     /// @notice Denominator for percentage calculation

@@ -4,7 +4,7 @@ out = 'out'
 tests = 'test'
 libs = ['lib']
 verbosity = 3
-evm_version = 'shanghai'
+evm_version = 'cancun'
 
   gas_reports = [
     "Strategy",
@@ -13,8 +13,6 @@ evm_version = 'shanghai'
     "ConvexImplementation",
     "ConvexMinimalProxyFactory"
   ]
-
-ffi = true
 
 # Enable before deploying.
 optimizer = true

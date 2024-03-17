@@ -132,6 +132,8 @@ contract ConvexMinimalProxyFactory {
         if (msg.sender != futureGovernance) revert GOVERNANCE();
 
         governance = msg.sender;
+        futureGovernance = address(0);
+
         emit GovernanceChanged(msg.sender);
     }
 }

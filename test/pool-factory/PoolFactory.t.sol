@@ -5,14 +5,19 @@ import "forge-std/Test.sol";
 
 import "src/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
+import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {Vault} from "src/staking/Vault.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
+import {RewardReceiver} from "src/strategy/RewardReceiver.sol";
 import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/factory/curve/CRVPoolFactory.sol";
 
 abstract contract PoolFactory_Test is Test {
     ILocker public locker;
 
     Vault vaultImplementation;
+    RewardReceiver rewardReceiverImplementation;
+
     CRVPoolFactory poolFactory;
 
     CRVStrategy strategy;
@@ -49,7 +54,9 @@ abstract contract PoolFactory_Test is Test {
         /// Deploy Strategy
         implementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
 
-        address _proxy = LibClone.deployERC1967(address(implementation));
+        // Clone strategy
+        address _proxy = address(new ERC1967Proxy(address(implementation), ""));
+
         strategy = CRVStrategy(payable(_proxy));
 
         strategy.initialize(address(this));
@@ -62,9 +69,15 @@ abstract contract PoolFactory_Test is Test {
         locker.setStrategy(payable(address(strategy)));
 
         vaultImplementation = new Vault();
+        rewardReceiverImplementation = new RewardReceiver();
 
-        poolFactory =
-            new CRVPoolFactory(address(strategy), REWARD_TOKEN, address(vaultImplementation), gaugeImplementation);
+        poolFactory = new CRVPoolFactory(
+            address(strategy),
+            REWARD_TOKEN,
+            address(vaultImplementation),
+            gaugeImplementation,
+            address(rewardReceiverImplementation)
+        );
 
         strategy.setFactory(address(poolFactory));
     }
@@ -124,7 +137,13 @@ abstract contract PoolFactory_Test is Test {
 
                 ISDLiquidityGauge.Reward memory reward =
                     ISDLiquidityGauge(rewardDistributor).reward_data(_extraRewardToken);
-                assertEq(reward.distributor, address(strategy));
+
+                address rewardReceiver = strategy.rewardReceivers(gauge);
+                if (rewardReceiver != address(0) && _extraRewardToken != REWARD_TOKEN) {
+                    assertEq(reward.distributor, rewardReceiver);
+                } else {
+                    assertEq(reward.distributor, address(strategy));
+                }
 
                 if (
                     _extraRewardToken != REWARD_TOKEN && _extraRewardToken != poolFactory.SDT()

@@ -20,4 +20,5 @@ interface IStrategy {
     function addRewardToken(address _token, address _rewardDistributor) external;
     function acceptRewardDistributorOwnership(address rewardDistributor) external;
     function setRewardDistributor(address gauge, address rewardDistributor) external;
+    function addRewardReceiver(address gauge, address rewardReceiver) external;
 }
