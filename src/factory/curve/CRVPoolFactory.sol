@@ -2,6 +2,9 @@
 pragma solidity 0.8.19;
 
 import "src/factory/PoolFactory.sol";
+
+import {IBooster} from "src/interfaces/IBooster.sol";
+import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
 import {IGaugeController} from "src/interfaces/IGaugeController.sol";
 
 /// @notice Inherit from PoolFactory to deploy a pool compatible with CRV gauges and check if the token is a valid extra rewards to add.
@@ -9,8 +12,14 @@ contract CRVPoolFactory is PoolFactory {
     /// @notice Ve Funder is a special gauge not valid to be deployed as a pool.
     address public constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
 
+    /// @notice Convex Booster.
+    address public constant BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
+
     /// @notice Ve Funder is a special gauge not valid to be deployed as a pool.
     address public constant VE_FUNDER = 0xbAF05d7aa4129CA14eC45cC9d4103a9aB9A9fF60;
+
+    /// @notice Convex Minimal Proxy Factory for Only Boost.
+    address public constant CONVEX_MINIMAL_PROXY_FACTORY = 0x4E795A6f991e305e3f28A3b1b2B4B9789d2CD5A1;
 
     /// @notice Curve Gauge Controller.
     IGaugeController public constant GAUGE_CONTROLLER = IGaugeController(0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB);
@@ -30,6 +39,21 @@ contract CRVPoolFactory is PoolFactory {
             _rewardReceiverImplementation
         )
     {}
+
+    /// @notice Create a new pool for a given pid on the Convex platform.
+    /// @param _pid Pool id.
+    /// @return vault Address of the vault.
+    /// @return rewardDistributor Address of the reward distributor.
+    /// @return stakingConvex Address of the staking convex.
+    function create(uint256 _pid) external returns (address vault, address rewardDistributor, address stakingConvex) {
+        (address _token,, address _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
+
+        /// No necessary to check if the gauge is valid, as it's already checked in the ConvexMinimalProxyFactory.
+        stakingConvex = IConvexFactory(CONVEX_MINIMAL_PROXY_FACTORY).create(_token, _pid);
+
+        /// Create Stake DAO pool.
+        (vault, rewardDistributor) = _create(_gauge);
+    }
 
     /// @notice Add the main reward token to the reward distributor.
     /// @param rewardDistributor Address of the reward distributor.

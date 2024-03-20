@@ -10,6 +10,8 @@ import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Vault} from "src/staking/Vault.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {RewardReceiver} from "src/strategy/RewardReceiver.sol";
+
+import {ConvexMinimalProxyFactory} from "src/fallbacks/ConvexMinimalProxyFactory.sol";
 import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/factory/curve/CRVPoolFactory.sol";
 
 abstract contract PoolFactory_Test is Test {
@@ -40,16 +42,22 @@ abstract contract PoolFactory_Test is Test {
 
     address public constant gaugeImplementation = address(0x3Dc56D46F0Bd13655EfB29594a2e44534c453BF9);
 
+    uint256 pid;
+    bool isShutdown;
+
     constructor(uint256 _pid) {
         /// Check if the LP token is valid
-        (address lpToken,, address _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
+        (address lpToken,, address _gauge,,,bool _isShutdown) = IBooster(BOOSTER).poolInfo(_pid);
+
+        pid = _pid;
+        isShutdown = _isShutdown;
 
         gauge = _gauge;
         token = ERC20(lpToken);
     }
 
     function setUp() public {
-        vm.rollFork({blockNumber: 18_383_019});
+        vm.rollFork({blockNumber: 19_476_470});
 
         /// Deploy Strategy
         implementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);
@@ -80,6 +88,51 @@ abstract contract PoolFactory_Test is Test {
         );
 
         strategy.setFactory(address(poolFactory));
+    }
+
+    function test_deploy_pool_using_pid() public {
+        address vault;
+        address rewardDistributor;
+        address stakingConvex;
+
+        /// Check if the gauge is not killed.
+        /// Not all the pools, but most of them, have this function.
+        bool isKilled;
+        try ILiquidityGauge(gauge).is_killed() returns (bool _isKilled) {
+            isKilled = _isKilled;
+        } catch {}
+
+
+
+        if (isKilled) {
+            if(isShutdown) {
+                vm.expectRevert(ConvexMinimalProxyFactory.SHUTDOWN.selector);
+            } else {
+                vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);
+            }
+            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid);
+        } else {
+            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid);
+
+            /// Vault Checks.
+            assertEq(address(Vault(vault).token()), address(token));
+            assertEq(address(Vault(vault).strategy()), address(strategy));
+            assertEq(address(Vault(vault).liquidityGauge()), rewardDistributor);
+
+            vm.expectRevert(Vault.ALREADY_INITIALIZED.selector);
+            Vault(vault).initialize();
+
+            /// Reward Distributor Checks.
+            assertEq(ISDLiquidityGauge(rewardDistributor).vault(), vault);
+            assertEq(ISDLiquidityGauge(rewardDistributor).staking_token(), vault);
+
+            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(0), poolFactory.SDT());
+            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
+            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(2), FALLBACK_REWARD_TOKEN);
+
+            /// Check if there's extra rewards in the gauge.
+            _checkExtraRewards(rewardDistributor);
+        }
     }
 
     function test_deploy_pool() public {

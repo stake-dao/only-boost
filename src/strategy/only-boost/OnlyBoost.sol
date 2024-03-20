@@ -148,7 +148,7 @@ abstract contract OnlyBoost is Strategy {
         (address[] memory fundsManagers, uint256[] memory allocations) =
             optimizer.getOptimalDepositAllocation(gauge, amount);
 
-        for (uint256 i; i < fundsManagers.length;++i) {
+        for (uint256 i; i < fundsManagers.length; ++i) {
             // Skip if the allocation amount is 0.
             if (allocations[i] == 0) continue;
 
@@ -180,7 +180,7 @@ abstract contract OnlyBoost is Strategy {
         (address[] memory fundsManagers, uint256[] memory allocations) =
             optimizer.getOptimalWithdrawalPath(gauge, amount);
 
-        for (uint256 i; i < fundsManagers.length;++i) {
+        for (uint256 i; i < fundsManagers.length; ++i) {
             /// Skip if the optimized amount is 0.
             if (allocations[i] == 0) continue;
 

@@ -84,6 +84,11 @@ abstract contract PoolFactory {
     /// @return vault Address of the staking deposit.
     /// @return rewardDistributor Address of the reward distributor to claim rewards.
     function create(address _gauge) public virtual returns (address vault, address rewardDistributor) {
+        return _create(_gauge);
+    }
+
+    /// @notice Add new staking gauge to Stake DAO Locker.
+    function _create(address _gauge) internal returns (address vault, address rewardDistributor) {
         /// Perform checks on the gauge to make sure it's valid and can be used.
         if (!_isValidGauge(_gauge)) revert INVALID_GAUGE();
 
