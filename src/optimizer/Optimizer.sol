@@ -101,6 +101,7 @@ contract Optimizer is IOnlyBoost {
     /// @param _curveStrategy The address of the curve strategy
     /// @param _proxyFactory The address of the proxy factory
     constructor(address _curveStrategy, address _proxyFactory) {
+        governance = msg.sender;
         strategy = _curveStrategy;
         proxyFactory = IConvexFactory(_proxyFactory);
     }

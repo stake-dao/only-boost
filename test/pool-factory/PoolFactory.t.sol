@@ -40,14 +40,14 @@ abstract contract PoolFactory_Test is Test {
     address public constant REWARD_TOKEN = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
     address public constant FALLBACK_REWARD_TOKEN = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-    address public constant gaugeImplementation = address(0x3Dc56D46F0Bd13655EfB29594a2e44534c453BF9);
+    address public constant gaugeImplementation = address(0x08d36c723b8213122f678025C2D9eb1Ec7Ab8F9D);
 
     uint256 pid;
     bool isShutdown;
 
     constructor(uint256 _pid) {
         /// Check if the LP token is valid
-        (address lpToken,, address _gauge,,,bool _isShutdown) = IBooster(BOOSTER).poolInfo(_pid);
+        (address lpToken,, address _gauge,,, bool _isShutdown) = IBooster(BOOSTER).poolInfo(_pid);
 
         pid = _pid;
         isShutdown = _isShutdown;
@@ -102,10 +102,8 @@ abstract contract PoolFactory_Test is Test {
             isKilled = _isKilled;
         } catch {}
 
-
-
         if (isKilled) {
-            if(isShutdown) {
+            if (isShutdown) {
                 vm.expectRevert(ConvexMinimalProxyFactory.SHUTDOWN.selector);
             } else {
                 vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);

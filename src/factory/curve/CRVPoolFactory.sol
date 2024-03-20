@@ -24,6 +24,9 @@ contract CRVPoolFactory is PoolFactory {
     /// @notice Curve Gauge Controller.
     IGaugeController public constant GAUGE_CONTROLLER = IGaugeController(0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB);
 
+    /// @notice Event emitted when a pool is deployed with Only Boost.
+    event PoolDeployed(address vault, address rewardDistributor, address lp, address gauge, address stakingConvex);
+
     constructor(
         address _strategy,
         address _rewardToken,
@@ -53,6 +56,8 @@ contract CRVPoolFactory is PoolFactory {
 
         /// Create Stake DAO pool.
         (vault, rewardDistributor) = _create(_gauge);
+
+        emit PoolDeployed(vault, rewardDistributor, _token, _gauge, stakingConvex);
     }
 
     /// @notice Add the main reward token to the reward distributor.
