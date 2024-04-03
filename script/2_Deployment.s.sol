@@ -17,9 +17,9 @@ import {RewardDistributors} from "script/utils/RewardDistributors.sol";
 import {ISDLiquidityGauge} from "src/base/interfaces/ISDLiquidityGauge.sol";
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
 
-import {ICVXLocker, Optimizer} from "src/base/optimizer/Optimizer.sol";
-import {IBaseRewardPool, ConvexImplementation} from "src/base/fallbacks/ConvexImplementation.sol";
-import {IBooster, ConvexMinimalProxyFactory} from "src/base/fallbacks/ConvexMinimalProxyFactory.sol";
+import {ICVXLocker, Optimizer} from "src/curve/optimizer/Optimizer.sol";
+import {IBaseRewardPool, ConvexImplementation} from "src/curve/fallbacks/ConvexImplementation.sol";
+import {IBooster, ConvexMinimalProxyFactory} from "src/curve/fallbacks/ConvexMinimalProxyFactory.sol";
 
 interface IOldStrategy is IStrategy {
     function multiGauges(address) external view returns (address);
