@@ -16,9 +16,9 @@ import {IStrategy} from "src/base/interfaces/IStrategy.sol";
 import {ISDLiquidityGauge} from "src/base/interfaces/ISDLiquidityGauge.sol";
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
 
-import {ICVXLocker, Optimizer} from "src/base/optimizer/Optimizer.sol";
-import {IBaseRewardPool, ConvexImplementation} from "src/base/fallbacks/ConvexImplementation.sol";
-import {IBooster, ConvexMinimalProxyFactory} from "src/base/fallbacks/ConvexMinimalProxyFactory.sol";
+import {ICVXLocker, Optimizer} from "src/curve/optimizer/Optimizer.sol";
+import {IBaseRewardPool, ConvexImplementation} from "src/curve/fallbacks/ConvexImplementation.sol";
+import {IBooster, ConvexMinimalProxyFactory} from "src/curve/fallbacks/ConvexMinimalProxyFactory.sol";
 
 contract Deployment is Script, Test {
     using FixedPointMathLib for uint256;

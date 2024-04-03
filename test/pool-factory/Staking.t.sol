@@ -10,9 +10,7 @@ import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Vault} from "src/base/staking/Vault.sol";
 import {IBooster} from "src/base/interfaces/IBooster.sol";
 import {RewardReceiver} from "src/base/strategy/RewardReceiver.sol";
-import {
-    ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory
-} from "src/base/factory/curve/CRVPoolFactory.sol";
+import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/curve/factory/CRVPoolFactory.sol";
 
 interface IClaimer {
     function claim_rewards(address[] memory _gauge) external;

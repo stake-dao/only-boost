@@ -9,11 +9,11 @@ import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {ILocker} from "src/base/interfaces/ILocker.sol";
 import {IConvexToken} from "test/interfaces/IConvexToken.sol";
-import {ICVXLocker, Optimizer} from "src/base/optimizer/Optimizer.sol";
+import {ICVXLocker, Optimizer} from "src/curve/optimizer/Optimizer.sol";
 
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
-import {IBaseRewardPool, ConvexImplementation} from "src/base/fallbacks/ConvexImplementation.sol";
-import {IBooster, ConvexMinimalProxyFactory} from "src/base/fallbacks/ConvexMinimalProxyFactory.sol";
+import {IBaseRewardPool, ConvexImplementation} from "src/curve/fallbacks/ConvexImplementation.sol";
+import {IBooster, ConvexMinimalProxyFactory} from "src/curve/fallbacks/ConvexMinimalProxyFactory.sol";
 
 abstract contract Base_Test is Test {
     using SafeTransfer for ERC20;

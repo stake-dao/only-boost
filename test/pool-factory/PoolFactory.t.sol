@@ -11,10 +11,8 @@ import {Vault} from "src/base/staking/Vault.sol";
 import {IBooster} from "src/base/interfaces/IBooster.sol";
 import {RewardReceiver} from "src/base/strategy/RewardReceiver.sol";
 
-import {ConvexMinimalProxyFactory} from "src/base/fallbacks/ConvexMinimalProxyFactory.sol";
-import {
-    ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory
-} from "src/base/factory/curve/CRVPoolFactory.sol";
+import {ConvexMinimalProxyFactory} from "src/curve/fallbacks/ConvexMinimalProxyFactory.sol";
+import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/curve/factory/CRVPoolFactory.sol";
 
 abstract contract PoolFactory_Test is Test {
     ILocker public locker;
