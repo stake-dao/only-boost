@@ -2,14 +2,14 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solady/tokens/ERC20.sol";
-import {IVault} from "src/interfaces/IVault.sol";
+import {IVault} from "src/base/interfaces/IVault.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
-import {IBooster} from "src/interfaces/IBooster.sol";
+import {IBooster} from "src/base/interfaces/IBooster.sol";
 
-import {IStrategy} from "src/interfaces/IStrategy.sol";
-import {IFallback} from "src/interfaces/IFallback.sol";
-import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
-import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
+import {IStrategy} from "src/base/interfaces/IStrategy.sol";
+import {IFallback} from "src/base/interfaces/IFallback.sol";
+import {ILiquidityGauge} from "src/base/interfaces/ILiquidityGauge.sol";
+import {ISDLiquidityGauge} from "src/base/interfaces/ISDLiquidityGauge.sol";
 
 /// @notice Factory built to be compatible with CRV gauges but can be overidden to support other gauges/protocols.
 abstract contract PoolFactory {

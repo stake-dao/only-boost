@@ -209,7 +209,7 @@ import "forge-std/Test.sol";
 import "src/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
 import {Vault} from "src/staking/Vault.sol";
-import {IBooster} from "src/interfaces/IBooster.sol";
+import {IBooster} from "src/base/interfaces/IBooster.sol";
 import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/factory/curve/CRVPoolFactory.sol";
 
 contract CRVExtraRewardsTest is Test {

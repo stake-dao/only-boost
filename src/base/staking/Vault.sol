@@ -6,8 +6,8 @@ import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
-import {IStrategy} from "src/interfaces/IStrategy.sol";
-import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
+import {IStrategy} from "src/base/interfaces/IStrategy.sol";
+import {ISDLiquidityGauge} from "src/base/interfaces/ISDLiquidityGauge.sol";
 
 /// @title Vault Implementation for Stake DAO.
 /// @notice This contract allows users to deposit LP tokens into Stake DAO and receive sdGauge tokens in return.

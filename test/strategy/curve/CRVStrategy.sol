@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import "src/strategy/Strategy.sol";
+import "src/base/strategy/Strategy.sol";
 
 /// @title OnlyBoost Strategy Contract
 /// @author Stake DAO

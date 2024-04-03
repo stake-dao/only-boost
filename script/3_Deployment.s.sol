@@ -6,13 +6,14 @@ import "forge-std/Script.sol";
 
 import "solady/utils/LibClone.sol";
 
-import {Vault} from "src/staking/Vault.sol";
-import {IBooster} from "src/interfaces/IBooster.sol";
-import {RewardReceiver} from "src/strategy/RewardReceiver.sol";
+import {Vault} from "src/base/staking/Vault.sol";
+import {IBooster} from "src/base/interfaces/IBooster.sol";
+import {RewardReceiver} from "src/base/strategy/RewardReceiver.sol";
 
-import {ConvexMinimalProxyFactory} from "src/fallbacks/ConvexMinimalProxyFactory.sol";
-
-import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/factory/curve/CRVPoolFactory.sol";
+import {ConvexMinimalProxyFactory} from "src/base/fallbacks/ConvexMinimalProxyFactory.sol";
+import {
+    ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory
+} from "src/base/factory/curve/CRVPoolFactory.sol";
 
 contract Deployment is Script, Test {
     Vault vaultImplementation;

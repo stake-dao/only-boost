@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import "src/factory/PoolFactory.sol";
+import "src/base/factory/PoolFactory.sol";
 
-import {IBooster} from "src/interfaces/IBooster.sol";
-import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
-import {IGaugeController} from "src/interfaces/IGaugeController.sol";
+import {IBooster} from "src/base/interfaces/IBooster.sol";
+import {IConvexFactory} from "src/base/interfaces/IConvexFactory.sol";
+import {IGaugeController} from "src/base/interfaces/IGaugeController.sol";
 
 /// @notice Inherit from PoolFactory to deploy a pool compatible with CRV gauges and check if the token is a valid extra rewards to add.
 contract CRVPoolFactory is PoolFactory {

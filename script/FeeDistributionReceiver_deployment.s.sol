@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 
-import {FeeReceiver} from "src/strategy/FeeReceiver.sol";
+import {FeeReceiver} from "src/base/strategy/FeeReceiver.sol";
 
 contract PlatformScript is Script, Test {
     /// Executor

@@ -6,11 +6,11 @@ import {UUPSUpgradeable} from "solady/utils/UUPSUpgradeable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
-import {ILocker} from "src/interfaces/ILocker.sol";
+import {ILocker} from "src/base/interfaces/ILocker.sol";
 import {SafeExecute} from "src/libraries/SafeExecute.sol";
-import {IRewardReceiver} from "src/interfaces/IRewardReceiver.sol";
-import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
-import {ISDTDistributor} from "src/interfaces/ISDTDistributor.sol";
+import {IRewardReceiver} from "src/base/interfaces/IRewardReceiver.sol";
+import {ILiquidityGauge} from "src/base/interfaces/ILiquidityGauge.sol";
+import {ISDTDistributor} from "src/base/interfaces/ISDTDistributor.sol";
 
 /// @notice Main access point of the locker.
 /// @dev Is Upgradable.
