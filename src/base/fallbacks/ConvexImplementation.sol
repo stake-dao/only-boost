@@ -6,10 +6,10 @@ import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
-import {IBooster} from "src/interfaces/IBooster.sol";
-import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
-import {IBaseRewardPool} from "src/interfaces/IBaseRewardPool.sol";
-import {IStashTokenWrapper} from "src/interfaces/IStashTokenWrapper.sol";
+import {IBooster} from "src/base/interfaces/IBooster.sol";
+import {IConvexFactory} from "src/base/interfaces/IConvexFactory.sol";
+import {IBaseRewardPool} from "src/base/interfaces/IBaseRewardPool.sol";
+import {IStashTokenWrapper} from "src/base/interfaces/IStashTokenWrapper.sol";
 
 /// @notice Implementation per PID for Convex.
 /// @dev For each PID, a minimal proxy is deployed using this contract as implementation.

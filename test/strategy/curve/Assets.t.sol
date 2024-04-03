@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import "test/strategy/Strategy.t.sol";
+import "test/strategy/curve/Strategy.t.sol";
 
 uint256 constant _0_PID = 0;
 address constant _0_REWARD_DISTRIBUTOR = 0x822Faec5aa8fA750C73F8247977FFC78314d0B8c;

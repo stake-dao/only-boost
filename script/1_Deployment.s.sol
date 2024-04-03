@@ -4,21 +4,21 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 
-import "src/CRVStrategy.sol";
+import "src/curve/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
 
 import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {IVault} from "script/utils/IVault.sol";
-import {ILocker} from "src/interfaces/ILocker.sol";
-import {IBooster} from "src/interfaces/IBooster.sol";
-import {IStrategy} from "src/interfaces/IStrategy.sol";
-import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
+import {ILocker} from "src/base/interfaces/ILocker.sol";
+import {IBooster} from "src/base/interfaces/IBooster.sol";
+import {IStrategy} from "src/base/interfaces/IStrategy.sol";
+import {ISDLiquidityGauge} from "src/base/interfaces/ISDLiquidityGauge.sol";
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
 
-import {ICVXLocker, Optimizer} from "src/optimizer/Optimizer.sol";
-import {IBaseRewardPool, ConvexImplementation} from "src/fallbacks/ConvexImplementation.sol";
-import {IBooster, ConvexMinimalProxyFactory} from "src/fallbacks/ConvexMinimalProxyFactory.sol";
+import {ICVXLocker, Optimizer} from "src/base/optimizer/Optimizer.sol";
+import {IBaseRewardPool, ConvexImplementation} from "src/base/fallbacks/ConvexImplementation.sol";
+import {IBooster, ConvexMinimalProxyFactory} from "src/base/fallbacks/ConvexMinimalProxyFactory.sol";
 
 contract Deployment is Script, Test {
     using FixedPointMathLib for uint256;

@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import {Clone} from "solady/utils/Clone.sol";
 import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
+import {ILiquidityGauge} from "src/base/interfaces/ILiquidityGauge.sol";
 
 /// @notice RewardReceiver contract to hold rewards for LGV3+ Gauges.
 contract RewardReceiver is Clone {

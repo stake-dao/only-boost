@@ -2,8 +2,8 @@
 pragma solidity 0.8.19;
 
 import {LibClone} from "solady/utils/LibClone.sol";
-import {IBooster} from "src/interfaces/IBooster.sol";
-import {IFallback} from "src/interfaces/IFallback.sol";
+import {IBooster} from "src/base/interfaces/IBooster.sol";
+import {IFallback} from "src/base/interfaces/IFallback.sol";
 
 /// @notice Minimal proxy factory for ConvexFallback contract.
 contract ConvexMinimalProxyFactory {

@@ -3,13 +3,13 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import "solady/utils/LibClone.sol";
-import "test/strategy/CRVStrategy.sol";
+import "test/strategy/curve/CRVStrategy.sol";
 
 import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {ILocker} from "src/interfaces/ILocker.sol";
-import {IBooster} from "src/interfaces/IBooster.sol";
-import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
+import {ILocker} from "src/base/interfaces/ILocker.sol";
+import {IBooster} from "src/base/interfaces/IBooster.sol";
+import {ISDLiquidityGauge} from "src/base/interfaces/ISDLiquidityGauge.sol";
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
 
 abstract contract Strategy_Test is Test {

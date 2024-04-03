@@ -42,7 +42,7 @@ simulate-%:
 	@forge script script/$*.s.sol -vvvvv --fork-url $(RPC_URL_MAINNET)
 
 run-%:
-	@forge script script/$*.s.sol --broadcast --slow -vvvvv --private-key $(PRIVATE_KEY) --verify --resume
+	@forge script script/$*.s.sol --broadcast --slow -vvvvv --private-key $(PRIVATE_KEY) --verify
 
 deploy-%:
 	@forge script script/$*.s.sol --broadcast --slow -vvvvv --verify --private-key ${PRIVATE_KEY}

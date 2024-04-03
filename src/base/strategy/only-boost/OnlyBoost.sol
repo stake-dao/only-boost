@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import "src/strategy/Strategy.sol";
-import {IFallback} from "src/interfaces/IFallback.sol";
-import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";
+import "src/base/strategy/Strategy.sol";
+import {IFallback} from "src/base/interfaces/IFallback.sol";
+import {IOnlyBoost} from "src/base/interfaces/IOnlyBoost.sol";
 
 /// @notice Override the deposit/withdrawal logic to use the Optimizer contract.
 abstract contract OnlyBoost is Strategy {

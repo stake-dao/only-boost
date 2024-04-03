@@ -46,7 +46,7 @@ pragma solidity 0.8.19;
              `a@@a%@'    `%a@@'       `a@@a%a@@a
  */
 
-import "src/strategy/only-boost/OnlyBoost.sol";
+import "src/base/strategy/only-boost/OnlyBoost.sol";
 
 /// @notice Strategy contract, supporting OnlyBoost.
 contract CRVStrategy is OnlyBoost {
