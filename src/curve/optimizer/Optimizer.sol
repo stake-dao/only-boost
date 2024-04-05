@@ -281,32 +281,43 @@ contract Optimizer is IOnlyBoost {
         view
         returns (address[] memory _withdrawalTargets, uint256[] memory _allocations)
     {
-        _withdrawalTargets = new address[](2);
-        _allocations = new uint256[](2);
+        /// Gets the fallback address via the proxy factory; one fallback (clone) per Convex pid
+        address _fallback = proxyFactory.fallbacks(gauge);
 
-        _withdrawalTargets[1] = VOTER_PROXY_SD;
-        _withdrawalTargets[0] = proxyFactory.fallbacks(gauge);
+        if (_fallback != address(0)) {
+            _withdrawalTargets = new address[](2);
+            _allocations = new uint256[](2);
 
-        uint256 balanceSD = ERC20(gauge).balanceOf(VOTER_PROXY_SD);
-        uint256 balanceConvex = IFallback(_withdrawalTargets[0]).balanceOf(gauge);
+            _withdrawalTargets[1] = VOTER_PROXY_SD;
+            _withdrawalTargets[0] = _fallback;
 
-        // Calculate optimal boost for both pools
-        uint256 optimalSD = cachedOptimizations[gauge].value;
-        uint256 totalBalance = balanceSD + balanceConvex;
+            uint256 balanceSD = ERC20(gauge).balanceOf(VOTER_PROXY_SD);
+            uint256 balanceConvex = IFallback(_fallback).balanceOf(gauge);
 
-        // Adjust the withdrawal based on the optimal amount for Stake DAO
-        if (totalBalance <= amount) {
-            // If the total balance is less than or equal to the withdrawal amount, withdraw everything
-            _allocations[0] = balanceConvex;
-            _allocations[1] = balanceSD;
-        } else if (optimalSD >= balanceSD) {
-            // If Stake DAO balance is below optimal, prioritize withdrawing from Convex
-            _allocations[0] = FixedPointMathLib.min(amount, balanceConvex);
-            _allocations[1] = amount > _allocations[0] ? amount - _allocations[0] : 0;
+            // Calculate optimal boost for both pools
+            uint256 optimalSD = cachedOptimizations[gauge].value;
+            uint256 totalBalance = balanceSD + balanceConvex;
+
+            // Adjust the withdrawal based on the optimal amount for Stake DAO
+            if (totalBalance <= amount) {
+                // If the total balance is less than or equal to the withdrawal amount, withdraw everything
+                _allocations[0] = balanceConvex;
+                _allocations[1] = balanceSD;
+            } else if (optimalSD >= balanceSD) {
+                // If Stake DAO balance is below optimal, prioritize withdrawing from Convex
+                _allocations[0] = FixedPointMathLib.min(amount, balanceConvex);
+                _allocations[1] = amount > _allocations[0] ? amount - _allocations[0] : 0;
+            } else {
+                // If Stake DAO balance is above optimal, prioritize withdrawing from Stake DAO
+                _allocations[1] = FixedPointMathLib.min(amount, balanceSD);
+                _allocations[0] = amount > _allocations[1] ? amount - _allocations[1] : 0;
+            }
         } else {
-            // If Stake DAO balance is above optimal, prioritize withdrawing from Stake DAO
-            _allocations[1] = FixedPointMathLib.min(amount, balanceSD);
-            _allocations[0] = amount > _allocations[1] ? amount - _allocations[1] : 0;
+            _withdrawalTargets = new address[](1);
+            _withdrawalTargets[0] = VOTER_PROXY_SD;
+
+            _allocations = new uint256[](1);
+            _allocations[0] = amount;
         }
     }
 

@@ -45,30 +45,70 @@ contract CRVPoolFactory is PoolFactory {
 
     /// @notice Create a new pool for a given pid on the Convex platform.
     /// @param _pid Pool id.
+    /// @param _deployPool To deploy the pool.
+    /// @param _deployConvex To deploy the convex staking.
     /// @return vault Address of the vault.
     /// @return rewardDistributor Address of the reward distributor.
     /// @return stakingConvex Address of the staking convex.
-    function create(uint256 _pid) external returns (address vault, address rewardDistributor, address stakingConvex) {
+    function create(uint256 _pid, bool _deployPool, bool _deployConvex)
+        external
+        returns (address vault, address rewardDistributor, address stakingConvex)
+    {
         (address _token,, address _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
 
-        /// No necessary to check if the gauge is valid, as it's already checked in the ConvexMinimalProxyFactory.
-        stakingConvex = IConvexFactory(CONVEX_MINIMAL_PROXY_FACTORY).create(_token, _pid);
+        if (_deployConvex) {
+            stakingConvex = IConvexFactory(CONVEX_MINIMAL_PROXY_FACTORY).create(_token, _pid);
+        }
 
-        /// Create Stake DAO pool.
-        (vault, rewardDistributor) = _create(_gauge);
+        if (_deployPool) {
+            /// Create Stake DAO pool.
+            (vault, rewardDistributor) = _create(_gauge);
 
-        emit PoolDeployed(vault, rewardDistributor, _token, _gauge, stakingConvex);
+            emit PoolDeployed(vault, rewardDistributor, _token, _gauge, stakingConvex);
+        } else {
+            address _rewardDistributor = strategy.rewardDistributors(_gauge);
+
+            /// We go through the execute function because if the pool is already deployed and have extra rewards,
+            /// We do not want CVX be distributed by the Reward Receiver.
+            /// Approve the reward distributor to spend the reward token.
+            if (ERC20(CVX).allowance(address(strategy), _rewardDistributor) == 0) {
+                strategy.execute(
+                    CVX,
+                    0,
+                    abi.encodeWithSignature(
+                        "approve(address,address,uint)", _rewardDistributor, address(strategy), type(uint256).max
+                    )
+                );
+            }
+
+            /// Add CVX in the case where Only Boost is enabled.
+            address distributor = ILiquidityGauge(rewardDistributor).reward_data(CVX).distributor;
+            if (distributor == address(0)) {
+                strategy.execute(
+                    _rewardDistributor,
+                    0,
+                    abi.encodeWithSignature("add_reward(address,address)", CVX, address(strategy))
+                );
+            }
+        }
+    }
+
+    function syncExtraRewards(address _gauge) external {
+        address _rewardDistributor = strategy.rewardDistributors(_gauge);
+        if(_rewardDistributor == address(0)) return;
+
+        _addExtraRewards(_gauge, _rewardDistributor);
     }
 
     /// @notice Add the main reward token to the reward distributor.
-    /// @param rewardDistributor Address of the reward distributor.
-    function _addRewardToken(address rewardDistributor) internal override {
+    /// @param _gauge Address of the _gauge.
+    function _addRewardToken(address _gauge) internal override {
         /// The strategy should claim through the locker the reward token,
         /// and distribute it to the reward distributor every harvest.
-        ISDLiquidityGauge(rewardDistributor).add_reward(rewardToken, address(strategy));
+        strategy.addRewardToken(_gauge, rewardToken);
 
         /// Add CVX in the case where Only Boost is enabled.
-        ISDLiquidityGauge(rewardDistributor).add_reward(CVX, address(strategy));
+        strategy.addRewardToken(_gauge, CVX);
     }
 
     /// @inheritdoc PoolFactory
@@ -76,7 +116,8 @@ contract CRVPoolFactory is PoolFactory {
         /// We can't add the reward token as extra reward.
         /// We can't add special pools like the Ve Funder.
         /// We can't add SDT as extra reward, as it's already added by default.
-        if (_token == rewardToken || _token == VE_FUNDER || _token == SDT) return false;
+        /// We can't add CVX as extra reward, as it's already added by default.
+        if (_token == rewardToken || _token == VE_FUNDER || _token == SDT || _token == CVX) return false;
 
         /// If the token is available as an inflation receiver, it's not valid.
         try GAUGE_CONTROLLER.gauge_types(_token) {
