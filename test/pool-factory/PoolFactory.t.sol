@@ -108,9 +108,9 @@ abstract contract PoolFactory_Test is Test {
             } else {
                 vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);
             }
-            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid);
+            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, true, true);
         } else {
-            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid);
+            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, true, true);
 
             /// Vault Checks.
             assertEq(address(Vault(vault).token()), address(token));
@@ -190,7 +190,10 @@ abstract contract PoolFactory_Test is Test {
                     ISDLiquidityGauge(rewardDistributor).reward_data(_extraRewardToken);
 
                 address rewardReceiver = strategy.rewardReceivers(gauge);
-                if (rewardReceiver != address(0) && _extraRewardToken != REWARD_TOKEN) {
+                if (
+                    rewardReceiver != address(0) && _extraRewardToken != REWARD_TOKEN
+                        && _extraRewardToken != FALLBACK_REWARD_TOKEN
+                ) {
                     assertEq(reward.distributor, rewardReceiver);
                 } else {
                     assertEq(reward.distributor, address(strategy));

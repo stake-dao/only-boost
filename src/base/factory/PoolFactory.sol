@@ -131,9 +131,6 @@ abstract contract PoolFactory {
         /// Map the gauge to the reward distributor that should receive the rewards.
         strategy.setRewardDistributor(_gauge, rewardDistributor);
 
-        /// Add the reward token to the reward distributor.
-        _addRewardToken(rewardDistributor);
-
         /// Set ClaimHelper as claimer.
         ISDLiquidityGauge(rewardDistributor).set_claimer(CLAIM_HELPER);
 
@@ -143,6 +140,9 @@ abstract contract PoolFactory {
         /// Accept ownership of the reward distributor.
         strategy.acceptRewardDistributorOwnership(rewardDistributor);
 
+        /// Add the reward token to the reward distributor.
+        _addRewardToken(_gauge);
+
         /// Add extra rewards if any.
         _addExtraRewards(_gauge, rewardDistributor);
 
@@ -150,11 +150,11 @@ abstract contract PoolFactory {
     }
 
     /// @notice Add the main reward token to the reward distributor.
-    /// @param rewardDistributor Address of the reward distributor.
-    function _addRewardToken(address rewardDistributor) internal virtual {
+    /// @param _gauge Address of the gauge.
+    function _addRewardToken(address _gauge) internal virtual {
         /// The strategy should claim through the locker the reward token,
         /// and distribute it to the reward distributor every harvest.
-        ISDLiquidityGauge(rewardDistributor).add_reward(rewardToken, address(strategy));
+        strategy.addRewardToken(_gauge, rewardToken);
     }
 
     /// @notice Add extra reward tokens to the reward distributor.
@@ -174,13 +174,13 @@ abstract contract PoolFactory {
             return;
         }
 
-        address rewardReceiver;
+        address rewardReceiver = strategy.rewardReceivers(_gauge);
 
         /// Check if the gauge supports receivers.
         data = abi.encodeWithSignature("rewards_receiver(address)", strategy.locker());
         (success,) = _gauge.call(data);
 
-        if (success) {
+        if (success && rewardReceiver == address(0)) {
             bytes memory rewardReceiverData =
                 abi.encodePacked(_gauge, strategy.locker(), address(rewardToken), address(strategy), _rewardDistributor);
 
@@ -202,7 +202,9 @@ abstract contract PoolFactory {
 
             /// Performs checks on the extra reward token.
             /// Checks like if the token is also an lp token that can be staked in the locker, these tokens are not supported.
-            if (_isValidToken(_extraRewardToken)) {
+            address distributor = ILiquidityGauge(_rewardDistributor).reward_data(_extraRewardToken).distributor;
+
+            if (_isValidToken(_extraRewardToken) && distributor == address(0)) {
                 /// Then we add the extra reward token to the reward distributor through the strategy.
                 strategy.addRewardToken(_gauge, _extraRewardToken);
             }
