@@ -113,6 +113,23 @@ contract FeeReceiverTest is Test {
         assertEq(tokenA.balanceOf(veSdtFeeProxy), amount * 25 / 100);
     }
 
+
+    function test_splitFeeWithOneZero(uint256 amount) public {
+        vm.assume(amount < type(uint256).max / 10_000);
+        tokenA.mint(address(feeReceiver), amount);
+
+        vm.startPrank(governance);
+        feeReceiver.setRewardTokenAndRepartition(accumulator, address(tokenA), 0, 5_000, 5_000);
+        vm.stopPrank();
+
+        vm.prank(accumulator);
+        feeReceiver.split();
+
+        assertEq(tokenA.balanceOf(dao), 0);
+        assertEq(tokenA.balanceOf(accumulator), amount * 50 / 100);
+        assertEq(tokenA.balanceOf(veSdtFeeProxy), amount * 50 / 100);
+    }
+
     function test_splitFeeMultipleRewardTokens(uint256 amountA, uint256 amountB, uint256 amountC) public {
         vm.assume(amountA < type(uint256).max / 10_000);
         vm.assume(amountB < type(uint256).max / 10_000);
