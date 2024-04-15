@@ -22,12 +22,10 @@ contract RewardSplitterTest is Test {
     MockERC20 public tokenC = new MockERC20("Token C", "TKC", 8);
 
     function setUp() public {
-        rewardSplitter = new RewardSplitter(governance, veSdtFeeProxy, dao);
+        rewardSplitter = new RewardSplitter(governance);
     }
 
     function test_initialSetup() public view {
-        assertEq(rewardSplitter.veSdtFeeProxy(), veSdtFeeProxy);
-        assertEq(rewardSplitter.dao(), dao);
         assertEq(rewardSplitter.governance(), governance);
         assertEq(rewardSplitter.futureGovernance(), address(0));
     }
@@ -52,50 +50,60 @@ contract RewardSplitterTest is Test {
         assertEq(rewardSplitter.futureGovernance(), address(0));
     }
 
-    function test_setDao() public {
+    function test_setRepartition() public {
         vm.prank(governance);
-        rewardSplitter.setDao(address(0x5));
-        assertEq(rewardSplitter.dao(), address(0x5));
-    }
+                
+        address[] memory receivers = new address[](3);
+        uint256[] memory fees = new uint256[](3);
 
-    function test_setVeSdtFeeProxy() public {
-        vm.prank(governance);
-        rewardSplitter.setVeSdtFeeProxy(address(0x6));
-        assertEq(rewardSplitter.veSdtFeeProxy(), address(0x6));
-    }
+        receivers[0] = dao;
+        fees[0] = 2_500;
 
-    function test_setRewardTokenAndDistribution() public {
-        vm.prank(governance);
-        rewardSplitter.setRewardTokenAndRepartition(address(tokenA), accumulator, 2_500, 5_000, 2_500);
-        assertEq(rewardSplitter.rewardTokenAccumulator(address(tokenA)), accumulator);
+        receivers[1] = accumulator;
+        fees[1] = 5_000;
 
-        (uint256 daoPart, uint256 accumulatorPart, uint256 veSdtFeeProxyPart) =
-            rewardSplitter.rewardTokenRepartition(address(tokenA));
-        assertEq(daoPart, 2_500);
-        assertEq(accumulatorPart, 5_000);
-        assertEq(veSdtFeeProxyPart, 2_500);
+        receivers[2] = veSdtFeeProxy;
+        fees[2] = 2_500;
 
-        // Changing using setRepartition
-        vm.prank(governance);
-        rewardSplitter.setRepartition(address(tokenA), 1_000, 8_000, 1_000);
+        rewardSplitter.setRepartition(address(tokenA), receivers, fees);
 
-        (daoPart, accumulatorPart, veSdtFeeProxyPart) = rewardSplitter.rewardTokenRepartition(address(tokenA));
+        (address[] memory resultReceivers, uint256[] memory resultFees) = rewardSplitter.getRepartition(address(tokenA));
 
-        assertEq(daoPart, 1_000);
-        assertEq(accumulatorPart, 8_000);
-        assertEq(veSdtFeeProxyPart, 1_000);
+        assertEq(resultReceivers[0], dao);
+        assertEq(resultFees[0], 2_500);
+
+        assertEq(resultReceivers[1], accumulator);
+        assertEq(resultFees[1], 5_000);
+
+        assertEq(resultReceivers[2], veSdtFeeProxy);
+        assertEq(resultFees[2], 2_500);
     }
 
     ////////////////////////////////////////////////////////////
     /// --- SPLIT FEE ---
     ////////////////////////////////////////////////////////////
 
+
     function test_distributeFee(uint256 amount) public {
         vm.assume(amount < type(uint256).max / 10_000);
         tokenA.mint(address(rewardSplitter), amount);
 
+        address[] memory receivers = new address[](3);
+        uint256[] memory fees = new uint256[](3);
+
+        receivers[0] = dao;
+        fees[0] = 2_500;
+
+        receivers[1] = accumulator;
+        fees[1] = 5_000;
+
+        receivers[2] = veSdtFeeProxy;
+        fees[2] = 2_500;
+
+
+
         vm.startPrank(governance);
-        rewardSplitter.setRewardTokenAndRepartition(address(tokenA), accumulator, 2_500, 5_000, 2_500);
+        rewardSplitter.setRepartition(address(tokenA), receivers, fees);
         vm.stopPrank();
 
         rewardSplitter.split(address(tokenA));
@@ -105,12 +113,27 @@ contract RewardSplitterTest is Test {
         assertEq(tokenA.balanceOf(veSdtFeeProxy), amount * 25 / 100);
     }
 
+
     function test_distributeFeeWithOneZero(uint256 amount) public {
         vm.assume(amount < type(uint256).max / 10_000);
         tokenA.mint(address(rewardSplitter), amount);
 
+        address[] memory receivers = new address[](3);
+        uint256[] memory fees = new uint256[](3);
+
+        receivers[0] = dao;
+        fees[0] = 0;
+
+        receivers[1] = accumulator;
+        fees[1] = 5_000;
+
+        receivers[2] = veSdtFeeProxy;
+        fees[2] = 5_000;
+
+
+
         vm.startPrank(governance);
-        rewardSplitter.setRewardTokenAndRepartition(address(tokenA), accumulator, 0, 5_000, 5_000);
+        rewardSplitter.setRepartition(address(tokenA), receivers, fees);
         vm.stopPrank();
 
         vm.prank(accumulator);
@@ -119,6 +142,64 @@ contract RewardSplitterTest is Test {
         assertEq(tokenA.balanceOf(dao), 0);
         assertEq(tokenA.balanceOf(accumulator), amount * 50 / 100);
         assertEq(tokenA.balanceOf(veSdtFeeProxy), amount * 50 / 100);
+    }
+
+
+    function test_distributeLotOfSplits(uint256 amount) public {
+        vm.assume(amount < type(uint256).max / 10_000);
+        tokenA.mint(address(rewardSplitter), amount);
+
+        address[] memory receivers = new address[](10);
+        uint256[] memory fees = new uint256[](10);
+
+        receivers[0] = dao;
+        fees[0] = 1000;
+
+        receivers[1] = accumulator;
+        fees[1] = 1000;
+
+        receivers[2] = veSdtFeeProxy;
+        fees[2] = 1000;
+
+        receivers[3] = address(0x1);
+        fees[3] = 1000;
+
+        receivers[4] = address(0x2);
+        fees[4] = 1000;
+
+        receivers[5] = address(0x3);
+        fees[5] = 1000;
+
+        receivers[6] = address(0x4);
+        fees[6] = 1000;
+
+        receivers[7] = address(0x5);
+        fees[7] = 1000;
+
+        receivers[8] = address(0x6);
+        fees[8] = 1000;
+
+        receivers[9] = address(0x7);
+        fees[9] = 1000;
+
+
+
+        vm.startPrank(governance);
+        rewardSplitter.setRepartition(address(tokenA), receivers, fees);
+        vm.stopPrank();
+
+        rewardSplitter.split(address(tokenA));
+
+        assertEq(tokenA.balanceOf(dao), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(accumulator), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(veSdtFeeProxy), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(address(0x1)), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(address(0x2)), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(address(0x3)), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(address(0x4)), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(address(0x5)), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(address(0x6)), amount*1000/10_000);
+        assertEq(tokenA.balanceOf(address(0x7)), amount*1000/10_000);
     }
 
     function test_distributeFeeMultipleRewardTokens(uint256 amountA, uint256 amountB, uint256 amountC) public {
@@ -134,73 +215,54 @@ contract RewardSplitterTest is Test {
         tokenB.mint(address(rewardSplitter), amountB);
         tokenC.mint(address(rewardSplitter), amountC);
 
-        uint256 distributionDaoA = 7273; // 72.73%
-        uint256 distributionAccumulatorA = 2087; // 20.87%
-        uint256 distributionVeSdtFeeProxyA = 640; // 6.4%
+        address[] memory receivers = new address[](3);
+        uint256[] memory feesA = new uint256[](3);
+        uint256[] memory feesB = new uint256[](3);
+        uint256[] memory feesC = new uint256[](3);
 
-        uint256 distributionDaoB = 6000; // 60%
-        uint256 distributionAccumulatorB = 3000; // 30%
-        uint256 distributionVeSdtFeeProxyB = 1000; // 10%
+        receivers[0] = dao;
+        receivers[1] = accumulator;
+        receivers[2] = veSdtFeeProxy;
 
-        uint256 distributionDaoC = 100; // 1%
-        uint256 distributionAccumulatorC = 500; // 5%
-        uint256 distributionVeSdtFeeProxyC = 9400; // 94%
+        // Token A fees
+        feesA[0] = 7273; // 72.73%
+        feesA[1] = 2087; // 20.87%
+        feesA[2] = 640;  // 6.4%
 
-        // One accumulator for each token
+        // Token B fees
+        feesB[0] = 6000; // 60%
+        feesB[1] = 3000; // 30%
+        feesB[2] = 1000; // 10%
+
+        // Token C fees
+        feesC[0] = 100;  // 1%
+        feesC[1] = 500;  // 5%
+        feesC[2] = 9400; // 94%
+
         vm.startPrank(governance);
-        rewardSplitter.setRewardTokenAndRepartition(
-            address(tokenA), accumulator, distributionDaoA, distributionAccumulatorA, distributionVeSdtFeeProxyA
-        );
-        rewardSplitter.setRewardTokenAndRepartition(
-            address(tokenB), address(0x1), distributionDaoB, distributionAccumulatorB, distributionVeSdtFeeProxyB
-        );
-        rewardSplitter.setRewardTokenAndRepartition(
-            address(tokenC), address(0x2), distributionDaoC, distributionAccumulatorC, distributionVeSdtFeeProxyC
-        );
+        rewardSplitter.setRepartition(address(tokenA), receivers, feesA);
+        rewardSplitter.setRepartition(address(tokenB), receivers, feesB);
+        rewardSplitter.setRepartition(address(tokenC), receivers, feesC);
         vm.stopPrank();
 
         // Token A
-        vm.prank(accumulator);
         rewardSplitter.split(address(tokenA));
-
-        assertEq(tokenA.balanceOf(dao), amountA * distributionDaoA / 10_000);
-        assertEq(tokenA.balanceOf(accumulator), amountA * distributionAccumulatorA / 10_000);
-        assertEq(tokenA.balanceOf(veSdtFeeProxy), amountA * distributionVeSdtFeeProxyA / 10_000);
-
-        // Assert does not touched other tokens
-        assertEq(tokenB.balanceOf(address(rewardSplitter)), amountB);
-        assertEq(tokenC.balanceOf(address(rewardSplitter)), amountC);
+        assertEq(tokenA.balanceOf(dao), amountA * 7273 / 10_000);
+        assertEq(tokenA.balanceOf(accumulator), amountA * 2087 / 10_000);
+        assertEq(tokenA.balanceOf(veSdtFeeProxy), amountA * 640 / 10_000);
 
         // Token B
-        vm.prank(address(0x1));
         rewardSplitter.split(address(tokenB));
-
-        assertEq(tokenA.balanceOf(dao), amountA * distributionDaoA / 10_000);
-        assertEq(tokenA.balanceOf(accumulator), amountA * distributionAccumulatorA / 10_000);
-        assertEq(tokenA.balanceOf(veSdtFeeProxy), amountA * distributionVeSdtFeeProxyA / 10_000);
-
-        assertEq(tokenB.balanceOf(dao), amountB * distributionDaoB / 10_000);
-        assertEq(tokenB.balanceOf(address(0x1)), amountB * distributionAccumulatorB / 10_000);
-        assertEq(tokenB.balanceOf(veSdtFeeProxy), amountB * distributionVeSdtFeeProxyB / 10_000);
-
-        // Assert does not touched other tokens
-        assertEq(tokenC.balanceOf(address(rewardSplitter)), amountC);
+        assertEq(tokenB.balanceOf(dao), amountB * 6000 / 10_000);
+        assertEq(tokenB.balanceOf(accumulator), amountB * 3000 / 10_000);
+        assertEq(tokenB.balanceOf(veSdtFeeProxy), amountB * 1000 / 10_000);
 
         // Token C
-        vm.prank(address(0x2));
         rewardSplitter.split(address(tokenC));
-
-        assertEq(tokenA.balanceOf(dao), amountA * distributionDaoA / 10_000);
-        assertEq(tokenA.balanceOf(accumulator), amountA * distributionAccumulatorA / 10_000);
-        assertEq(tokenA.balanceOf(veSdtFeeProxy), amountA * distributionVeSdtFeeProxyA / 10_000);
-
-        assertEq(tokenB.balanceOf(dao), amountB * distributionDaoB / 10_000);
-        assertEq(tokenB.balanceOf(address(0x1)), amountB * distributionAccumulatorB / 10_000);
-        assertEq(tokenB.balanceOf(veSdtFeeProxy), amountB * distributionVeSdtFeeProxyB / 10_000);
-
-        assertEq(tokenC.balanceOf(dao), amountC * distributionDaoC / 10_000);
-        assertEq(tokenC.balanceOf(address(0x2)), amountC * distributionAccumulatorC / 10_000);
-        assertEq(tokenC.balanceOf(veSdtFeeProxy), amountC * distributionVeSdtFeeProxyC / 10_000);
+        assertEq(tokenC.balanceOf(dao), amountC * 100 / 10_000);
+        assertEq(tokenC.balanceOf(accumulator), amountC * 500 / 10_000);
+        assertEq(tokenC.balanceOf(veSdtFeeProxy), amountC * 9400 / 10_000);
+    
     }
 
     ////////////////////////////////////////////////////////////
@@ -222,45 +284,42 @@ contract RewardSplitterTest is Test {
         rewardSplitter.transferGovernance(address(0));
     }
 
-    function test_unauthorizedSetRewardTokenAndRepartition() public {
+    function test_unauthorizedSetRepartition() public {
         vm.expectRevert(RewardSplitter.GOVERNANCE.selector);
-        rewardSplitter.setRewardTokenAndRepartition(address(tokenA), accumulator, 2_500, 5_000, 2_500);
-
-        vm.expectRevert(RewardSplitter.GOVERNANCE.selector);
-        rewardSplitter.setRepartition(accumulator, 1_000, 8_000, 1_000);
+        rewardSplitter.setRepartition(address(tokenA), new address[](3), new uint256[](3));
     }
-
-    function test_unknownAccumulatorForSplit() public {
-        vm.expectRevert(RewardSplitter.ACCUMULATOR_NOT_SET.selector);
-        rewardSplitter.split(address(tokenA));
-    }
-
-    function test_invalidFeeOnSetRewardTokenAndRepartition() public {
-        vm.expectRevert(RewardSplitter.INVALID_FEE.selector);
-        vm.prank(governance);
-        rewardSplitter.setRewardTokenAndRepartition(address(tokenA), accumulator, 2_500, 5_000, 2_501);
-    }
-
     function test_invalidFeeOnSetRepartition() public {
-        vm.prank(governance);
-        rewardSplitter.setRewardTokenAndRepartition(address(tokenA), accumulator, 2_500, 5_000, 2_500);
+        address[] memory receivers = new address[](3);
+        uint256[] memory fees = new uint256[](3);
+
+        receivers[0] = dao;
+        fees[0] = 2_500;
+
+        receivers[1] = accumulator;
+        fees[1] = 5_000;
+
+        receivers[2] = veSdtFeeProxy;
+        fees[2] = 500;
 
         vm.expectRevert(RewardSplitter.INVALID_FEE.selector);
         vm.prank(governance);
-        rewardSplitter.setRepartition(address(tokenA), 0, 40, 100);
+        rewardSplitter.setRepartition(address(tokenA), receivers, fees);
+    }
+
+    function test_invalidRepartitionOnSetRepartition() public {
+        vm.expectRevert(RewardSplitter.INVALID_REPARTITION.selector);
+        vm.prank(governance);
+        rewardSplitter.setRepartition(address(tokenA), new address[](0), new uint256[](0));
+
+        vm.expectRevert(RewardSplitter.INVALID_REPARTITION.selector);
+        vm.prank(governance);
+        rewardSplitter.setRepartition(address(tokenA), new address[](3), new uint256[](2));
     }
 
     function test_zeroAddresses() public {
         vm.expectRevert(RewardSplitter.ZERO_ADDRESS.selector);
         vm.prank(governance);
-        rewardSplitter.setRewardTokenAndRepartition(address(0), accumulator, 2_500, 5_000, 2_500);
-
-        vm.expectRevert(RewardSplitter.ZERO_ADDRESS.selector);
-        vm.prank(governance);
-        rewardSplitter.setDao(address(0));
-
-        vm.expectRevert(RewardSplitter.ZERO_ADDRESS.selector);
-        vm.prank(governance);
-        rewardSplitter.setVeSdtFeeProxy(address(0));
+        rewardSplitter.setRepartition(address(0), new address[](3), new uint256[](3));
     }
+
 }

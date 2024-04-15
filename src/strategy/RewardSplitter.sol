@@ -7,10 +7,14 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 /// @title A contract that receive reward tokens from Strategies on harvest, and split them according to the fee structure specified (per reward token)
 /// @author StakeDAO
 contract RewardSplitter {
-    struct RewardRepartition {
-        uint256 dao;
-        uint256 accumulator;
-        uint256 veSdtFeeProxy;
+    /// @notice Repartition struct
+    /// @param receivers array of receivers
+    /// @param fees array of fees
+    /// @dev First go to the first receiver, then the second, and so on
+    /// @dev Fee in basis points, where 10,000 basis points = 100%
+    struct Repartition {
+        address[] receivers;
+        uint256[] fees; // Fee in basis points, where 10,000 basis points = 100%
     }
 
     /// @notice governance
@@ -28,13 +32,8 @@ contract RewardSplitter {
     /// @notice Base fee (10_000 = 100%)
     uint256 private constant BASE_FEE = 10_000;
 
-    /// @notice Reward token => Accumulator
-    /// @dev Allows multiple strategies to use that contract
-    mapping(address rewardToken => address accumulator) public rewardTokenAccumulator;
-
-    /// @notice Accumulator => Distribution structure
-    /// @dev Each rewardToken can have a specific fee structure
-    mapping(address rewardToken => RewardRepartition) public rewardTokenRepartition;
+    /// @notice Reward token -> Repartition
+    mapping(address => Repartition) private rewardTokenRepartition;
 
     ////////////////////////////////////////////////////////////
     /// --- EVENTS & ERRORS ---
@@ -42,17 +41,8 @@ contract RewardSplitter {
 
     /// @notice Event emitted when the reward token is splitted between the different parties
     /// @param rewardToken reward token address
-    /// @param accumulator accumulator address
-    /// @param daoPart dao part
-    /// @param accumulatorPart accumulator part
-    /// @param veSdtFeeProxyPart veSdtFeeProxy part
-    event Split(
-        address indexed rewardToken,
-        address indexed accumulator,
-        uint256 daoPart,
-        uint256 accumulatorPart,
-        uint256 veSdtFeeProxyPart
-    );
+    /// @param repartition repartition struct
+    event Split(address indexed rewardToken, Repartition repartition);
 
     /// @notice Event emitted when a new future governance has set
     event TransferGovernance(address futureGovernance);
@@ -69,14 +59,14 @@ contract RewardSplitter {
     /// @notice Error emitted when a zero address is pass
     error ZERO_ADDRESS();
 
-    /// @notice Error emitted when the accumulator is not setted
-    error ACCUMULATOR_NOT_SET();
-
     /// @notice Error emitted when the distribution is not setted for the reward token
     error DISTRIBUTION_NOT_SET();
 
     /// @notice Error emitted when the total setted fee is invalid (not equal to 100%)
     error INVALID_FEE();
+
+    /// @notice Error emitted when the repartition is invalid
+    error INVALID_REPARTITION();
 
     //////////////////////////////////////////////////////
     /// --- MODIFIERS
@@ -94,11 +84,21 @@ contract RewardSplitter {
         _;
     }
 
-    constructor(address _governance, address _veSdtFeeProxy, address _dao) {
-        if (_veSdtFeeProxy == address(0) || _dao == address(0)) revert ZERO_ADDRESS();
+    constructor(address _governance) {
         governance = _governance;
-        dao = _dao;
-        veSdtFeeProxy = _veSdtFeeProxy;
+    }
+
+    ////////////////////////////////////////////////////////////
+    /// --- VIEW FUNCTIONS ---
+    ////////////////////////////////////////////////////////////
+
+    function getRepartition(address rewardToken)
+        external
+        view
+        returns (address[] memory receivers, uint256[] memory fees)
+    {
+        Repartition memory repartition = rewardTokenRepartition[rewardToken];
+        return (repartition.receivers, repartition.fees);
     }
 
     /// @notice Split the token between the different parties
@@ -106,50 +106,29 @@ contract RewardSplitter {
     /// @dev Splitting for that accumulator
     /// @dev Reward token address is taken from the mapping, if not found, revert
     function split(address rewardToken) external {
-        address accumulator = rewardTokenAccumulator[rewardToken];
+        Repartition memory repartition = rewardTokenRepartition[rewardToken];
 
-        // If the accumulator is not set, revert
-        if (accumulator == address(0)) {
-            revert ACCUMULATOR_NOT_SET();
-        }
+        uint256 length = repartition.receivers.length;
+        address[] memory receivers = repartition.receivers;
+        uint256[] memory fees = repartition.fees;
 
-        RewardRepartition memory repartition = rewardTokenRepartition[rewardToken];
-
-        // If the distribution is not set, for the msg.sender revert
-        if (repartition.dao == 0 && repartition.accumulator == 0 && repartition.veSdtFeeProxy == 0) {
+        // If repartition are not set, revert
+        if (length == 0) {
             revert DISTRIBUTION_NOT_SET();
         }
 
-        // Can be some leftovers (rounding issues from prev split)
         uint256 totalBalance = ERC20(rewardToken).balanceOf(address(this));
 
         if (totalBalance == 0) {
             return;
         }
 
-        uint256 daoPart;
-        uint256 accumulatorPart;
-        uint256 veSdtFeeProxyPart;
-
-        // DAO part
-        if (repartition.dao > 0) {
-            daoPart = totalBalance * repartition.dao / BASE_FEE;
-            SafeTransferLib.safeTransfer(rewardToken, dao, daoPart);
+        for (uint256 i = 0; i < length; i++) {
+            uint256 fee = totalBalance * fees[i] / BASE_FEE;
+            SafeTransferLib.safeTransfer(rewardToken, receivers[i], fee);
         }
 
-        // veSdtFeeProxy part
-        if (repartition.veSdtFeeProxy > 0) {
-            veSdtFeeProxyPart = totalBalance * repartition.veSdtFeeProxy / BASE_FEE;
-            SafeTransferLib.safeTransfer(rewardToken, veSdtFeeProxy, veSdtFeeProxyPart);
-        }
-
-        // Accumulator part
-        if (repartition.accumulator > 0) {
-            accumulatorPart = totalBalance * repartition.accumulator / BASE_FEE;
-            SafeTransferLib.safeTransfer(rewardToken, accumulator, accumulatorPart);
-        }
-
-        emit Split(rewardToken, accumulator, daoPart, accumulatorPart, veSdtFeeProxyPart);
+        emit Split(rewardToken, repartition);
     }
 
     //////////////////////////////////////////////////////
@@ -173,58 +152,26 @@ contract RewardSplitter {
         emit GovernanceChanged(governance);
     }
 
-    /// @notice Set both the reward token and the distribution for the accumulator
+    /// @notice Set repartition for a reward token
     /// @dev Can be called only by the governance
     /// @dev Will override the previous reward token and distribution if already set
     /// @param rewardToken reward token address
-    /// @param accumulator accumulator address
-    /// @param daoPart dao part
-    /// @param accumulatorPart accumulator part
-    /// @param veSdtFeeProxyPart veSdtFeeProxy part
-    function setRewardTokenAndRepartition(
-        address rewardToken,
-        address accumulator,
-        uint256 daoPart,
-        uint256 accumulatorPart,
-        uint256 veSdtFeeProxyPart
-    ) external onlyGovernance {
+    /// @param receivers array of receivers
+    /// @param fees array of fees
+    function setRepartition(address rewardToken, address[] calldata receivers, uint256[] calldata fees) external onlyGovernance {
         if (rewardToken == address(0)) revert ZERO_ADDRESS();
-        if (daoPart + accumulatorPart + veSdtFeeProxyPart != BASE_FEE) revert INVALID_FEE();
 
-        rewardTokenAccumulator[rewardToken] = accumulator;
-        rewardTokenRepartition[rewardToken] = RewardRepartition(daoPart, accumulatorPart, veSdtFeeProxyPart);
-    }
+        if (receivers.length == 0 || receivers.length != fees.length) revert INVALID_REPARTITION();
 
-    /// @notice Set the repartition for the reward token
-    /// @dev Can be called only by the governance
-    /// @param rewardToken reward token address
-    /// @param daoPart dao part
-    /// @param accumulatorPart accumulator part
-    /// @param veSdtFeeProxyPart veSdtFeeProxy part
-    /// @dev Reward token must be already set
-    function setRepartition(address rewardToken, uint256 daoPart, uint256 accumulatorPart, uint256 veSdtFeeProxyPart)
-        external
-        onlyGovernance
-    {
-        if (rewardTokenAccumulator[rewardToken] == address(0)) revert ACCUMULATOR_NOT_SET();
-        if (daoPart + accumulatorPart + veSdtFeeProxyPart != BASE_FEE) revert INVALID_FEE();
+        // Check that sum of fees is 100%
+        uint256 totalFee = 0;
 
-        rewardTokenRepartition[rewardToken] = RewardRepartition(daoPart, accumulatorPart, veSdtFeeProxyPart);
-    }
+        for (uint256 i = 0; i < receivers.length; i++) {
+            totalFee += fees[i];
+        }
 
-    /// @notice Set dao address
-    /// @dev Can be called only by the governance
-    /// @param _dao dao address
-    function setDao(address _dao) external onlyGovernance {
-        if (_dao == address(0)) revert ZERO_ADDRESS();
-        dao = _dao;
-    }
+        if (totalFee != BASE_FEE) revert INVALID_FEE();
 
-    /// @notice Set veSdtFeeProxy address
-    /// @dev Can be called only by the governance
-    /// @param _veSdtFeeProxy veSdtFeeProxy address
-    function setVeSdtFeeProxy(address _veSdtFeeProxy) external onlyGovernance {
-        if (_veSdtFeeProxy == address(0)) revert ZERO_ADDRESS();
-        veSdtFeeProxy = _veSdtFeeProxy;
+        rewardTokenRepartition[rewardToken] = Repartition(receivers, fees);
     }
 }

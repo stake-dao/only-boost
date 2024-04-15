@@ -16,11 +16,9 @@ contract PlatformScript is Script, Test {
     function run() public {
         vm.startBroadcast(deployer);
 
-        RewardSplitter feeReceiver = new RewardSplitter(deployer, governance, governance);
+        RewardSplitter feeReceiver = new RewardSplitter(deployer);
 
         assertEq(feeReceiver.governance(), deployer);
-        assertEq(feeReceiver.dao(), governance);
-        assertEq(feeReceiver.veSdtFeeProxy(), governance);
         assertEq(feeReceiver.futureGovernance(), address(0));
 
         vm.stopBroadcast();
