@@ -3,12 +3,13 @@ pragma solidity ^0.8.19;
 
 import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 
 /// @title FeeReceiver - Receives and distributes protocol fees from strategies
 /// @notice This contract is used by strategies to distribute harvested reward tokens according to a predefined fee structure.
 /// @dev The FeeReceiver contract splits reward tokens among specified receivers based on the fee structure for each token.
 /// @author StakeDAO
-contract FeeReceiver {
+contract FeeReceiver is ReentrancyGuard {
     /// @notice Repartition struct
     /// @param receivers Array of receivers
     /// @param fees Array of fees
@@ -31,6 +32,9 @@ contract FeeReceiver {
     /// @notice Reward token -> Repartition
     mapping(address => Repartition) private rewardTokenRepartition;
 
+    /// @notice Accumulator -> Reward token
+    mapping(address => address) public isAccumulator;
+
     ////////////////////////////////////////////////////////////
     /// --- EVENTS & ERRORS ---
     ////////////////////////////////////////////////////////////
@@ -45,6 +49,9 @@ contract FeeReceiver {
 
     /// @notice Event emitted when the future governance accepts to be the governance
     event GovernanceChanged(address governance);
+
+    /// @notice Error emitted when an onlyAccumulator function has called by a different address
+    error ONLY_ACCUMULATOR();
 
     /// @notice Error emitted when an onlyGovernance function has called by a different address
     error GOVERNANCE();
@@ -80,6 +87,11 @@ contract FeeReceiver {
         _;
     }
 
+    modifier onlyAccumulator(address _rewardToken) {
+        if (msg.sender != isAccumulator[_rewardToken]) revert ONLY_ACCUMULATOR();
+        _;
+    }
+
     constructor(address _governance) {
         governance = _governance;
     }
@@ -98,11 +110,11 @@ contract FeeReceiver {
     }
 
     /// @notice Split the token between the different parties
-    /// @param rewardToken reward token address
+    /// @param _rewardToken reward token address
     /// @dev Splitting for that accumulator
     /// @dev Reward token address is taken from the mapping, if not found, revert
-    function split(address rewardToken) external {
-        Repartition memory repartition = rewardTokenRepartition[rewardToken];
+    function split(address _rewardToken) external nonReentrant onlyAccumulator(_rewardToken) {
+        Repartition memory repartition = rewardTokenRepartition[_rewardToken];
 
         uint256 length = repartition.receivers.length;
         address[] memory receivers = repartition.receivers;
@@ -113,7 +125,7 @@ contract FeeReceiver {
             revert DISTRIBUTION_NOT_SET();
         }
 
-        uint256 totalBalance = ERC20(rewardToken).balanceOf(address(this));
+        uint256 totalBalance = ERC20(_rewardToken).balanceOf(address(this));
 
         if (totalBalance == 0) {
             return;
@@ -121,15 +133,23 @@ contract FeeReceiver {
 
         for (uint256 i = 0; i < length; i++) {
             uint256 fee = totalBalance * fees[i] / BASE_FEE;
-            SafeTransferLib.safeTransfer(rewardToken, receivers[i], fee);
+            SafeTransferLib.safeTransfer(_rewardToken, receivers[i], fee);
         }
 
-        emit Split(rewardToken, repartition);
+        emit Split(_rewardToken, repartition);
     }
 
     //////////////////////////////////////////////////////
     /// --- GOVERNANCE FUNCTIONS
     //////////////////////////////////////////////////////
+
+    /// @notice Set the accumulator for a reward token
+    /// @dev Can be called only by the governance
+    /// @param _rewardToken reward token address
+    /// @param _accumulator accumulator address
+    function setAccumulator(address _rewardToken, address _accumulator) external onlyGovernance {
+        isAccumulator[_rewardToken] = _accumulator;
+    }
 
     /// @notice Set a new future governance that can accept it
     /// @dev Can be called only by the governance

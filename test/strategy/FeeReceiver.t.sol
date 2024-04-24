@@ -23,11 +23,20 @@ contract FeeReceiverTest is Test {
 
     function setUp() public {
         feeReceiver = new FeeReceiver(governance);
+
+        vm.startPrank(governance);
+        feeReceiver.setAccumulator(address(tokenA), accumulator);
+        feeReceiver.setAccumulator(address(tokenB), accumulator);
+        feeReceiver.setAccumulator(address(tokenC), accumulator);
+        vm.stopPrank();
     }
 
     function test_initialSetup() public view {
         assertEq(feeReceiver.governance(), governance);
         assertEq(feeReceiver.futureGovernance(), address(0));
+        assertEq(feeReceiver.isAccumulator(address(tokenA)), accumulator);
+        assertEq(feeReceiver.isAccumulator(address(tokenB)), accumulator);
+        assertEq(feeReceiver.isAccumulator(address(tokenC)), accumulator);
     }
 
     ////////////////////////////////////////////////////////////
@@ -85,29 +94,34 @@ contract FeeReceiverTest is Test {
 
     function test_distributeFee(uint256 amount) public {
         vm.assume(amount < type(uint256).max / 10_000);
+        //uint256 amount = 17335;
         tokenA.mint(address(feeReceiver), amount);
 
         address[] memory receivers = new address[](3);
         uint256[] memory fees = new uint256[](3);
 
         receivers[0] = dao;
-        fees[0] = 2_500;
+        fees[0] = 200;
 
         receivers[1] = accumulator;
-        fees[1] = 5_000;
+        fees[1] = 9300;
 
         receivers[2] = veSdtFeeProxy;
-        fees[2] = 2_500;
+        fees[2] = 500;
 
         vm.startPrank(governance);
         feeReceiver.setRepartition(address(tokenA), receivers, fees);
         vm.stopPrank();
 
+        vm.prank(accumulator);
         feeReceiver.split(address(tokenA));
 
-        assertEq(tokenA.balanceOf(dao), amount * 25 / 100);
-        assertEq(tokenA.balanceOf(accumulator), amount * 50 / 100);
-        assertEq(tokenA.balanceOf(veSdtFeeProxy), amount * 25 / 100);
+        assertEq(tokenA.balanceOf(dao), amount * 2 / 100);
+        assertEq(tokenA.balanceOf(accumulator), amount * 93 / 100);
+        assertEq(tokenA.balanceOf(veSdtFeeProxy), amount * 5 / 100);
+
+        // There can be rounding down , ensure not to have more than 1e16
+        assertLt(tokenA.balanceOf(address(feeReceiver)), 1e16);
     }
 
     function test_distributeFeeWithOneZero(uint256 amount) public {
@@ -136,6 +150,9 @@ contract FeeReceiverTest is Test {
         assertEq(tokenA.balanceOf(dao), 0);
         assertEq(tokenA.balanceOf(accumulator), amount * 50 / 100);
         assertEq(tokenA.balanceOf(veSdtFeeProxy), amount * 50 / 100);
+
+        // There can be rounding down , ensure not to have more than 1e16
+        assertLt(tokenA.balanceOf(address(feeReceiver)), 1e16);
     }
 
     function test_distributeLotOfSplits(uint256 amount) public {
@@ -179,6 +196,7 @@ contract FeeReceiverTest is Test {
         feeReceiver.setRepartition(address(tokenA), receivers, fees);
         vm.stopPrank();
 
+        vm.prank(accumulator);
         feeReceiver.split(address(tokenA));
 
         assertEq(tokenA.balanceOf(dao), amount * 1000 / 10_000);
@@ -191,6 +209,9 @@ contract FeeReceiverTest is Test {
         assertEq(tokenA.balanceOf(address(0x5)), amount * 1000 / 10_000);
         assertEq(tokenA.balanceOf(address(0x6)), amount * 1000 / 10_000);
         assertEq(tokenA.balanceOf(address(0x7)), amount * 1000 / 10_000);
+
+        // There can be rounding down , ensure not to have more than 1e16
+        assertLt(tokenA.balanceOf(address(feeReceiver)), 1e16);
     }
 
     function test_distributeFeeMultipleRewardTokens(uint256 amountA, uint256 amountB, uint256 amountC) public {
@@ -237,22 +258,28 @@ contract FeeReceiverTest is Test {
         vm.stopPrank();
 
         // Token A
+        vm.prank(accumulator);
         feeReceiver.split(address(tokenA));
         assertEq(tokenA.balanceOf(dao), amountA * 7273 / 10_000);
         assertEq(tokenA.balanceOf(accumulator), amountA * 2087 / 10_000);
         assertEq(tokenA.balanceOf(veSdtFeeProxy), amountA * 640 / 10_000);
 
         // Token B
+        vm.prank(accumulator);
         feeReceiver.split(address(tokenB));
         assertEq(tokenB.balanceOf(dao), amountB * 6000 / 10_000);
         assertEq(tokenB.balanceOf(accumulator), amountB * 3000 / 10_000);
         assertEq(tokenB.balanceOf(veSdtFeeProxy), amountB * 1000 / 10_000);
 
         // Token C
+        vm.prank(accumulator);
         feeReceiver.split(address(tokenC));
         assertEq(tokenC.balanceOf(dao), amountC * 100 / 10_000);
         assertEq(tokenC.balanceOf(accumulator), amountC * 500 / 10_000);
         assertEq(tokenC.balanceOf(veSdtFeeProxy), amountC * 9400 / 10_000);
+
+        // There can be rounding down , ensure not to have more than 1e16
+        assertLt(tokenA.balanceOf(address(feeReceiver)), 1e16);
     }
 
     ////////////////////////////////////////////////////////////
