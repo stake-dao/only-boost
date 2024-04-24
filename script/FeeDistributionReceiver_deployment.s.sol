@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 
-import {RewardSplitter} from "src/strategy/RewardSplitter.sol";
+import {FeeReceiver} from "src/strategy/FeeReceiver.sol";
 
 contract PlatformScript is Script, Test {
     /// Executor
@@ -16,7 +16,7 @@ contract PlatformScript is Script, Test {
     function run() public {
         vm.startBroadcast(deployer);
 
-        RewardSplitter feeReceiver = new RewardSplitter(deployer);
+        FeeReceiver feeReceiver = new FeeReceiver(deployer);
 
         assertEq(feeReceiver.governance(), deployer);
         assertEq(feeReceiver.futureGovernance(), address(0));

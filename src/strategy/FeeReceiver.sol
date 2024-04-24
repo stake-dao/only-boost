@@ -4,12 +4,14 @@ pragma solidity ^0.8.19;
 import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
-/// @title A contract that receive reward tokens from Strategies on harvest, and split them according to the fee structure specified (per reward token)
+/// @title FeeReceiver - Receives and distributes protocol fees from strategies
+/// @notice This contract is used by strategies to distribute harvested reward tokens according to a predefined fee structure.
+/// @dev The FeeReceiver contract splits reward tokens among specified receivers based on the fee structure for each token.
 /// @author StakeDAO
-contract RewardSplitter {
+contract FeeReceiver {
     /// @notice Repartition struct
-    /// @param receivers array of receivers
-    /// @param fees array of fees
+    /// @param receivers Array of receivers
+    /// @param fees Array of fees
     /// @dev First go to the first receiver, then the second, and so on
     /// @dev Fee in basis points, where 10,000 basis points = 100%
     struct Repartition {
@@ -17,17 +19,11 @@ contract RewardSplitter {
         uint256[] fees; // Fee in basis points, where 10,000 basis points = 100%
     }
 
-    /// @notice governance
+    /// @notice Governance
     address public governance;
 
-    /// @notice future governance
+    /// @notice Future governance
     address public futureGovernance;
-
-    /// @notice dao address
-    address public dao;
-
-    /// @notice veSdtFeeProxy address
-    address public veSdtFeeProxy;
 
     /// @notice Base fee (10_000 = 100%)
     uint256 private constant BASE_FEE = 10_000;
@@ -158,7 +154,10 @@ contract RewardSplitter {
     /// @param rewardToken reward token address
     /// @param receivers array of receivers
     /// @param fees array of fees
-    function setRepartition(address rewardToken, address[] calldata receivers, uint256[] calldata fees) external onlyGovernance {
+    function setRepartition(address rewardToken, address[] calldata receivers, uint256[] calldata fees)
+        external
+        onlyGovernance
+    {
         if (rewardToken == address(0)) revert ZERO_ADDRESS();
 
         if (receivers.length == 0 || receivers.length != fees.length) revert INVALID_REPARTITION();
