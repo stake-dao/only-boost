@@ -3,13 +3,12 @@ pragma solidity ^0.8.19;
 
 import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 
 /// @title FeeReceiver - Receives and distributes protocol fees from strategies
 /// @notice This contract is used by strategies to distribute harvested reward tokens according to a predefined fee structure.
 /// @dev The FeeReceiver contract splits reward tokens among specified receivers based on the fee structure for each token.
 /// @author StakeDAO
-contract FeeReceiver is ReentrancyGuard {
+contract FeeReceiver {
     /// @notice Repartition struct
     /// @param receivers Array of receivers
     /// @param fees Array of fees
@@ -113,7 +112,7 @@ contract FeeReceiver is ReentrancyGuard {
     /// @param _rewardToken reward token address
     /// @dev Splitting for that accumulator
     /// @dev Reward token address is taken from the mapping, if not found, revert
-    function split(address _rewardToken) external nonReentrant onlyAccumulator(_rewardToken) {
+    function split(address _rewardToken) external onlyAccumulator(_rewardToken) {
         Repartition memory repartition = rewardTokenRepartition[_rewardToken];
 
         uint256 length = repartition.receivers.length;
