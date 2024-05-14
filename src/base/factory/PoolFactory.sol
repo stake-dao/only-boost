@@ -174,23 +174,6 @@ abstract contract PoolFactory {
             return;
         }
 
-        address rewardReceiver = strategy.rewardReceivers(_gauge);
-
-        /// Check if the gauge supports receivers.
-        data = abi.encodeWithSignature("rewards_receiver(address)", strategy.locker());
-        (success,) = _gauge.call(data);
-
-        if (success && rewardReceiver == address(0)) {
-            bytes memory rewardReceiverData =
-                abi.encodePacked(_gauge, strategy.locker(), address(rewardToken), address(strategy), _rewardDistributor);
-
-            /// Clone the Vault.
-            rewardReceiver = rewardReceiverImplementation.clone(rewardReceiverData);
-
-            /// If it supports receivers, we add the reward receiver to the reward distributor.
-            strategy.addRewardReceiver(_gauge, rewardReceiver);
-        }
-
         /// Loop through the extra reward tokens.
         /// 8 is the maximum number of extra reward tokens supported by the gauges.
         for (uint8 i = 0; i < 8;) {

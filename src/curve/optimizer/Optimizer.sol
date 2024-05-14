@@ -231,7 +231,6 @@ contract Optimizer is IOnlyBoost {
 
             // Stake DAO Curve
             _allocations[1] = amount > opt ? opt : amount;
-
             // Convex Curve
             _allocations[0] = amount - _allocations[1];
         } else {

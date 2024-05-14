@@ -3,7 +3,7 @@ src = 'src'
 out = 'out'
 tests = 'test'
 libs = ['lib']
-verbosity = 4
+verbosity = 3
 evm_version = 'cancun'
 
   gas_reports = [

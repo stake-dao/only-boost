@@ -110,9 +110,7 @@ def main():
                 "execute", [OLD_STRATEGY, 0, strategy_data]
             )
 
-            accept_ownership_data = strategy_contract.encodeABI(
-                "acceptGovernance"
-            )
+            accept_ownership_data = strategy_contract.encodeABI("acceptGovernance")
 
             set_depositor_data = locker_contract.encodeABI("setStrategy", [DEPOSITOR])
 
@@ -129,7 +127,7 @@ def main():
             transactions.append(
                 {"to": STRATEGY, "value": "0", "data": new_strategy_data}
             )
-        
+
     print("Number of transactions:", len(transactions))
 
     # Create batches and save to JSON

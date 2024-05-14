@@ -73,16 +73,12 @@ contract CRVPoolFactory is PoolFactory {
             /// Approve the reward distributor to spend the reward token.
             if (ERC20(CVX).allowance(address(strategy), _rewardDistributor) == 0) {
                 strategy.execute(
-                    CVX,
-                    0,
-                    abi.encodeWithSignature(
-                        "approve(address,address,uint)", _rewardDistributor, address(strategy), type(uint256).max
-                    )
+                    CVX, 0, abi.encodeWithSignature("approve(address,uint256)", _rewardDistributor, type(uint256).max)
                 );
             }
 
             /// Add CVX in the case where Only Boost is enabled.
-            address distributor = ILiquidityGauge(rewardDistributor).reward_data(CVX).distributor;
+            address distributor = ILiquidityGauge(_rewardDistributor).reward_data(CVX).distributor;
             if (distributor == address(0)) {
                 strategy.execute(
                     _rewardDistributor,
@@ -95,7 +91,7 @@ contract CRVPoolFactory is PoolFactory {
 
     function syncExtraRewards(address _gauge) external {
         address _rewardDistributor = strategy.rewardDistributors(_gauge);
-        if(_rewardDistributor == address(0)) return;
+        if (_rewardDistributor == address(0)) return;
 
         _addExtraRewards(_gauge, _rewardDistributor);
     }
