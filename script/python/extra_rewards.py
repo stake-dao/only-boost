@@ -73,9 +73,12 @@ def main():
             distributor = multi_gauge_contract.functions.reward_data(reward).call()[1]
 
             if distributor != STRATEGY:
-                print(f"Reward: {reward}", f"Distributor: {distributor}", f"Multigauge: {multi_gauge}")
-                transactions.append({
-                    reward, multi_gauge})
+                print(
+                    f"Reward: {reward}",
+                    f"Distributor: {distributor}",
+                    f"Multigauge: {multi_gauge}",
+                )
+                transactions.append({reward, multi_gauge})
 
     print("Number of transactions:", len(transactions))
 

@@ -109,6 +109,9 @@ abstract contract Strategy is UUPSUpgradeable {
     /// @notice Error emitted when auth failed
     error UNAUTHORIZED();
 
+    /// @notice Error emitted when the strategy is not the distributor.
+    error NOT_DISTRIBUTOR();
+
     /// @notice Error emitted when auth failed
     error GOVERNANCE_OR_FACTORY();
 
@@ -426,16 +429,17 @@ abstract contract Strategy is UUPSUpgradeable {
                 }
             }
 
-            /// Check if the rewardDistributor is valid.
-            /// Else, there'll be some extra rewards that are not valid to distribute left in the strategy.
-            if (ILiquidityGauge(rewardDistributor).reward_data(extraRewardToken).distributor != address(this)) break;
-
             if (extraRewardToken == rewardToken) {
                 claimed = ERC20(extraRewardToken).balanceOf(address(this)) - snapshotRewardTokenBalance;
                 _rewardTokenClaimed += claimed;
             } else {
                 claimed = ERC20(extraRewardToken).balanceOf(address(this));
                 if (claimed != 0) {
+                    /// Check if the rewardDistributor is valid.
+                    /// Else, there'll be some extra rewards that are not valid to distribute left in the strategy.
+                    if (ILiquidityGauge(rewardDistributor).reward_data(extraRewardToken).distributor != address(this)) {
+                        revert NOT_DISTRIBUTOR();
+                    }
                     // Distribute the extra reward token.
                     ILiquidityGauge(rewardDistributor).deposit_reward_token(extraRewardToken, claimed);
                 }

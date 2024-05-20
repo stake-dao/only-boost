@@ -120,12 +120,17 @@ contract ConvexImplementation is Clone {
     /// @return fallbackRewardTokenAmount Amount of fallback reward token claimed.
     /// @return protocolFees Amount of protocol fees charged.
     /// @dev These amounts are used by the strategy to keep track of the rewards, and fees.
-    function claim(bool _claimExtraRewards)
+    function claim(bool _claimExtraRewards, bool _earmarkRewards, address _receiver)
         external
         onlyStrategy
         returns (uint256 rewardTokenAmount, uint256 fallbackRewardTokenAmount, uint256 protocolFees)
     {
         address[] memory extraRewardTokens;
+
+        /// Earmark rewards if needed.
+        if (_earmarkRewards) {
+            booster().earmarkRewards(pid());
+        }
 
         /// We can save gas by not claiming extra rewards if we don't need them, there's no extra rewards, or not enough rewards worth to claim.
         if (_claimExtraRewards) {
@@ -143,14 +148,15 @@ contract ConvexImplementation is Clone {
 
         /// Send the reward token and fallback reward token to the strategy.
         SafeTransferLib.safeTransfer(rewardToken(), msg.sender, rewardTokenAmount);
-        SafeTransferLib.safeTransfer(fallbackRewardToken(), msg.sender, fallbackRewardTokenAmount);
+        /// Send the fallback reward token to the _receiver.
+        SafeTransferLib.safeTransfer(fallbackRewardToken(), _receiver, fallbackRewardTokenAmount);
 
         /// Handle the extra reward tokens.
         for (uint256 i = 0; i < extraRewardTokens.length;) {
             uint256 _balance = ERC20(extraRewardTokens[i]).balanceOf(address(this));
             if (_balance > 0) {
                 /// Send the whole balance to the strategy.
-                SafeTransferLib.safeTransfer(extraRewardTokens[i], msg.sender, _balance);
+                SafeTransferLib.safeTransfer(extraRewardTokens[i], _receiver, _balance);
             }
 
             unchecked {

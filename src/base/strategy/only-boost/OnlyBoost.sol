@@ -246,7 +246,7 @@ abstract contract OnlyBoost is Strategy {
         for (uint256 i; i < fallbacks.length;) {
             // Do the claim
             (uint256 rewardTokenAmount, uint256 fallbackRewardTokenAmount, uint256 protocolFees) =
-                IFallback(fallbacks[i]).claim(claimExtra);
+                IFallback(fallbacks[i]).claim(claimExtra, false, address(this));
 
             // Add the rewardTokenAmount to the _claimed amount.
             claimed += rewardTokenAmount;

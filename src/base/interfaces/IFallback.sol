@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 interface IFallback {
     function initialize() external;
-    function claim(bool _claimExtraRewards)
+    function claim(bool _claimExtraRewards, bool _earmarkRewards, address _receiver)
         external
         returns (uint256 rewardTokenAmount, uint256 fallbackRewardTokenAmount, uint256 protocolFees);
     function balanceOf(address _asset) external view returns (uint256);
