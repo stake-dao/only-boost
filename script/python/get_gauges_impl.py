@@ -22,6 +22,22 @@ def initialize_web3():
 def get_contract(w3, address, abi):
     return w3.eth.contract(address=address, abi=abi)
 
+def get_abi(address):
+    base_url = "https://api.etherscan.io/api"
+    params = {
+        "module": "contract",
+        "action": "getabi",
+        "address": address,
+        "apikey": os.getenv("ETHERSCAN_KEY"),
+    }
+
+    response = requests.get(base_url, params=params)
+    if response.status_code == 200:
+        return response.json()["result"]
+    else:
+        return None
+
+
 
 def get_info(address):
     base_url = "https://api.etherscan.io/api"
@@ -56,6 +72,22 @@ def get_info(address):
 def add_or_update_type(types, new_type):
     for existing_type in types:
         if existing_type["name"] == new_type["name"] and existing_type["compiler_version"] == new_type["compiler_version"] and existing_type["source_code"] == new_type["source_code"]:
+
+            # Check for the example implementation if it's killed or not.
+            # We'll use it for testing.
+            gauge = existing_type["example_impl"]
+            abi = get_abi(gauge)
+            
+            gauge_contract = get_contract(w3, gauge, abi)
+
+            try:
+                is_killed = gauge_contract.functions.is_killed().call()
+                if is_killed:
+                    print("Killed:", gauge)
+                    existing_type["example_impl"] = new_type["example_impl"]
+            except:
+                pass
+
             existing_type["implementation"] += 1
             break
     else:
@@ -63,8 +95,9 @@ def add_or_update_type(types, new_type):
         types.append(new_type)
 
 
+w3 = initialize_web3()
+
 def main():
-    w3 = initialize_web3()
 
     controller_abi = load_abi("test/external/controller.json")
 

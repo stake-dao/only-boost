@@ -38,7 +38,7 @@
     {
         "name": "LiquidityGaugeV6",
         "compiler_version": "vyper:0.3.10",
-        "example_impl": "0x5136d95CaaBDB1A7eBa2A8D168a4BCF8fc54a2E2",
+        "example_impl": "0xCa7DbCee5EC558289B3a42493688a784Bb695811",
         "implementation": 10
     },
     {
@@ -56,7 +56,7 @@
     {
         "name": "Liquidity Gauge v5",
         "compiler_version": "vyper:0.3.1",
-        "example_impl": "0x34883134A39B206A451c2D3B0E7Cac44BE4D9181",
+        "example_impl": "0x9f330Db38caAAe5B61B410e2f0aaD63fff2109d8",
         "implementation": 7
     },
     {
@@ -68,19 +68,19 @@
     {
         "name": "Liquidity Gauge v2",
         "compiler_version": "vyper:0.2.8",
-        "example_impl": "0xdFc7AdFa664b08767b735dE28f9E84cd30492aeE",
+        "example_impl": "0x90Bb609649E0451E5aD952683D64BD2d1f245840",
         "implementation": 4
     },
     {
         "name": "Root-Chain Gauge",
         "compiler_version": "vyper:0.2.12",
-        "example_impl": "0xC48f4653dd6a9509De44c92beb0604BEA3AEe714",
+        "example_impl": "0xAF78381216a8eCC7Ad5957f3cD12a431500E0B0D",
         "implementation": 4
     },
     {
         "name": "Root-Chain Gauge",
         "compiler_version": "vyper:0.2.16",
-        "example_impl": "0xFf17560d746F85674FE7629cE986E949602EF948",
+        "example_impl": "0x56eda719d82aE45cBB87B7030D3FB485685Bea45",
         "implementation": 4
     },
     {
@@ -98,19 +98,19 @@
     {
         "name": "Liquidity Gauge v2",
         "compiler_version": "vyper:0.2.8",
-        "example_impl": "0x3C0FFFF15EA30C35d7A85B85c0782D6c94e1d238",
+        "example_impl": "0xd662908ADA2Ea1916B3318327A97eB18aD588b5d",
         "implementation": 3
     },
     {
         "name": "Root-Chain Gauge",
         "compiler_version": "vyper:0.2.12",
-        "example_impl": "0xb9C05B8EE41FDCbd9956114B3aF15834FDEDCb54",
+        "example_impl": "0xfDb129ea4b6f557b07BcDCedE54F665b7b6Bc281",
         "implementation": 3
     },
     {
         "name": "Layer Zero Bridge (Ethereum Version)",
         "compiler_version": "vyper:0.3.10",
-        "example_impl": "0xD44eB2061362D28f741Bb3547b1a36aB13A8a582",
+        "example_impl": "0xd4b19642701964c402DFa668F96F294266bC0a86",
         "implementation": 3
     },
     {
@@ -134,7 +134,7 @@
     {
         "name": "Root Liquidity Gauge Implementation",
         "compiler_version": "vyper:0.3.1",
-        "example_impl": "0x279f11F8E2825dbe0b00F6776376601AC948d868",
+        "example_impl": "0x95069889DF0BCdf15bc3182c1A4D6B20631F3B46",
         "implementation": 2
     },
     {
