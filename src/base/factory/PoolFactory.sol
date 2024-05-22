@@ -101,6 +101,16 @@ abstract contract PoolFactory {
         /// Clone the Reward Distributor.
         rewardDistributor = LibClone.clone(liquidityGaugeImplementation);
 
+        /// Reward Receiver immutable data.
+        bytes memory rewardReceiverData =
+            abi.encodePacked(_gauge, strategy.locker(), rewardToken, strategy, rewardDistributor);
+
+        /// Clone the Reward Receiver.
+        address rewardReceiver = rewardReceiverImplementation.clone(rewardReceiverData);
+
+        /// Map it in the strategy to the gauge.
+        strategy.addRewardReceiver(_gauge, rewardReceiver);
+
         /// We use the LP token and the gauge address as salt to generate the vault address.
         bytes32 salt = keccak256(abi.encodePacked(lp, _gauge));
 

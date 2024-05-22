@@ -45,9 +45,14 @@ abstract contract PoolFactory_Test is Test {
     uint256 pid;
     bool isShutdown;
 
-    constructor(uint256 _pid) {
-        /// Check if the LP token is valid
-        (address lpToken,, address _gauge,,, bool _isShutdown) = IBooster(BOOSTER).poolInfo(_pid);
+    constructor(uint256 _pid, address _gauge) {
+        bool _isShutdown;
+        address lpToken;
+
+        if (_gauge == address(0)) {
+            /// Check if the LP token is valid
+            (lpToken,, _gauge,,, _isShutdown) = IBooster(BOOSTER).poolInfo(_pid);
+        }
 
         pid = _pid;
         isShutdown = _isShutdown;
@@ -57,7 +62,7 @@ abstract contract PoolFactory_Test is Test {
     }
 
     function setUp() public {
-        vm.rollFork({blockNumber: 19_476_470});
+        vm.rollFork({blockNumber: 19_925_731});
 
         /// Deploy Strategy
         implementation = new CRVStrategy(address(this), SD_VOTER_PROXY, VE_CRV, REWARD_TOKEN, MINTER);

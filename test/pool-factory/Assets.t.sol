@@ -1,12 +1,13 @@
-// // SPDX-License-Identifier: GPL-3.0
-// pragma solidity 0.8.19;
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity 0.8.19;
 
-// import "test/pool-factory/Staking.t.sol";
-// import "test/pool-factory/PoolFactory.t.sol";
+import "test/pool-factory/Staking.t.sol";
+import "test/pool-factory/PoolFactory.t.sol";
 
-// uint256 constant _0_PID = 0;
+uint256 constant _0_PID = 56;
+address constant _0_LIQUIDITY_GAUGE = address(0x25f0cE4E2F8dbA112D9b115710AC297F816087CD);
 
-// contract _0_Factory_Test is PoolFactory_Test(_0_PID) {}
+contract _0_Factory_Test is PoolFactory_Test(_0_PID, _0_LIQUIDITY_GAUGE) {}
 
 // contract _0_Staking_Test is Staking_Test(_0_PID) {}
 

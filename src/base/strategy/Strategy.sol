@@ -676,7 +676,7 @@ abstract contract Strategy is UUPSUpgradeable {
         /// Get the rewardReceiver address to add the reward token to.
         address _rewardReceiver = rewardReceivers[gauge];
 
-        if (_rewardReceiver != address(0)) {
+        if (_rewardReceiver != address(0) && extraRewardToken != rewardToken) {
             /// If the gauge has a rewardReceiver, we add the reward token to the rewardReceiver.
             IRewardReceiver(_rewardReceiver).approveRewardToken(extraRewardToken);
 
