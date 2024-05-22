@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "src/base/factory/PoolFactory.sol";
 
 import {IBooster} from "src/base/interfaces/IBooster.sol";
+import {IPoolManager} from "src/base/interfaces/IPoolManager.sol";
 import {IConvexFactory} from "src/base/interfaces/IConvexFactory.sol";
 import {IGaugeController} from "src/base/interfaces/IGaugeController.sol";
 
@@ -14,6 +15,9 @@ contract CRVPoolFactory is PoolFactory {
 
     /// @notice Convex Booster.
     address public constant BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
+
+    /// @notice Convex Pool Manager.
+    address public constant POOL_MANAGER_V4 = 0x6D3a388e310aaA498430d1Fe541d6d64ddb423de;
 
     /// @notice Ve Funder is a special gauge not valid to be deployed as a pool.
     address public constant VE_FUNDER = 0xbAF05d7aa4129CA14eC45cC9d4103a9aB9A9fF60;
@@ -45,48 +49,30 @@ contract CRVPoolFactory is PoolFactory {
 
     /// @notice Create a new pool for a given pid on the Convex platform.
     /// @param _pid Pool id.
-    /// @param _deployPool To deploy the pool.
-    /// @param _deployConvex To deploy the convex staking.
     /// @return vault Address of the vault.
     /// @return rewardDistributor Address of the reward distributor.
     /// @return stakingConvex Address of the staking convex.
-    function create(uint256 _pid, bool _deployPool, bool _deployConvex)
+    function create(uint256 _pid, address _gauge)
         external
         returns (address vault, address rewardDistributor, address stakingConvex)
     {
-        (address _token,, address _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
-
-        if (_deployConvex) {
-            stakingConvex = IConvexFactory(CONVEX_MINIMAL_PROXY_FACTORY).create(_token, _pid);
-        }
-
-        if (_deployPool) {
-            /// Create Stake DAO pool.
-            (vault, rewardDistributor) = _create(_gauge);
-
-            emit PoolDeployed(vault, rewardDistributor, _token, _gauge, stakingConvex);
+        address _token;
+        /// If the gauge is not provided, it means we can use the pid to deploy.
+        /// Else, we deploy the pool on Convex.
+        if (_gauge == address(0)) {
+            (_token,, _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
         } else {
-            address _rewardDistributor = strategy.rewardDistributors(_gauge);
-
-            /// We go through the execute function because if the pool is already deployed and have extra rewards,
-            /// We do not want CVX be distributed by the Reward Receiver.
-            /// Approve the reward distributor to spend the reward token.
-            if (ERC20(CVX).allowance(address(strategy), _rewardDistributor) == 0) {
-                strategy.execute(
-                    CVX, 0, abi.encodeWithSignature("approve(address,uint256)", _rewardDistributor, type(uint256).max)
-                );
-            }
-
-            /// Add CVX in the case where Only Boost is enabled.
-            address distributor = ILiquidityGauge(_rewardDistributor).reward_data(CVX).distributor;
-            if (distributor == address(0)) {
-                strategy.execute(
-                    _rewardDistributor,
-                    0,
-                    abi.encodeWithSignature("add_reward(address,address)", CVX, address(strategy))
-                );
-            }
+            /// Deploy the pool on Convex.
+            IPoolManager(POOL_MANAGER_V4).addPool(_gauge);
+            _pid = IBooster(BOOSTER).poolLength() - 1;
         }
+
+        stakingConvex = IConvexFactory(CONVEX_MINIMAL_PROXY_FACTORY).create(_token, _pid);
+
+        /// Create Stake DAO pool.
+        (vault, rewardDistributor) = _create(_gauge);
+
+        emit PoolDeployed(vault, rewardDistributor, _token, _gauge, stakingConvex);
     }
 
     function syncExtraRewards(address _gauge) external {

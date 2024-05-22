@@ -108,9 +108,9 @@ abstract contract PoolFactory_Test is Test {
             } else {
                 vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);
             }
-            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, true, true);
+            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, address(0));
         } else {
-            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, true, true);
+            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, address(0));
 
             /// Vault Checks.
             assertEq(address(Vault(vault).token()), address(token));

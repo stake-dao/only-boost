@@ -255,8 +255,19 @@ abstract contract OnlyBoost is Strategy {
             /// Distribute the fallbackRewardToken.
             fallbackRewardToken = IFallback(fallbacks[i]).fallbackRewardToken();
             if (fallbackRewardToken != address(0) && fallbackRewardTokenAmount > 0) {
-                /// Distribute the fallbackRewardToken.
-                ILiquidityGauge(rewardDistributor).deposit_reward_token(fallbackRewardToken, fallbackRewardTokenAmount);
+                /// We assume that the extra rewards are the same for all the fallbacks since we deposit in the same destination gauge.
+                /// So we claim the extra rewards from the fallbacks first and then claim the extra rewards from the gauge.
+                /// Finally, we distribute all in once.
+                address rewardReceiver = rewardReceivers[gauge];
+
+                if (rewardReceiver != address(0)) {
+                    IRewardReceiver(rewardReceiver).notifyRewardToken(fallbackRewardToken);
+                } else {
+                    /// Distribute the fallbackRewardToken.
+                    ILiquidityGauge(rewardDistributor).deposit_reward_token(
+                        fallbackRewardToken, fallbackRewardTokenAmount
+                    );
+                }
             }
 
             unchecked {
