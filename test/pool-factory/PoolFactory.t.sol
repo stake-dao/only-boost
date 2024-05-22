@@ -52,6 +52,8 @@ abstract contract PoolFactory_Test is Test {
         if (_gauge == address(0)) {
             /// Check if the LP token is valid
             (lpToken,, _gauge,,, _isShutdown) = IBooster(BOOSTER).poolInfo(_pid);
+        } else {
+            lpToken = ILiquidityGauge(_gauge).lp_token();
         }
 
         pid = _pid;
@@ -133,6 +135,15 @@ abstract contract PoolFactory_Test is Test {
             assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
             assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(2), FALLBACK_REWARD_TOKEN);
 
+            /// Check for the distributors.
+            ISDLiquidityGauge.Reward memory reward = ISDLiquidityGauge(rewardDistributor).reward_data(REWARD_TOKEN);
+            assertEq(reward.distributor, address(strategy));
+
+            reward = ISDLiquidityGauge(rewardDistributor).reward_data(FALLBACK_REWARD_TOKEN);
+            address rewardReceiver = strategy.rewardReceivers(gauge);
+
+            assertEq(reward.distributor, address(rewardReceiver));
+
             /// Check if there's extra rewards in the gauge.
             _checkExtraRewards(rewardDistributor);
         }
@@ -170,6 +181,15 @@ abstract contract PoolFactory_Test is Test {
             assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(0), poolFactory.SDT());
             assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
             assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(2), FALLBACK_REWARD_TOKEN);
+
+             /// Check for the distributors.
+            ISDLiquidityGauge.Reward memory reward = ISDLiquidityGauge(rewardDistributor).reward_data(REWARD_TOKEN);
+            assertEq(reward.distributor, address(strategy));
+
+            reward = ISDLiquidityGauge(rewardDistributor).reward_data(FALLBACK_REWARD_TOKEN);
+            address rewardReceiver = strategy.rewardReceivers(gauge);
+
+            assertEq(reward.distributor, address(rewardReceiver));
 
             /// Check if there's extra rewards in the gauge.
             _checkExtraRewards(rewardDistributor);
