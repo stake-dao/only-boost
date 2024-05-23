@@ -59,14 +59,13 @@ contract CRVPoolFactory is PoolFactory {
         address _token;
         /// If the gauge is not provided, it means we can use the pid to deploy.
         /// Else, we deploy the pool on Convex.
-        if (_gauge == address(0)) {
-            (_token,, _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
-        } else {
+        if (_gauge != address(0)) {
             /// Deploy the pool on Convex.
             IPoolManager(POOL_MANAGER_V4).addPool(_gauge);
             _pid = IBooster(BOOSTER).poolLength() - 1;
         }
 
+        (_token,, _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
         stakingConvex = IConvexFactory(CONVEX_MINIMAL_PROXY_FACTORY).create(_token, _pid);
 
         /// Create Stake DAO pool.

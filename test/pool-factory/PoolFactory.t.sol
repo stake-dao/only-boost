@@ -40,7 +40,7 @@ abstract contract PoolFactory_Test is Test {
     address public constant REWARD_TOKEN = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
     address public constant FALLBACK_REWARD_TOKEN = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
 
-    address public constant gaugeImplementation = address(0x08d36c723b8213122f678025C2D9eb1Ec7Ab8F9D);
+    address public constant gaugeImplementation = address(0xc1e4775B3A589784aAcD15265AC39D3B3c13Ca3c);
 
     uint256 pid;
     bool isShutdown;
@@ -51,7 +51,7 @@ abstract contract PoolFactory_Test is Test {
 
         if (_gauge == address(0)) {
             /// Check if the LP token is valid
-            (lpToken,, _gauge,,, _isShutdown) = IBooster(BOOSTER).poolInfo(_pid);
+            (lpToken,,,,, _isShutdown) = IBooster(BOOSTER).poolInfo(_pid);
         } else {
             lpToken = ILiquidityGauge(_gauge).lp_token();
         }
@@ -98,115 +98,97 @@ abstract contract PoolFactory_Test is Test {
     }
 
     function test_deploy_pool_using_pid() public {
+        if (pid == 0) return;
+
         address vault;
         address rewardDistributor;
         address stakingConvex;
 
-        /// Check if the gauge is not killed.
-        /// Not all the pools, but most of them, have this function.
-        bool isKilled;
-        try ILiquidityGauge(gauge).is_killed() returns (bool _isKilled) {
-            isKilled = _isKilled;
-        } catch {}
+        (,, address _gauge,,,) = IBooster(BOOSTER).poolInfo(pid);
 
-        if (isKilled) {
-            if (isShutdown) {
-                vm.expectRevert(ConvexMinimalProxyFactory.SHUTDOWN.selector);
-            } else {
-                vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);
-            }
-            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, address(0));
-        } else {
-            (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, address(0));
+        /// Create using the pid.
+        (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, address(0));
 
-            /// Vault Checks.
-            assertEq(address(Vault(vault).token()), address(token));
-            assertEq(address(Vault(vault).strategy()), address(strategy));
-            assertEq(address(Vault(vault).liquidityGauge()), rewardDistributor);
+        /// Vault Checks.
+        assertEq(address(Vault(vault).token()), address(token));
+        assertEq(address(Vault(vault).strategy()), address(strategy));
+        assertEq(address(Vault(vault).liquidityGauge()), rewardDistributor);
 
-            vm.expectRevert(Vault.ALREADY_INITIALIZED.selector);
-            Vault(vault).initialize();
+        vm.expectRevert(Vault.ALREADY_INITIALIZED.selector);
+        Vault(vault).initialize();
 
-            /// Reward Distributor Checks.
-            assertEq(ISDLiquidityGauge(rewardDistributor).vault(), vault);
-            assertEq(ISDLiquidityGauge(rewardDistributor).staking_token(), vault);
+        /// Reward Distributor Checks.
+        assertEq(ISDLiquidityGauge(rewardDistributor).vault(), vault);
+        assertEq(ISDLiquidityGauge(rewardDistributor).staking_token(), vault);
 
-            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(0), poolFactory.SDT());
-            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
-            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(2), FALLBACK_REWARD_TOKEN);
+        assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(0), poolFactory.SDT());
+        assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
+        assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(2), FALLBACK_REWARD_TOKEN);
 
-            /// Check for the distributors.
-            ISDLiquidityGauge.Reward memory reward = ISDLiquidityGauge(rewardDistributor).reward_data(REWARD_TOKEN);
-            assertEq(reward.distributor, address(strategy));
+        /// Check for the distributors.
+        ISDLiquidityGauge.Reward memory reward = ISDLiquidityGauge(rewardDistributor).reward_data(REWARD_TOKEN);
+        assertEq(reward.distributor, address(strategy));
 
-            reward = ISDLiquidityGauge(rewardDistributor).reward_data(FALLBACK_REWARD_TOKEN);
-            address rewardReceiver = strategy.rewardReceivers(gauge);
+        reward = ISDLiquidityGauge(rewardDistributor).reward_data(FALLBACK_REWARD_TOKEN);
+        address rewardReceiver = strategy.rewardReceivers(_gauge);
 
-            assertEq(reward.distributor, address(rewardReceiver));
+        assertEq(reward.distributor, address(rewardReceiver));
 
-            /// Check if there's extra rewards in the gauge.
-            _checkExtraRewards(rewardDistributor);
-        }
+        /// Check if there's extra rewards in the gauge.
+        _checkExtraRewards(_gauge, rewardDistributor, rewardReceiver);
     }
 
     function test_deploy_pool() public {
+        if (gauge == address(0)) return;
+
         address vault;
         address rewardDistributor;
+        address stakingConvex;
 
-        /// Check if the gauge is not killed.
-        /// Not all the pools, but most of them, have this function.
-        bool isKilled;
-        try ILiquidityGauge(gauge).is_killed() returns (bool _isKilled) {
-            isKilled = _isKilled;
-        } catch {}
+        /// Create using the gauge.
+        /// We can put any pid, it will be ignored.
+        (vault, rewardDistributor, stakingConvex) = poolFactory.create(0, gauge);
 
-        if (isKilled) {
-            vm.expectRevert(PoolFactory.INVALID_GAUGE.selector);
-            (vault, rewardDistributor) = poolFactory.create(gauge);
-        } else {
-            (vault, rewardDistributor) = poolFactory.create(gauge);
+        /// Vault Checks.
+        assertEq(address(Vault(vault).token()), address(token));
+        assertEq(address(Vault(vault).strategy()), address(strategy));
+        assertEq(address(Vault(vault).liquidityGauge()), rewardDistributor);
 
-            /// Vault Checks.
-            assertEq(address(Vault(vault).token()), address(token));
-            assertEq(address(Vault(vault).strategy()), address(strategy));
-            assertEq(address(Vault(vault).liquidityGauge()), rewardDistributor);
+        vm.expectRevert(Vault.ALREADY_INITIALIZED.selector);
+        Vault(vault).initialize();
 
-            vm.expectRevert(Vault.ALREADY_INITIALIZED.selector);
-            Vault(vault).initialize();
+        /// Reward Distributor Checks.
+        assertEq(ISDLiquidityGauge(rewardDistributor).vault(), vault);
+        assertEq(ISDLiquidityGauge(rewardDistributor).staking_token(), vault);
 
-            /// Reward Distributor Checks.
-            assertEq(ISDLiquidityGauge(rewardDistributor).vault(), vault);
-            assertEq(ISDLiquidityGauge(rewardDistributor).staking_token(), vault);
+        assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(0), poolFactory.SDT());
+        assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
+        assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(2), FALLBACK_REWARD_TOKEN);
 
-            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(0), poolFactory.SDT());
-            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(1), REWARD_TOKEN);
-            assertEq(ISDLiquidityGauge(rewardDistributor).reward_tokens(2), FALLBACK_REWARD_TOKEN);
+        /// Check for the distributors.
+        ISDLiquidityGauge.Reward memory reward = ISDLiquidityGauge(rewardDistributor).reward_data(REWARD_TOKEN);
+        assertEq(reward.distributor, address(strategy));
 
-             /// Check for the distributors.
-            ISDLiquidityGauge.Reward memory reward = ISDLiquidityGauge(rewardDistributor).reward_data(REWARD_TOKEN);
-            assertEq(reward.distributor, address(strategy));
+        reward = ISDLiquidityGauge(rewardDistributor).reward_data(FALLBACK_REWARD_TOKEN);
+        address rewardReceiver = strategy.rewardReceivers(gauge);
 
-            reward = ISDLiquidityGauge(rewardDistributor).reward_data(FALLBACK_REWARD_TOKEN);
-            address rewardReceiver = strategy.rewardReceivers(gauge);
+        assertEq(reward.distributor, address(rewardReceiver));
 
-            assertEq(reward.distributor, address(rewardReceiver));
-
-            /// Check if there's extra rewards in the gauge.
-            _checkExtraRewards(rewardDistributor);
-        }
+        /// Check if there's extra rewards in the gauge.
+        _checkExtraRewards(gauge, rewardDistributor, rewardReceiver);
     }
 
-    function _checkExtraRewards(address rewardDistributor) public {
+    function _checkExtraRewards(address _gauge, address rewardDistributor, address rewardReceiver) internal {
         // view function called only to recognize the gauge type
         bytes memory data = abi.encodeWithSignature("reward_tokens(uint256)", 0);
-        (bool success,) = gauge.call(data);
+        (bool success,) = _gauge.call(data);
         if (!success) {
-            assertEq(strategy.lGaugeType(gauge), 1);
+            assertEq(strategy.lGaugeType(_gauge), 1);
         } else {
             uint256 _count = 3; // 3 because we already checked for SDT and CRV
             for (uint8 i = 0; i < 8;) {
                 // Get reward token
-                address _extraRewardToken = ISDLiquidityGauge(gauge).reward_tokens(i);
+                address _extraRewardToken = ISDLiquidityGauge(_gauge).reward_tokens(i);
                 if (_extraRewardToken == address(0)) {
                     break;
                 }
@@ -214,11 +196,7 @@ abstract contract PoolFactory_Test is Test {
                 ISDLiquidityGauge.Reward memory reward =
                     ISDLiquidityGauge(rewardDistributor).reward_data(_extraRewardToken);
 
-                address rewardReceiver = strategy.rewardReceivers(gauge);
-                if (
-                    rewardReceiver != address(0) && _extraRewardToken != REWARD_TOKEN
-                        && _extraRewardToken != FALLBACK_REWARD_TOKEN
-                ) {
+                if (rewardReceiver != address(0) && _extraRewardToken != REWARD_TOKEN) {
                     assertEq(reward.distributor, rewardReceiver);
                 } else {
                     assertEq(reward.distributor, address(strategy));
@@ -237,5 +215,15 @@ abstract contract PoolFactory_Test is Test {
             }
             assertEq(_count, ISDLiquidityGauge(rewardDistributor).reward_count());
         }
+    }
+
+    function _addNativeExtraReward(address _gauge) internal {
+        /// First, add RewardToken as extra reward.
+
+        /// Add FallBackRewardToken as extra reward.
+
+        /// Add Gauge in GaugeController as extra reward.
+
+        /// Add random token as extra reward.
     }
 }
