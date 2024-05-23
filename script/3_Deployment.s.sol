@@ -30,13 +30,13 @@ contract Deployment is Script, Test {
 
     function run() public {
         vm.broadcast(DEPLOYER);
-        poolFactory = new CRVPoolFactory(
-            address(strategy),
-            REWARD_TOKEN,
-            address(vaultImplementation),
-            gaugeImplementation,
-            address(rewardReceiverImplementation)
-        );
+        // poolFactory = new CRVPoolFactory(
+        // address(strategy),
+        // REWARD_TOKEN,
+        // address(vaultImplementation),
+        // gaugeImplementation,
+        // address(rewardReceiverImplementation)
+        // );
 
         // vm.broadcast(GOVERNANCE);
         // CRVStrategy(payable(strategy)).setFactory(address(poolFactory));

@@ -7,6 +7,9 @@ import "src/curve/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
 import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import "src/curve/fallbacks/ConvexImplementation.sol";
+import "src/curve/fallbacks/ConvexMinimalProxyFactory.sol";
+
 import {Vault} from "src/base/staking/Vault.sol";
 import {IBooster} from "src/base/interfaces/IBooster.sol";
 import {RewardReceiver} from "src/base/strategy/RewardReceiver.sol";
@@ -92,10 +95,17 @@ abstract contract PoolFactory_Test is Test {
         vaultImplementation = new Vault();
         rewardReceiverImplementation = new RewardReceiver();
 
+        ConvexImplementation _implementation = new ConvexImplementation();
+
+        ConvexMinimalProxyFactory factory = new ConvexMinimalProxyFactory(
+            BOOSTER, address(strategy), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(_implementation)
+        );
+
         poolFactory = new CRVPoolFactory(
             address(strategy),
             REWARD_TOKEN,
             address(vaultImplementation),
+            address(factory),
             gaugeImplementation,
             address(rewardReceiverImplementation)
         );

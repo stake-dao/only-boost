@@ -10,6 +10,9 @@ import {IGaugeController} from "src/base/interfaces/IGaugeController.sol";
 
 /// @notice Inherit from PoolFactory to deploy a pool compatible with CRV gauges and check if the token is a valid extra rewards to add.
 contract CRVPoolFactory is PoolFactory {
+    /// @notice Convex Minimal Proxy Factory for Only Boost.
+    address public immutable CONVEX_MINIMAL_PROXY_FACTORY;
+
     /// @notice Ve Funder is a special gauge not valid to be deployed as a pool.
     address public constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
 
@@ -22,9 +25,6 @@ contract CRVPoolFactory is PoolFactory {
     /// @notice Ve Funder is a special gauge not valid to be deployed as a pool.
     address public constant VE_FUNDER = 0xbAF05d7aa4129CA14eC45cC9d4103a9aB9A9fF60;
 
-    /// @notice Convex Minimal Proxy Factory for Only Boost.
-    address public constant CONVEX_MINIMAL_PROXY_FACTORY = 0x4E795A6f991e305e3f28A3b1b2B4B9789d2CD5A1;
-
     /// @notice Curve Gauge Controller.
     IGaugeController public constant GAUGE_CONTROLLER = IGaugeController(0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB);
 
@@ -35,6 +35,7 @@ contract CRVPoolFactory is PoolFactory {
         address _strategy,
         address _rewardToken,
         address _vaultImplementation,
+        address _convexMinimalProxyFactory,
         address _liquidityGaugeImplementation,
         address _rewardReceiverImplementation
     )
@@ -45,7 +46,9 @@ contract CRVPoolFactory is PoolFactory {
             _liquidityGaugeImplementation,
             _rewardReceiverImplementation
         )
-    {}
+    {
+        CONVEX_MINIMAL_PROXY_FACTORY = _convexMinimalProxyFactory;
+    }
 
     /// @notice Create a new pool for a given pid on the Convex platform.
     /// @param _pid Pool id.
@@ -66,7 +69,7 @@ contract CRVPoolFactory is PoolFactory {
         }
 
         (_token,, _gauge,,,) = IBooster(BOOSTER).poolInfo(_pid);
-        stakingConvex = IConvexFactory(CONVEX_MINIMAL_PROXY_FACTORY).create(_token, _pid);
+        stakingConvex = IConvexFactory(CONVEX_MINIMAL_PROXY_FACTORY).create(_pid);
 
         /// Create Stake DAO pool.
         (vault, rewardDistributor) = _create(_gauge);

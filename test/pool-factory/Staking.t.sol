@@ -12,6 +12,9 @@ import {IBooster} from "src/base/interfaces/IBooster.sol";
 import {RewardReceiver} from "src/base/strategy/RewardReceiver.sol";
 import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/curve/factory/CRVPoolFactory.sol";
 
+import "src/curve/fallbacks/ConvexImplementation.sol";
+import "src/curve/fallbacks/ConvexMinimalProxyFactory.sol";
+
 interface IClaimer {
     function claim_rewards(address[] memory _gauge) external;
 }
@@ -45,6 +48,7 @@ abstract contract Staking_Test is Test {
     address public constant MINTER = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0;
     address public constant SD_VOTER_PROXY = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6;
     address public constant REWARD_TOKEN = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    address public constant FALLBACK_REWARD_TOKEN = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     address public constant gaugeImplementation = address(0x3Dc56D46F0Bd13655EfB29594a2e44534c453BF9);
 
     constructor(uint256 _pid) {
@@ -76,10 +80,17 @@ abstract contract Staking_Test is Test {
         vaultImplementation = new Vault();
         rewardReceiverImplementation = new RewardReceiver();
 
+        ConvexImplementation _implementation = new ConvexImplementation();
+
+        ConvexMinimalProxyFactory factory = new ConvexMinimalProxyFactory(
+            BOOSTER, address(strategy), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(_implementation)
+        );
+
         poolFactory = new CRVPoolFactory(
             address(strategy),
             REWARD_TOKEN,
             address(vaultImplementation),
+            address(factory),
             gaugeImplementation,
             address(rewardReceiverImplementation)
         );

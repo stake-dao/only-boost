@@ -36,7 +36,7 @@ contract ConvexMinimalProxyTest is Test {
             BOOSTER, address(this), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation)
         );
 
-        cloneFallback = ConvexImplementation(factory.create(address(token), pid));
+        cloneFallback = ConvexImplementation(factory.create(pid));
 
         /// Deal some tokens to the cloneFallback.
         deal(address(token), address(cloneFallback), AMOUNT);

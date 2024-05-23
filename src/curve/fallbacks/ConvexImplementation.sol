@@ -146,7 +146,7 @@ contract ConvexImplementation is Clone {
         /// Charge Fees.
         protocolFees = _chargeProtocolFees(rewardTokenAmount);
 
-        /// Send the reward token and fallback reward token to the strategy.
+        /// Send the reward token to the strategy.
         SafeTransferLib.safeTransfer(rewardToken(), msg.sender, rewardTokenAmount);
         /// Send the fallback reward token to the _receiver.
         SafeTransferLib.safeTransfer(fallbackRewardToken(), _receiver, fallbackRewardTokenAmount);

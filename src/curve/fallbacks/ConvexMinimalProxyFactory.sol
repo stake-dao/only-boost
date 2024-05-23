@@ -81,27 +81,24 @@ contract ConvexMinimalProxyFactory {
     }
 
     /// @notice Create a new ConvexFallback contract
-    /// @param _token LP token address
     /// @param _pid Pool id from Convex
     /// @return _fallback New ConvexFallback contract address
-    function create(address _token, uint256 _pid) external returns (address _fallback) {
+    function create(uint256 _pid) external returns (address _fallback) {
         /// Check if the pool id is valid.
         if (IBooster(booster).poolLength() <= _pid) revert INVALID_PID();
 
         /// Check if the LP token is valid
         (address lpToken,, address gauge, address _baseRewardPool,, bool isShutdown) = IBooster(booster).poolInfo(_pid);
-
         if (isShutdown) revert SHUTDOWN();
-        if (lpToken != _token) revert INVALID_TOKEN();
 
         /// Encode the immutable arguments for the clone.
         bytes memory data = abi.encodePacked(
-            address(this), _token, rewardToken, fallbackRewardToken, strategy, booster, _baseRewardPool, _pid
+            address(this), lpToken, rewardToken, fallbackRewardToken, strategy, booster, _baseRewardPool, _pid
         );
 
         /// We use the LP token and the gauge address as salt to generate the fallback address.
         /// There can't be two fallbacks with the same LP token and gauge.
-        bytes32 salt = keccak256(abi.encodePacked(_token, gauge));
+        bytes32 salt = keccak256(abi.encodePacked(lpToken, gauge));
 
         // Clone the implementation contract.
         _fallback = implementation.cloneDeterministic(data, salt);

@@ -269,7 +269,7 @@ abstract contract Strategy_Test is Test {
         uint256 _expectedLockerRewardTokenAmount,
         uint256 _totalRewardTokenAmount,
         uint256 _balanceRewardToken
-    ) internal {
+    ) internal view {
         uint256 _claimerFee;
         uint256 _protocolFee;
 
@@ -290,7 +290,7 @@ abstract contract Strategy_Test is Test {
     function _checkExtraRewardsDistribution(
         uint256[] memory _extraRewardsEarned,
         uint256[] memory _SDExtraRewardsEarned
-    ) internal {
+    ) internal view {
         /// Loop through the extra reward tokens.
         for (uint256 i = 0; i < extraRewardTokens.length; i++) {
             assertEq(_balanceOf(extraRewardTokens[i], address(this)), 0);
