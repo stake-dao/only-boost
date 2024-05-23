@@ -10,6 +10,7 @@ import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Vault} from "src/base/staking/Vault.sol";
 import {IBooster} from "src/base/interfaces/IBooster.sol";
 import {RewardReceiver} from "src/base/strategy/RewardReceiver.sol";
+import {IGaugesOwnerProxy} from "src/base/interfaces/IGaugesOwnerProxy.sol";
 
 import {ConvexMinimalProxyFactory} from "src/curve/fallbacks/ConvexMinimalProxyFactory.sol";
 import {ISDLiquidityGauge, IGaugeController, PoolFactory, CRVPoolFactory} from "src/curve/factory/CRVPoolFactory.sol";
@@ -39,6 +40,11 @@ abstract contract PoolFactory_Test is Test {
     address public constant SD_VOTER_PROXY = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6;
     address public constant REWARD_TOKEN = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
     address public constant FALLBACK_REWARD_TOKEN = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+
+    address public constant GAUGES_OWNER_PROXY = 0x742C3cF9Af45f91B109a81EfEaf11535ECDe9571;
+
+    address public constant RANDOM_GAUGE = 0x8F4ecCfaa4B6B0042970baDE0E3e9F3bE272B55f;
+    address public constant RANDOM_TOKEN = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
 
     address public constant gaugeImplementation = address(0xc1e4775B3A589784aAcD15265AC39D3B3c13Ca3c);
 
@@ -106,6 +112,8 @@ abstract contract PoolFactory_Test is Test {
 
         (,, address _gauge,,,) = IBooster(BOOSTER).poolInfo(pid);
 
+        _addNativeExtraReward(_gauge);
+
         /// Create using the pid.
         (vault, rewardDistributor, stakingConvex) = poolFactory.create(pid, address(0));
 
@@ -140,6 +148,8 @@ abstract contract PoolFactory_Test is Test {
 
     function test_deploy_pool() public {
         if (gauge == address(0)) return;
+
+        _addNativeExtraReward(gauge);
 
         address vault;
         address rewardDistributor;
@@ -189,9 +199,14 @@ abstract contract PoolFactory_Test is Test {
             for (uint8 i = 0; i < 8;) {
                 // Get reward token
                 address _extraRewardToken = ISDLiquidityGauge(_gauge).reward_tokens(i);
+
                 if (_extraRewardToken == address(0)) {
                     break;
                 }
+
+                try GAUGE_CONTROLLER.gauge_types(_extraRewardToken) {
+                    break;
+                } catch {}
 
                 ISDLiquidityGauge.Reward memory reward =
                     ISDLiquidityGauge(rewardDistributor).reward_data(_extraRewardToken);
@@ -218,12 +233,31 @@ abstract contract PoolFactory_Test is Test {
     }
 
     function _addNativeExtraReward(address _gauge) internal {
-        /// First, add RewardToken as extra reward.
+        address _owner = IGaugesOwnerProxy(GAUGES_OWNER_PROXY).gauge_manager(_gauge);
+        if (_owner == address(0)) _owner = GAUGES_OWNER_PROXY;
 
-        /// Add FallBackRewardToken as extra reward.
+        deal(address(REWARD_TOKEN), _owner, 1000e18);
+        deal(address(FALLBACK_REWARD_TOKEN), _owner, 1000e18);
+        deal(address(RANDOM_GAUGE), _owner, 1000e18);
+        deal(address(RANDOM_TOKEN), _owner, 1000e18);
 
-        /// Add Gauge in GaugeController as extra reward.
+        vm.startPrank(_owner);
+        /// Approve all.
+        ERC20(REWARD_TOKEN).approve(_gauge, type(uint256).max);
+        ERC20(FALLBACK_REWARD_TOKEN).approve(_gauge, type(uint256).max);
+        ERC20(RANDOM_TOKEN).approve(_gauge, type(uint256).max);
+        ERC20(RANDOM_GAUGE).approve(_gauge, type(uint256).max);
 
-        /// Add random token as extra reward.
+        ILiquidityGauge(_gauge).add_reward(REWARD_TOKEN, _owner);
+        ILiquidityGauge(_gauge).add_reward(FALLBACK_REWARD_TOKEN, _owner);
+        ILiquidityGauge(_gauge).add_reward(RANDOM_TOKEN, _owner);
+        ILiquidityGauge(_gauge).add_reward(RANDOM_GAUGE, _owner);
+
+        ILiquidityGauge(_gauge).deposit_reward_token(REWARD_TOKEN, 1000e18);
+        ILiquidityGauge(_gauge).deposit_reward_token(FALLBACK_REWARD_TOKEN, 1000e18);
+        ILiquidityGauge(_gauge).deposit_reward_token(RANDOM_TOKEN, 1000e18);
+        ILiquidityGauge(_gauge).deposit_reward_token(RANDOM_GAUGE, 1000e18);
+
+        vm.stopPrank();
     }
 }
