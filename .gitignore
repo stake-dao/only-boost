@@ -8,6 +8,7 @@ coverage.txt
 coverage/
 .DS_Store
 
+
 # Python
 *.pyc
 *.pyo
@@ -16,6 +17,5 @@ __pycache__
 .hypothesis/
 
 ```
-
-
 broadcast/*
+script/*

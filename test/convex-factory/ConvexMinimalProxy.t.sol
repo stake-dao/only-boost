@@ -3,8 +3,8 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 
-import "src/fallbacks/ConvexImplementation.sol";
-import "src/fallbacks/ConvexMinimalProxyFactory.sol";
+import "src/curve/fallbacks/ConvexImplementation.sol";
+import "src/curve/fallbacks/ConvexMinimalProxyFactory.sol";
 
 contract ConvexMinimalProxyTest is Test {
     using FixedPointMathLib for uint256;
@@ -36,7 +36,7 @@ contract ConvexMinimalProxyTest is Test {
             BOOSTER, address(this), REWARD_TOKEN, FALLBACK_REWARD_TOKEN, address(implementation)
         );
 
-        cloneFallback = ConvexImplementation(factory.create(address(token), pid));
+        cloneFallback = ConvexImplementation(factory.create(pid));
 
         /// Deal some tokens to the cloneFallback.
         deal(address(token), address(cloneFallback), AMOUNT);
@@ -53,7 +53,7 @@ contract ConvexMinimalProxyTest is Test {
         implementation.withdraw(address(0), 0);
 
         vm.expectRevert(ConvexImplementation.STRATEGY.selector);
-        implementation.claim(true);
+        implementation.claim(true, true, address(this));
     }
 
     function test_Clone() public {
@@ -121,7 +121,7 @@ contract ConvexMinimalProxyTest is Test {
         assertEq(ERC20(REWARD_TOKEN).balanceOf(address(cloneFallback)), 0);
         assertEq(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(cloneFallback)), 0);
 
-        (,, uint256 protocolFees) = cloneFallback.claim(false);
+        (,, uint256 protocolFees) = cloneFallback.claim(false, true, address(this));
 
         assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
         assertGt(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(this)), 0);
@@ -158,7 +158,7 @@ contract ConvexMinimalProxyTest is Test {
         /// Set protocol fees to 10%.
         factory.updateProtocolFee(1000);
 
-        (,, uint256 protocolFees) = cloneFallback.claim(false);
+        (,, uint256 protocolFees) = cloneFallback.claim(false, true, address(this));
 
         assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
         assertGt(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(this)), 0);
@@ -200,7 +200,7 @@ contract ConvexMinimalProxyTest is Test {
 
         /// Then we trigger claim to collect from the fallback.
         /// It should give the same result as the previous test.
-        (,, uint256 protocolFees) = cloneFallback.claim(false);
+        (,, uint256 protocolFees) = cloneFallback.claim(false, true, address(this));
 
         assertGt(ERC20(REWARD_TOKEN).balanceOf(address(this)), 0);
         assertGt(ERC20(FALLBACK_REWARD_TOKEN).balanceOf(address(this)), 0);

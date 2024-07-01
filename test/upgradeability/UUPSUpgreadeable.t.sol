@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import "src/CRVStrategy.sol";
+import "src/curve/CRVStrategy.sol";
 import "solady/utils/LibClone.sol";
 
 import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";

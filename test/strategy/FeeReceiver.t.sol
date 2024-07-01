@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
 
-import {FeeReceiver} from "src/strategy/FeeReceiver.sol";
+import {FeeReceiver} from "src/base/strategy/FeeReceiver.sol";
 import {MockERC20} from "lib/solady/test/utils/mocks/MockERC20.sol";
 
 contract FeeReceiverTest is Test {
