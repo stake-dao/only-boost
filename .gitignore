@@ -19,3 +19,5 @@ __pycache__
 
 
 broadcast/*
+archive/*
+script/*
