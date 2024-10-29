@@ -6,7 +6,7 @@ libs = ['lib']
 verbosity = 3
 evm_version = 'cancun'
 
-  gas_reports = [
+gas_reports = [
     "Strategy",
     "OnlyBoost",
     "CRVStrategy",

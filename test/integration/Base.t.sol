@@ -73,7 +73,7 @@ abstract contract Base_Test is Test {
     }
 
     function setUp() public virtual {
-        vm.rollFork({blockNumber: 19_447_016});
+        vm.rollFork({blockNumber: 21_071_980});
 
         /// Initialize Locker
         locker = ILocker(SD_VOTER_PROXY);
@@ -138,8 +138,22 @@ abstract contract Base_Test is Test {
         /// Reset Balance of the rewardDistributor for each reward token.
         deal(REWARD_TOKEN, address(rewardDistributor), 0);
         deal(FALLBACK_REWARD_TOKEN, address(rewardDistributor), 0);
-        /// Add the reward token to the rewardDistributor.
-        strategy.addRewardToken(gauge, FALLBACK_REWARD_TOKEN);
+
+        address rewardDistrubutor = ILiquidityGauge(rewardDistributor).reward_data(FALLBACK_REWARD_TOKEN).distributor;
+
+        if (rewardDistrubutor == address(0)) {
+            /// Add the reward token to the rewardDistributor.
+            strategy.addRewardToken(gauge, FALLBACK_REWARD_TOKEN);
+        } else {
+            /// Update the rewardToken distributor to the strategy.
+            strategy.execute(
+                address(rewardDistributor),
+                0,
+                abi.encodeWithSignature(
+                    "set_reward_distributor(address,address)", FALLBACK_REWARD_TOKEN, address(strategy)
+                )
+            );
+        }
 
         /// Update the rewardToken distributor to the strategy.
         strategy.execute(
@@ -220,7 +234,7 @@ abstract contract Base_Test is Test {
 
         optimalSD = optimizer.computeOptimalDepositAmount(gauge);
 
-        vm.revertTo(id);
+        vm.revertToState(id);
 
         return (balance == workingBalance, optimalSD);
     }
@@ -242,7 +256,7 @@ abstract contract Base_Test is Test {
             _sdExtraRewardsEarned[i] = ERC20(extraRewardTokens[i]).balanceOf(address(locker)) - _snapshotBalances[i];
         }
 
-        vm.revertTo(id);
+        vm.revertToState(id);
     }
 
     function _getSdRewardTokenMinted() internal returns (uint256 _rewardTokenAmount) {
@@ -259,7 +273,7 @@ abstract contract Base_Test is Test {
         /// Snapshot after claim.
         _rewardTokenAmount = ERC20(REWARD_TOKEN).balanceOf(address(locker)) - _snapshotBalance;
 
-        vm.revertTo(id);
+        vm.revertToState(id);
     }
 
     function _getFallbackRewardMinted() internal view returns (uint256 _fallbackRewardAmount) {
