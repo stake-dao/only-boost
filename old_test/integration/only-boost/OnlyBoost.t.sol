@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import "test/integration/Base.t.sol";
+import "old_test/integration/Base.t.sol";
 
 abstract contract OnlyBoost_Test is Base_Test {
     using FixedPointMathLib for uint256;

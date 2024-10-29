@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solady/tokens/ERC20.sol";
 import {IFallback} from "src/interfaces/IFallback.sol";
-import {ICVXLocker} from "src/interfaces/ICVXLocker.sol";
 import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";
 import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";

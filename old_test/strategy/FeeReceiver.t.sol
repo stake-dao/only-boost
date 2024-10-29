@@ -5,7 +5,7 @@ import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
 
 import {FeeReceiver} from "src/strategy/FeeReceiver.sol";
-import {MockERC20} from "lib/solady/test/utils/mocks/MockERC20.sol";
+import {MockERC20} from "lib/solady/old_test/utils/mocks/MockERC20.sol";
 
 contract FeeReceiverTest is Test {
     //MockERC20 public rewardToken;

@@ -8,8 +8,8 @@ import "solady/utils/LibClone.sol";
 import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {ILocker} from "src/interfaces/ILocker.sol";
-import {IConvexToken} from "test/interfaces/IConvexToken.sol";
-import {ICVXLocker, Optimizer} from "src/optimizer/Optimizer.sol";
+import {Optimizer} from "src/optimizer/Optimizer.sol";
+import {IConvexToken} from "old_test/interfaces/IConvexToken.sol";
 
 import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
 import {IBaseRewardPool, ConvexImplementation} from "src/fallbacks/ConvexImplementation.sol";
@@ -312,7 +312,7 @@ abstract contract Base_Test is Test {
         uint256 _expectedLockerRewardTokenAmount,
         uint256 _earned,
         bool _setFallbackFees
-    ) internal returns (uint256, uint256, uint256) {
+    ) internal view returns (uint256, uint256, uint256) {
         uint256 protocolFeeForThisHarvest = _expectedLockerRewardTokenAmount.mulDiv(17, 100);
 
         if (_setFallbackFees && _earned > 0) {
@@ -366,7 +366,7 @@ abstract contract Base_Test is Test {
         uint256 _expectedLockerRewardTokenAmount,
         uint256 _totalRewardTokenAmount,
         uint256 _balanceRewardToken
-    ) internal {
+    ) internal view {
         uint256 _claimerFee;
         uint256 _protocolFee;
 
@@ -393,7 +393,7 @@ abstract contract Base_Test is Test {
         uint256[] memory _extraRewardsEarned,
         uint256[] memory _SDExtraRewardsEarned,
         bool _claimFallbacks
-    ) internal {
+    ) internal view {
         /// Loop through the extra reward tokens.
         for (uint256 i = 0; i < extraRewardTokens.length; i++) {
             assertEq(_balanceOf(extraRewardTokens[i], address(this)), 0);
