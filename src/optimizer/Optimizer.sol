@@ -35,7 +35,7 @@ contract Optimizer is IOnlyBoost {
     /// @notice Convex CRV Locker.
     address public constant VOTER_PROXY_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80;
 
-    /// @notice Curve DAO CRV Vote-escrow contract
+    /// @notice Boost Delegation V3 contract.
     address public constant BOOST_DELEGATION_V3 = 0xD37A6aa3d8460Bd2b6536d608103D880695A23CD;
 
     /// @notice Address of the governance.
@@ -99,7 +99,9 @@ contract Optimizer is IOnlyBoost {
         uint256 balanceConvex = ERC20(gauge).balanceOf(VOTER_PROXY_CONVEX);
 
         // 3. Compute the optimal balance for Stake DAO
-        balanceSD = balanceConvex.mulDiv(veBoostSD, veBoostConvex);
+        if (balanceConvex != 0) {
+            balanceSD = balanceConvex.mulDiv(veBoostSD, veBoostConvex);
+        }
     }
 
     //////////////////////////////////////////////////////
