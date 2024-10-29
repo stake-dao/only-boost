@@ -2,7 +2,7 @@
 src = 'src'
 out = 'out'
 tests = 'test'
-libs = ['lib']
+libs = ["node_modules"]
 verbosity = 3
 evm_version = 'cancun'
 
@@ -17,7 +17,3 @@ gas_reports = [
 # Enable before deploying.
 optimizer = true
 optimizers_runs = 200
-
-remappings = [
-    "solady/=lib/solady/src/"
-]

@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import "src/CRVStrategy.sol";
-import "solady/utils/LibClone.sol";
+import "solady/src/utils/LibClone.sol";
 
 import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -11,7 +11,7 @@ import {ILocker} from "src/interfaces/ILocker.sol";
 import {Optimizer} from "src/optimizer/Optimizer.sol";
 import {IConvexToken} from "old_test/interfaces/IConvexToken.sol";
 
-import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
+import {SafeTransferLib as SafeTransfer} from "solady/src/utils/SafeTransferLib.sol";
 import {IBaseRewardPool, ConvexImplementation} from "src/fallbacks/ConvexImplementation.sol";
 import {IBooster, ConvexMinimalProxyFactory} from "src/fallbacks/ConvexMinimalProxyFactory.sol";
 

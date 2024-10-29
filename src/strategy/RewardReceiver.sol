@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import {Clone} from "solady/utils/Clone.sol";
-import {ERC20} from "solady/tokens/ERC20.sol";
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {Clone} from "solady/src/utils/Clone.sol";
+import {ERC20} from "solady/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
 
 /// @notice RewardReceiver contract to hold rewards for LGV3+ Gauges.

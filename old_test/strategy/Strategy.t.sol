@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import "solady/utils/LibClone.sol";
+import "solady/src/utils/LibClone.sol";
 import "old_test/strategy/CRVStrategy.sol";
 
 import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -10,7 +10,7 @@ import "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ILocker} from "src/interfaces/ILocker.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {ISDLiquidityGauge} from "src/interfaces/ISDLiquidityGauge.sol";
-import {SafeTransferLib as SafeTransfer} from "solady/utils/SafeTransferLib.sol";
+import {SafeTransferLib as SafeTransfer} from "solady/src/utils/SafeTransferLib.sol";
 
 abstract contract Strategy_Test is Test {
     using FixedPointMathLib for uint256;

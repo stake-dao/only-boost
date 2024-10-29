@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import {ERC20} from "solady/tokens/ERC20.sol";
+import {ERC20} from "solady/src/tokens/ERC20.sol";
 import {IFallback} from "src/interfaces/IFallback.sol";
 import {IOnlyBoost} from "src/interfaces/IOnlyBoost.sol";
 import {IConvexFactory} from "src/interfaces/IConvexFactory.sol";
 import {ILiquidityGauge} from "src/interfaces/ILiquidityGauge.sol";
-import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
+import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 
 /// @title Optimizer
 /// @author Stake DAO

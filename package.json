@@ -1,0 +1,9 @@
+{
+    "name": "@stake-dao/only-boost",
+    "version": "1.0.0",
+    "devDependencies": {
+      "solady": "github:vectorized/solady#cc312d3e854fdccd748fc52dac0c78b257177a80",
+      "forge-std": "github:foundry-rs/forge-std",
+      "openzeppelin": "@openzeppelin/contracts@v4.9.6"
+    }
+  }
