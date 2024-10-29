@@ -30,23 +30,14 @@ contract Optimizer is IOnlyBoost {
     /// @notice Minimal Proxy Factory for Convex Deposit Contracts.
     IConvexFactory public immutable proxyFactory;
 
-    /// @notice CRV Token.
-    ERC20 public constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
-
-    /// @notice CVX Token.
-    ERC20 public constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-
-    /// @notice Convex CVX Vote-escrow contract
-    address public constant VL_CVX = 0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
-
-    /// @notice Curve DAO CRV Vote-escrow contract
-    address public constant veToken = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
-
     /// @notice StakeDAO CRV Locker.
     address public constant VOTER_PROXY_SD = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6;
 
     /// @notice Convex CRV Locker.
     address public constant VOTER_PROXY_CONVEX = 0x989AEb4d175e16225E39E87d0D97A3360524AD80;
+
+    /// @notice Curve DAO CRV Vote-escrow contract
+    address public constant BOOST_DELEGATION_V3 = 0xD37A6aa3d8460Bd2b6536d608103D880695A23CD;
 
     /// @notice Address of the governance.
     address public governance;
@@ -56,15 +47,6 @@ contract Optimizer is IOnlyBoost {
 
     /// @notice Cache period for optimization.
     uint256 public cachePeriod = 7 days;
-
-    /// @notice Adjustment factor for CVX / vlCVX.
-    uint256 public adjustmentFactor = 1e18;
-
-    /// @notice Fees on Convex.
-    uint256 public convexTotalFee = 17e16;
-
-    /// @notice Fees on StakeDAO.
-    uint256 public stakeDaoTotalFee = 16e16;
 
     /// @notice Map gauge => CachedOptimization.
     mapping(address => CachedOptimization) public cachedOptimizations;
@@ -76,10 +58,6 @@ contract Optimizer is IOnlyBoost {
     /// @notice Event emitted when governance is changed.
     /// @param newGovernance Address of the new governance.
     event GovernanceChanged(address indexed newGovernance);
-
-    /// @notice Event emitted when the adjustment factor is updated
-    /// @param newAdjustmentFactor The new adjustment factor
-    event AdjustmentFactorUpdated(uint256 newAdjustmentFactor);
 
     /// @notice Error emitted when auth failed
     error GOVERNANCE();
@@ -112,34 +90,17 @@ contract Optimizer is IOnlyBoost {
 
     /// @notice Return the optimal amount of LP token that must be held by Stake DAO Liquidity Locker
     /// @param gauge Address of the gauge.
-    /// @return Optimal amount of LP token
-    function computeOptimalDepositAmount(address gauge) public view returns (uint256) {
-        // Stake DAO
-        uint256 veCRVStakeDAO = ERC20(veToken).balanceOf(VOTER_PROXY_SD);
+    /// @return balanceSD Optimal amount of LP token
+    function computeOptimalDepositAmount(address gauge) public view returns (uint256 balanceSD) {
+        // 1. Get the balance of veBoost on Stake DAO and Convex
+        uint256 veBoostSD = ERC20(BOOST_DELEGATION_V3).balanceOf(VOTER_PROXY_SD);
+        uint256 veBoostConvex = ERC20(BOOST_DELEGATION_V3).balanceOf(VOTER_PROXY_CONVEX);
 
-        // veCRV
-        uint256 veCRVConvex = ERC20(veToken).balanceOf(VOTER_PROXY_CONVEX);
-        uint256 veCRVTotal = ERC20(veToken).totalSupply();
-
-        // Liquidity Gauge
+        // 2. Get the balance of the liquidity gauge on Convex
         uint256 balanceConvex = ERC20(gauge).balanceOf(VOTER_PROXY_CONVEX);
-        uint256 totalSupply = ERC20(gauge).totalSupply();
 
-        // CVX
-        uint256 cvxTotal = CVX.totalSupply();
-        uint256 vlCVXTotal = ICVXLocker(VL_CVX).lockedSupply();
-
-        // Additional boost
-        uint256 boost = adjustmentFactor * (1e26 - cvxTotal) * veCRVConvex / (1e26 * vlCVXTotal);
-        uint256 feeDiff = boost + stakeDaoTotalFee > convexTotalFee ? stakeDaoTotalFee + boost - convexTotalFee : 0;
-
-        return (
-            3 * (1e18 - stakeDaoTotalFee) * balanceConvex * veCRVStakeDAO
-                / (
-                    (2 * (feeDiff) * balanceConvex * veCRVTotal) / totalSupply
-                        + 3 * veCRVConvex * (1e18 + boost - convexTotalFee)
-                )
-        );
+        // 3. Compute the optimal balance for Stake DAO
+        balanceSD = balanceConvex.mulDiv(veBoostSD, veBoostConvex);
     }
 
     //////////////////////////////////////////////////////
@@ -253,11 +214,10 @@ contract Optimizer is IOnlyBoost {
         CachedOptimization memory cachedOptimization = cachedOptimizations[gauge];
 
         if (
-            cachedOptimization
-                /// If the cache is enabled
-                .timestamp + cachePeriod > block.timestamp
+            /// If the cache is enabled
             /// And the new deposit is lower than the cached optimal amount
-            && cachedOptimization.value >= amount + gaugeBalance
+            cachedOptimization.timestamp + cachePeriod > block.timestamp
+                && cachedOptimization.value >= amount + gaugeBalance
         ) {
             // Use cached optimal amount
             return cachedOptimization.value;
@@ -317,28 +277,11 @@ contract Optimizer is IOnlyBoost {
         _fallbacks[0] = address(proxyFactory.fallbacks(gauge));
     }
 
-    /// @notice Adjust the conversion factor for CVX / vlCVX
-    /// @param _adjustmentFactor The new adjustment factor
-    /// @dev Only the admin can call this
-    function setAdjustmentFactor(uint256 _adjustmentFactor) external onlyGovernance {
-        adjustmentFactor = _adjustmentFactor;
-        emit AdjustmentFactorUpdated(_adjustmentFactor);
-    }
-
     /// @notice Set the cache period
     /// @param newCachePeriod New cache period
     /// @dev Only the governance can call this
     function setCachePeriod(uint256 newCachePeriod) external onlyGovernance {
         cachePeriod = newCachePeriod;
-    }
-
-    /// @notice Set fees percentage.
-    /// @param _stakeDaoFees Fees percentage for StakeDAO
-    /// @param _convexFees Fees percentage for Convex
-    /// @dev Only the governance can call this
-    function setFees(uint256 _stakeDaoFees, uint256 _convexFees) external onlyGovernance {
-        stakeDaoTotalFee = _stakeDaoFees;
-        convexTotalFee = _convexFees;
     }
 
     /// @notice Transfer the governance to a new address.
