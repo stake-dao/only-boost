@@ -8,10 +8,16 @@ FOUNDRY_ETH_RPC_URL=$(RPC_URL_MAINNET)
 default:
 	forge fmt && forge build
 
+clean:
+	rm -rf node_modules
+	rm -rf out
+	make default
+
+
 # Always keep Forge up to date
 install:
 	foundryup
-	forge install
+	pnpm install
 
 snapshot:
 	@forge snapshot
@@ -42,7 +48,7 @@ simulate-%:
 	@forge script script/$*.s.sol -vvvvv --fork-url $(RPC_URL_MAINNET)
 
 run-%:
-	@forge script script/$*.s.sol --broadcast --slow -vvvvv --private-key $(PRIVATE_KEY) --verify --resume
+	@forge script script/$*.s.sol --broadcast --slow -vvvvv --private-key $(PRIVATE_KEY)
 
 deploy-%:
 	@forge script script/$*.s.sol --broadcast --slow -vvvvv --verify --private-key ${PRIVATE_KEY}

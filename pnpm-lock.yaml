@@ -1,0 +1,40 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@openzeppelin/contracts':
+        specifier: v4.9.6
+        version: 4.9.6
+      forge-std:
+        specifier: github:foundry-rs/forge-std
+        version: https://codeload.github.com/foundry-rs/forge-std/tar.gz/1eea5bae12ae557d589f9f0f0edae2faa47cb262
+      solady:
+        specifier: github:vectorized/solady#cc312d3e854fdccd748fc52dac0c78b257177a80
+        version: https://codeload.github.com/vectorized/solady/tar.gz/cc312d3e854fdccd748fc52dac0c78b257177a80
+
+packages:
+
+  '@openzeppelin/contracts@4.9.6':
+    resolution: {integrity: sha512-xSmezSupL+y9VkHZJGDoCBpmnB2ogM13ccaYDWqJTfS3dbuHkgjuwDFUmaFauBCboQMGB/S5UqUl2y54X99BmA==}
+
+  forge-std@https://codeload.github.com/foundry-rs/forge-std/tar.gz/1eea5bae12ae557d589f9f0f0edae2faa47cb262:
+    resolution: {tarball: https://codeload.github.com/foundry-rs/forge-std/tar.gz/1eea5bae12ae557d589f9f0f0edae2faa47cb262}
+    version: 1.9.4
+
+  solady@https://codeload.github.com/vectorized/solady/tar.gz/cc312d3e854fdccd748fc52dac0c78b257177a80:
+    resolution: {tarball: https://codeload.github.com/vectorized/solady/tar.gz/cc312d3e854fdccd748fc52dac0c78b257177a80}
+    version: 0.0.177
+
+snapshots:
+
+  '@openzeppelin/contracts@4.9.6': {}
+
+  forge-std@https://codeload.github.com/foundry-rs/forge-std/tar.gz/1eea5bae12ae557d589f9f0f0edae2faa47cb262: {}
+
+  solady@https://codeload.github.com/vectorized/solady/tar.gz/cc312d3e854fdccd748fc52dac0c78b257177a80: {}

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.19;
 
-import {LibClone} from "solady/utils/LibClone.sol";
+import {LibClone} from "solady/src/utils/LibClone.sol";
 import {IBooster} from "src/interfaces/IBooster.sol";
 import {IFallback} from "src/interfaces/IFallback.sol";
 
