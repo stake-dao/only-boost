@@ -75,10 +75,14 @@ contract BalancerShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentra
     /// @notice Event when BAL is claimed
     event Claimed(address indexed gauge, address indexed token, uint256 amount);
 
+    /// @notice Event when a token is withdrawn
+    event Withdrawn(address indexed gauge, address indexed token, uint256 amount);
+
     constructor(address _locker, address _gateway, address _governance)
         BaseShutdownStrategy(_locker, _gateway, _governance)
     {}
 
+    /// @dev Reproduces the claim function of the STRATEGY contract and shuts down the gauge.
     function claim(address _token) external nonReentrant {
         address gauge = IStrategy(STRATEGY).gauges(_token);
         if (gauge == address(0)) revert ADDRESS_ZERO();
@@ -110,9 +114,72 @@ contract BalancerShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentra
         /// 8. Deposit the BAL to the gauge.
         ILiquidityGauge(rewardDistributor).deposit_reward_token(BAL, net);
 
-        /// 9. Mark the gauge as shutdown.
+        /// 10. Extra Rewards.
+		if(ILiquidityGauge(gauge).reward_tokens(0) != address(0)) {
+
+            /// 10.1 Claim the rewards.
+            _executeTransaction(gauge, abi.encodeWithSignature("claim_rewards(address,address)", address(LOCKER), address(this)));
+
+			address rewardToken;
+			uint256 rewardsBalance;
+			for (uint8 i = 0; i < 8; i++) {
+				rewardToken = ILiquidityGauge(gauge).reward_tokens(i);
+				if (rewardToken == address(0)) {
+					break;
+				}
+
+                /// 10.2 Approve the reward token.
+                rewardsBalance = IERC20(rewardToken).balanceOf(address(this));
+				IERC20(rewardToken).approve(rewardDistributor, rewardsBalance);
+
+                /// 10.3 Deposit the reward token.
+				ILiquidityGauge(rewardDistributor).deposit_reward_token(rewardToken, rewardsBalance);
+
+                /// 10.4 Emit the event.
+				emit Claimed(gauge, rewardToken, rewardsBalance);
+			}	
+		}
+
+        /// 11. Withdraw the funds from the gauge and send them back to the vault.
+        address vault = ILiquidityGauge(rewardDistributor).staking_token();
+
+        uint256 balance = IERC20(vault).balanceOf(address(this));
+        _withdraw(vault, balance, vault);
+
+        /// 12. Mark the gauge as shutdown.
         isShutdown[gauge] = true;
 
         emit Claimed(gauge, BAL, minted);
+    }
+
+    //////////////////////////////////////////////////////
+    /// --- DEPOSIT & WITHDRAWAL REWRITES
+    //////////////////////////////////////////////////////
+
+    /// @notice function to deposit into a gauge
+    function _deposit(address, uint256) internal pure {
+        revert SHUTDOWN();
+    }
+
+    /// @notice function to withdraw from a gauge
+    /// @param _token token address
+    /// @param _amount amount to withdraw
+    function _withdraw(address _token, uint256 _amount, address _receiver) internal {
+        uint256 snapshot = IERC20(_token).balanceOf(LOCKER);
+
+        address gauge = IStrategy(STRATEGY).gauges(_token);
+        if (gauge == address(0)) revert ADDRESS_ZERO();
+        if (isShutdown[gauge]) revert SHUTDOWN();
+
+        if (!_executeTransaction(gauge, abi.encodeWithSignature("withdraw(uint256)", _amount))) {
+            revert TRANSFER_FAILED();
+        }
+
+        uint256 net = IERC20(_token).balanceOf(LOCKER) - snapshot;
+        if (!_executeTransaction(_token, abi.encodeWithSignature("transfer(address,uint256)", _receiver, net))) {
+            revert TRANSFER_FAILED();
+        }
+
+        emit Withdrawn(gauge, _token, _amount);
     }
 }
