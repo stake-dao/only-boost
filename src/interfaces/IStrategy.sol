@@ -27,4 +27,5 @@ interface IStrategy {
     function vaults(address _gauge) external view returns (bool);
 
     function governance() external view returns (address);
+    function sdGauges(address _token) external view returns (address);
 }
