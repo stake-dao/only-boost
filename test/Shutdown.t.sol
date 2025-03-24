@@ -109,6 +109,10 @@ contract ShutdownTest is Test {
         vm.expectRevert(ShutdownStrategy.SHUTDOWN.selector);
         ShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false, false);
 
+        /// Make sure you can't call regular harvest.
+        vm.expectRevert(ShutdownStrategy.SHUTDOWN.selector);
+        ShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false);
+
         /// Make sure the strategy is not rebalanceable.
         vm.expectRevert(ShutdownStrategy.SHUTDOWN.selector);
         ShutdownStrategy(payable(STRATEGY)).rebalance(asset);
