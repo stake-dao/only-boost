@@ -6,7 +6,7 @@ import "forge-std/src/Test.sol";
 import "solady/src/utils/LibClone.sol";
 import "openzeppelin/proxy/ERC1967/ERC1967Proxy.sol";
 
-import "src/YearnShutdownStrategy.sol";
+import "src/shutdown/v2/YearnShutdownStrategy.sol";
 import "src/interfaces/IVault.sol";
 
 import {SafeTransferLib as SafeTransfer} from "solady/src/utils/SafeTransferLib.sol";
