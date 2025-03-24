@@ -6,7 +6,7 @@ import "forge-std/src/Test.sol";
 import "solady/src/utils/LibClone.sol";
 import "openzeppelin/proxy/ERC1967/ERC1967Proxy.sol";
 
-import "src/ShutdownStrategy.sol";
+import "src/CurveShutdownStrategy.sol";
 import "src/interfaces/IVault.sol";
 
 import {SafeTransferLib as SafeTransfer} from "solady/src/utils/SafeTransferLib.sol";
@@ -15,7 +15,7 @@ contract ShutdownTest is Test {
     using SafeTransfer for ERC20;
     using FixedPointMathLib for uint256;
 
-    ShutdownStrategy public strategy;
+    CurveShutdownStrategy public strategy;
 
     /// @notice The ERC1967 implementation slot.
     bytes32 internal constant _ERC1967_IMPLEMENTATION_SLOT =
@@ -39,21 +39,21 @@ contract ShutdownTest is Test {
     function setUp() public virtual {
         vm.createSelectFork("mainnet");
 
-        governance = ShutdownStrategy(payable(STRATEGY)).governance();
+        governance = CurveShutdownStrategy(payable(STRATEGY)).governance();
 
-        address locker = address(ShutdownStrategy(payable(STRATEGY)).locker());
-        address veToken = ShutdownStrategy(payable(STRATEGY)).veToken();
-        address rewardToken = ShutdownStrategy(payable(STRATEGY)).rewardToken();
-        address minter = ShutdownStrategy(payable(STRATEGY)).minter();
+        address locker = address(CurveShutdownStrategy(payable(STRATEGY)).locker());
+        address veToken = CurveShutdownStrategy(payable(STRATEGY)).veToken();
+        address rewardToken = CurveShutdownStrategy(payable(STRATEGY)).rewardToken();
+        address minter = CurveShutdownStrategy(payable(STRATEGY)).minter();
 
         /// 1. Deploy the strategy implementation.
-        strategy = new ShutdownStrategy(governance, locker, veToken, rewardToken, minter);
+        strategy = new CurveShutdownStrategy(governance, locker, veToken, rewardToken, minter);
     }
 
     function test_upgrade() public {
         /// 1. Expect the upgrade to revert.
         vm.expectRevert(Strategy.GOVERNANCE.selector);
-        ShutdownStrategy(payable(STRATEGY)).upgradeToAndCall(address(strategy), "");
+        CurveShutdownStrategy(payable(STRATEGY)).upgradeToAndCall(address(strategy), "");
 
         /// 2. Expect the upgrade to revert for the new implementation.
         vm.expectRevert(UUPSUpgradeable.UnauthorizedCallContext.selector);
@@ -78,12 +78,11 @@ contract ShutdownTest is Test {
         _shutdown(VAULT_V2);
     }
 
-
     function _shutdown(address _vault) internal {
         /// V1 vault token.
         address asset = IVault(_vault).token();
         address liquidityGauge = IVault(_vault).liquidityGauge();
-        address gauge = ShutdownStrategy(payable(STRATEGY)).gauges(asset);
+        address gauge = CurveShutdownStrategy(payable(STRATEGY)).gauges(asset);
 
         /// Deposit some assets.
         deal(asset, address(this), 1000e18);
@@ -94,29 +93,29 @@ contract ShutdownTest is Test {
         assertEq(_balanceOf(asset, _vault), 0);
         assertEq(_balanceOf(liquidityGauge, address(this)), 1000e18);
 
-        uint256 balance = ShutdownStrategy(payable(STRATEGY)).balanceOf(asset);
+        uint256 balance = CurveShutdownStrategy(payable(STRATEGY)).balanceOf(asset);
         assertGt(balance, 1000e18);
 
-        assertEq(ShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), false);
+        assertEq(CurveShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), false);
 
-        ShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false, false);
+        CurveShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false, false);
 
-        assertEq(ShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), true);
+        assertEq(CurveShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), true);
 
         assertEq(_balanceOf(asset, STRATEGY), 0);
         assertEq(_balanceOf(asset, _vault), balance);
 
         /// Make sure you can't harvest again.
-        vm.expectRevert(ShutdownStrategy.SHUTDOWN.selector);
-        ShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false, false);
+        vm.expectRevert(CurveShutdownStrategy.SHUTDOWN.selector);
+        CurveShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false, false);
 
         /// Make sure you can't call regular harvest.
-        vm.expectRevert(ShutdownStrategy.SHUTDOWN.selector);
-        ShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false);
+        vm.expectRevert(CurveShutdownStrategy.SHUTDOWN.selector);
+        CurveShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false);
 
         /// Make sure the strategy is not rebalanceable.
-        vm.expectRevert(ShutdownStrategy.SHUTDOWN.selector);
-        ShutdownStrategy(payable(STRATEGY)).rebalance(asset);
+        vm.expectRevert(CurveShutdownStrategy.SHUTDOWN.selector);
+        CurveShutdownStrategy(payable(STRATEGY)).rebalance(asset);
 
         /// Make sure you can withdraw.
         IVault(_vault).withdraw(1000e18);
@@ -125,7 +124,7 @@ contract ShutdownTest is Test {
         assertEq(_balanceOf(liquidityGauge, address(this)), 0);
 
         /// Make sure you can't deposit again.
-        vm.expectRevert(ShutdownStrategy.SHUTDOWN.selector);
+        vm.expectRevert(CurveShutdownStrategy.SHUTDOWN.selector);
         IVault(_vault).deposit(address(this), 1000e18, true);
     }
 
@@ -139,6 +138,6 @@ contract ShutdownTest is Test {
 
     function _upgrade(address _newImplementation) internal {
         vm.prank(governance);
-        ShutdownStrategy(payable(STRATEGY)).upgradeToAndCall(address(_newImplementation), "");
+        CurveShutdownStrategy(payable(STRATEGY)).upgradeToAndCall(address(_newImplementation), "");
     }
 }

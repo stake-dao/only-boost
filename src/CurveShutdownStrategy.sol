@@ -49,7 +49,7 @@ pragma solidity 0.8.19;
 import "src/CRVStrategy.sol";
 
 /// @notice Strategy contract, supporting Shutdown.
-contract ShutdownStrategy is CRVStrategy {
+contract CurveShutdownStrategy is CRVStrategy {
     /// @notice Mapping of shutdown gauges.
     mapping(address => bool) public isShutdown;
 
@@ -64,7 +64,6 @@ contract ShutdownStrategy is CRVStrategy {
     function harvest(address, bool, bool) public pure override {
         revert SHUTDOWN();
     }
-
 
     /// @notice Harvest the asset and shutdown the gauge.
     /// @param asset The asset to harvest.
