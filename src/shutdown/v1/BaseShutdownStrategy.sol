@@ -8,7 +8,6 @@ import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step
 
 import {IModuleManager} from "src/interfaces/IModuleManager.sol";
 
-
 /// @title BaseShutdownStrategy
 /// @author Stake DAO
 /// @dev Provides shared functionality for handling GATEWAY and LOCKER relationships

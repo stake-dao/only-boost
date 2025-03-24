@@ -67,12 +67,10 @@ contract BalancerShutdownTest is Test {
         vm.prank(TREASURY);
         IVault(VAULT).setBalancerStrategy(address(strategy));
 
-
         address liquidityGauge = IVault(VAULT).liquidityGauge();
 
         vm.prank(TREASURY);
         ILiquidityGauge(liquidityGauge).set_reward_distributor(BAL, address(strategy));
-
     }
 
     function test_shutdown() public {
@@ -99,7 +97,7 @@ contract BalancerShutdownTest is Test {
         vm.expectRevert(BaseShutdownStrategy.SHUTDOWN.selector);
         strategy.claim(asset);
 
-        uint balance = IERC20(liquidityGauge).balanceOf(RANDOM_HOLDER);
+        uint256 balance = IERC20(liquidityGauge).balanceOf(RANDOM_HOLDER);
         assertGt(balance, 0);
 
         vm.prank(RANDOM_HOLDER);
@@ -108,7 +106,7 @@ contract BalancerShutdownTest is Test {
         assertGe(_balanceOf(asset, RANDOM_HOLDER), balance);
         assertGt(strategy.protocolFeesAccrued(), 0);
 
-        uint fees = strategy.protocolFeesAccrued();
+        uint256 fees = strategy.protocolFeesAccrued();
 
         vm.prank(governance);
         strategy.setFeeRecipient(address(0xBEEF));

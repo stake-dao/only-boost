@@ -19,6 +19,8 @@ interface ILiquidityGauge {
 
     function deposit(uint256 _value, address _addr) external;
 
+    function withdraw(address _token, uint256 _amount, address _receiver) external;
+
     function reward_tokens(uint256 _i) external view returns (address);
 
     function reward_data(address _tokenReward) external view returns (Reward memory);
