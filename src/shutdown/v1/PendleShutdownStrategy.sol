@@ -97,6 +97,8 @@ contract PendleShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentranc
     /// @dev Reproduces the claim function of the STRATEGY contract and shuts down the gauge.
     /// @param _token Address of the Pendle market token
     function claim(address _token) external nonReentrant {
+        if (isShutdown[_token]) revert SHUTDOWN();
+
         /// 1. Get reward tokens and snapshot balances
         address[] memory rewardTokens = IPendleMarket(_token).getRewardTokens();
         uint256[] memory balancesBefore = new uint256[](rewardTokens.length);
@@ -186,10 +188,6 @@ contract PendleShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentranc
     /// @param _token Address of the token to withdraw
     /// @param _amount Amount of tokens to withdraw
     function _withdrawAll(address _token, uint256 _amount) internal {
-        address gauge = IStrategy(STRATEGY).gauges(_token);
-        if (gauge == address(0)) revert ADDRESS_ZERO();
-        if (isShutdown[gauge]) revert SHUTDOWN();
-
         if (!_executeTransaction(_token, abi.encodeWithSignature("transfer(address,uint256)", address(this), _amount)))
         {
             revert TRANSFER_FAILED();
