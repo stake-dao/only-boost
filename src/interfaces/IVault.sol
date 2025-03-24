@@ -9,4 +9,6 @@ interface IVault {
 
     function token() external view returns (address);
     function liquidityGauge() external view returns (address);
+
+    function setBalancerStrategy(address _strategy) external;
 }

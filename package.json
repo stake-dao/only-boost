@@ -4,6 +4,7 @@
     "devDependencies": {
       "solady": "github:vectorized/solady#cc312d3e854fdccd748fc52dac0c78b257177a80",
       "forge-std": "github:foundry-rs/forge-std",
+      "@safe-global/safe-smart-account": "github:safe-global/safe-smart-account#v1.4.1-3",
       "@openzeppelin/contracts": "v4.9.6"
     }
   }

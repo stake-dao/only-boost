@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.19;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {IModuleManager} from "src/interfaces/IModuleManager.sol";
 
+
 /// @title BaseShutdownStrategy
 /// @author Stake DAO
 /// @dev Provides shared functionality for handling GATEWAY and LOCKER relationships
 abstract contract BaseShutdownStrategy is Ownable2Step {
+    using Math for uint256;
     using SafeERC20 for IERC20;
 
     //////////////////////////////////////////////////////
@@ -74,10 +77,10 @@ abstract contract BaseShutdownStrategy is Ownable2Step {
 
     function _chargeProtocolFees(address _token, uint256 _minted) internal returns (uint256 net) {
         /// 1. Calculate the protocol fee.
-        uint256 protocolFee = _minted * DEFAULT_PROTOCOL_FEE;
+        uint256 protocolFee = _minted.mulDiv(DEFAULT_PROTOCOL_FEE, 1e18);
 
         /// 2. Calculate the harvest fee.
-        uint256 harvestFee = _minted * DEFAULT_HARVEST_FEE;
+        uint256 harvestFee = _minted.mulDiv(DEFAULT_HARVEST_FEE, 1e18);
 
         /// 3. Calculate the net amount.
         net = _minted - protocolFee - harvestFee;

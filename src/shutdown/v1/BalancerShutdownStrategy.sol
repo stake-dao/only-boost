@@ -152,8 +152,8 @@ contract BalancerShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentra
         /// 11. Withdraw the funds from the gauge and send them back to the vault.
         address vault = ILiquidityGauge(rewardDistributor).staking_token();
 
-        uint256 balance = IERC20(vault).balanceOf(address(this));
-        _withdraw(vault, balance, vault);
+        uint256 balance = IERC20(vault).totalSupply();
+        _withdraw(_token, balance, vault);
 
         /// 12. Mark the gauge as shutdown.
         isShutdown[gauge] = true;
@@ -169,6 +169,10 @@ contract BalancerShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentra
         _withdraw(_token, _amount, msg.sender);
     }
 
+    function claimProtocolFees() external {
+        _claimProtocolFees(BAL);
+    }
+
     //////////////////////////////////////////////////////
     /// --- DEPOSIT & WITHDRAWAL REWRITES
     //////////////////////////////////////////////////////
@@ -177,11 +181,11 @@ contract BalancerShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentra
     /// @param _token token address
     /// @param _amount amount to withdraw
     function _withdraw(address _token, uint256 _amount, address _receiver) internal {
-        uint256 snapshot = IERC20(_token).balanceOf(LOCKER);
-
         address gauge = IStrategy(STRATEGY).gauges(_token);
         if (gauge == address(0)) revert ADDRESS_ZERO();
         if (isShutdown[gauge]) revert SHUTDOWN();
+
+        uint256 snapshot = IERC20(_token).balanceOf(LOCKER);
 
         if (!_executeTransaction(gauge, abi.encodeWithSignature("withdraw(uint256)", _amount))) {
             revert TRANSFER_FAILED();
