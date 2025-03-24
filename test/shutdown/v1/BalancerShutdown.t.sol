@@ -42,7 +42,7 @@ contract BalancerShutdownTest is Test {
     Safe public gateway;
 
     function setUp() public virtual {
-        vm.createSelectFork("mainnet");
+        vm.createSelectFork("mainnet", 22_117_697);
 
         governance = IStrategy(STRATEGY).governance();
         signatures = abi.encodePacked(uint256(uint160(governance)), uint8(0), uint256(1));

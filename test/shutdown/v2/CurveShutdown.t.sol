@@ -37,7 +37,7 @@ contract ShutdownTest is Test {
     address public governance;
 
     function setUp() public virtual {
-        vm.createSelectFork("mainnet");
+        vm.createSelectFork("mainnet", 22_117_697);
 
         governance = CurveShutdownStrategy(payable(STRATEGY)).governance();
 
