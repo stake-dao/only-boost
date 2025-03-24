@@ -60,25 +60,27 @@ contract ShutdownStrategy is CRVStrategy {
         CRVStrategy(_owner, _locker, _veToken, _rewardToken, _minter)
     {}
 
+    /// @dev Disable regular locker harvest.
+    function harvest(address, bool, bool) public pure override {
+        revert SHUTDOWN();
+    }
+
+
     /// @notice Harvest the asset and shutdown the gauge.
     /// @param asset The asset to harvest.
-    /// @param distributeSDT Whether to distribute SDT.
-    /// @param claimExtra Whether to claim extra rewards.
-    /// @param claimFallbacksRewards Whether to claim fallbacks rewards.
-    function harvest(address asset, bool distributeSDT, bool claimExtra, bool claimFallbacksRewards) public override {
+    function harvest(address asset, bool, bool, bool) public override {
         if (isShutdown[asset]) revert SHUTDOWN();
 
         /// Harvest as usual.
-        super.harvest(asset, distributeSDT, claimExtra, claimFallbacksRewards);
+        super.harvest(asset, false, true, true);
 
         /// 1. Get the vault address.
         address gauge = gauges[asset];
         address rewardDistributor = rewardDistributors[gauge];
-        address vault = ILiquidityGauge(rewardDistributor).lp_token();
+        address vault = ILiquidityGauge(rewardDistributor).staking_token();
 
         /// 2. Withdraw all the funds from the gauge.
         uint256 balance = balanceOf(asset);
-
         _withdraw(asset, balance);
 
         /// 3. Send the funds back to the vault.
