@@ -83,6 +83,7 @@ contract ShutdownTest is Test {
         /// V1 vault token.
         address asset = IVault(_vault).token();
         address liquidityGauge = IVault(_vault).liquidityGauge();
+        address gauge = ShutdownStrategy(payable(STRATEGY)).gauges(asset);
 
         /// Deposit some assets.
         deal(asset, address(this), 1000e18);
@@ -96,11 +97,11 @@ contract ShutdownTest is Test {
         uint256 balance = ShutdownStrategy(payable(STRATEGY)).balanceOf(asset);
         assertGt(balance, 1000e18);
 
-        assertEq(ShutdownStrategy(payable(STRATEGY)).isShutdown(asset), false);
+        assertEq(ShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), false);
 
         ShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false, false);
 
-        assertEq(ShutdownStrategy(payable(STRATEGY)).isShutdown(asset), true);
+        assertEq(ShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), true);
 
         assertEq(_balanceOf(asset, STRATEGY), 0);
         assertEq(_balanceOf(asset, _vault), balance);

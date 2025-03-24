@@ -69,13 +69,13 @@ contract ShutdownStrategy is CRVStrategy {
     /// @notice Harvest the asset and shutdown the gauge.
     /// @param asset The asset to harvest.
     function harvest(address asset, bool, bool, bool) public override {
-        if (isShutdown[asset]) revert SHUTDOWN();
+        address gauge = gauges[asset];
+        if (isShutdown[gauge]) revert SHUTDOWN();
 
         /// Harvest as usual.
         super.harvest(asset, false, true, true);
 
         /// 1. Get the vault address.
-        address gauge = gauges[asset];
         address rewardDistributor = rewardDistributors[gauge];
         address vault = ILiquidityGauge(rewardDistributor).staking_token();
 
@@ -87,23 +87,26 @@ contract ShutdownStrategy is CRVStrategy {
         SafeTransferLib.safeTransfer(asset, vault, balance);
 
         /// 4. Mark the gauge as shutdown.
-        isShutdown[asset] = true;
+        isShutdown[gauge] = true;
     }
 
     function rebalance(address asset) public override {
-        if (isShutdown[asset]) revert SHUTDOWN();
+        address gauge = gauges[asset];
+        if (isShutdown[gauge]) revert SHUTDOWN();
 
         super.rebalance(asset);
     }
 
     function _deposit(address asset, uint256 amount) internal override {
-        if (isShutdown[asset]) revert SHUTDOWN();
+        address gauge = gauges[asset];
+        if (isShutdown[gauge]) revert SHUTDOWN();
 
         super._deposit(asset, amount);
     }
 
     function _withdraw(address asset, uint256 amount) internal override {
-        if (isShutdown[asset]) revert SHUTDOWN();
+        address gauge = gauges[asset];
+        if (isShutdown[gauge]) revert SHUTDOWN();
 
         super._withdraw(asset, amount);
     }
