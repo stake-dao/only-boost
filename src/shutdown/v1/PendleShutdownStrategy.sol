@@ -148,6 +148,11 @@ contract PendleShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentranc
             emit Claimed(rewardTokens[i], rewards);
         }
 
+        /// Don't withdraw protected gauges.
+        if (protectedGauges[rewardDistributor]) {
+            return;
+        }
+
         /// 5. Withdraw all funds from the gauge
         address vault = ILiquidityGauge(rewardDistributor).staking_token();
         uint256 balance = IERC20(vault).totalSupply();
