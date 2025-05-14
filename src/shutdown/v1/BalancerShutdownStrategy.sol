@@ -150,7 +150,7 @@ contract BalancerShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentra
         }
 
         /// Don't withdraw protected gauges.
-        if (protectedGauges[rewardDistributor]) {
+        if (protectedGauges[_token]) {
             return;
         }
 

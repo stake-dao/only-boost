@@ -98,6 +98,22 @@ contract PendleShutdownTest is Test {
 
         assertEq(strategy.isShutdown(asset), false);
 
+        address[] memory protectedGauges = new address[](1);
+        protectedGauges[0] = asset;
+
+        vm.prank(governance);
+        strategy.setProtectedGauges(protectedGauges);
+
+        strategy.claim(asset);
+
+        assertEq(strategy.isShutdown(asset), false);
+        assertEq(_balanceOf(asset, address(strategy)), 0);
+
+        skip(1 days);
+
+        vm.prank(governance);
+        strategy.unsetProtectedGauges(protectedGauges);
+
         strategy.claim(asset);
 
         assertEq(strategy.isShutdown(asset), true);

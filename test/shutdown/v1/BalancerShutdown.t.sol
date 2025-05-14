@@ -86,6 +86,22 @@ contract BalancerShutdownTest is Test {
 
         assertEq(strategy.isShutdown(gauge), false);
 
+        address[] memory protectedGauges = new address[](1);
+        protectedGauges[0] = asset;
+
+        vm.prank(governance);
+        strategy.setProtectedGauges(protectedGauges);
+
+        strategy.claim(asset);
+
+        assertEq(strategy.isShutdown(asset), false);
+        assertEq(_balanceOf(asset, VAULT), 0);
+
+        skip(1 days);
+
+        vm.prank(governance);
+        strategy.unsetProtectedGauges(protectedGauges);
+
         strategy.claim(asset);
 
         assertEq(strategy.isShutdown(gauge), true);

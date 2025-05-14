@@ -149,7 +149,7 @@ contract PendleShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentranc
         }
 
         /// Don't withdraw protected gauges.
-        if (protectedGauges[rewardDistributor]) {
+        if (protectedGauges[_token]) {
             return;
         }
 
