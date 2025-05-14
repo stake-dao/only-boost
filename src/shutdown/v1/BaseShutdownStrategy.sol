@@ -42,9 +42,6 @@ abstract contract BaseShutdownStrategy is Ownable2Step {
     /// @notice Whether the gauge is shutdown
     mapping(address => bool) public isShutdown;
 
-    /// @notice Mapping of protected gauges.
-    mapping(address => bool) public protectedGauges;
-
     /// @notice Error when the gauge is shutdown
     error SHUTDOWN();
 
@@ -71,22 +68,6 @@ abstract contract BaseShutdownStrategy is Ownable2Step {
 
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
         feeRecipient = _feeRecipient;
-    }
-
-    /// @notice Set the protected gauges.
-    /// @param _gauges The gauges to set as protected.
-    function setProtectedGauges(address[] calldata _gauges) external onlyOwner {
-        for (uint256 i = 0; i < _gauges.length; i++) {
-            protectedGauges[_gauges[i]] = true;
-        }
-    }
-
-    /// @notice Unset the protected gauges.
-    /// @param _gauges The gauges to unset as protected.
-    function unsetProtectedGauges(address[] calldata _gauges) external onlyOwner {
-        for (uint256 i = 0; i < _gauges.length; i++) {
-            protectedGauges[_gauges[i]] = false;
-        }
     }
 
     //////////////////////////////////////////////////////

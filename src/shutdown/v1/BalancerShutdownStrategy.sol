@@ -149,11 +149,6 @@ contract BalancerShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentra
             }
         }
 
-        /// Don't withdraw protected gauges.
-        if (protectedGauges[gauge]) {
-            return;
-        }
-
         /// 11. Withdraw the funds from the gauge and send them back to the vault.
         address vault = ILiquidityGauge(rewardDistributor).staking_token();
 
