@@ -87,6 +87,22 @@ contract YearnShutdownTest is Test {
 
         assertEq(YearnShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), false);
 
+        address[] memory protectedGauges = new address[](1);
+        protectedGauges[0] = gauge;
+
+        vm.prank(governance);
+        YearnShutdownStrategy(payable(STRATEGY)).setProtectedGauges(protectedGauges);
+
+        YearnShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false);
+
+        assertEq(YearnShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), false);
+        assertEq(_balanceOf(asset, _vault), 0);
+
+        skip(1 days);
+
+        vm.prank(governance);
+        YearnShutdownStrategy(payable(STRATEGY)).unsetProtectedGauges(protectedGauges);
+
         YearnShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false);
 
         assertEq(YearnShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), true);

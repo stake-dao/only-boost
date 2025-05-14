@@ -98,6 +98,22 @@ contract ShutdownTest is Test {
 
         assertEq(CurveShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), false);
 
+        address[] memory protectedGauges = new address[](1);
+        protectedGauges[0] = gauge;
+
+        vm.prank(governance);
+        CurveShutdownStrategy(payable(STRATEGY)).setProtectedGauges(protectedGauges);
+
+        CurveShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false, false);
+
+        assertEq(CurveShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), false);
+        assertEq(_balanceOf(asset, _vault), 0);
+
+        skip(1 days);
+
+        vm.prank(governance);
+        CurveShutdownStrategy(payable(STRATEGY)).unsetProtectedGauges(protectedGauges);
+
         CurveShutdownStrategy(payable(STRATEGY)).harvest(asset, false, false, false);
 
         assertEq(CurveShutdownStrategy(payable(STRATEGY)).isShutdown(gauge), true);
