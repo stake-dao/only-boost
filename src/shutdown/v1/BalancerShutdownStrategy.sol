@@ -113,7 +113,7 @@ contract BalancerShutdownStrategy is Ownable2Step, BaseShutdownStrategy, Reentra
         /// 5. Distribute BAL.
         uint256 net = _chargeProtocolFees(BAL, minted);
 
-        /// 6. Approve the reward distributor.
+        /// 6.  Get the reward distributor linked to the gauge.
         address rewardDistributor = IStrategy(STRATEGY).multiGauges(gauge);
 
         /// 7. Approve the reward distributor.
