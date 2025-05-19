@@ -191,7 +191,7 @@ abstract contract Strategy is UUPSUpgradeable {
     /// --- LOCKER FUNCTIONS
     //////////////////////////////////////////////////////
 
-    /// @notice Deposit into the gauge trhoug the Locker.
+    /// @notice Deposit into the gauge through the Locker.
     /// @param asset Address of LP token to deposit.
     /// @param gauge Address of Liqudity gauge corresponding to LP token.
     /// @param amount Amount of LP token to deposit.
@@ -203,7 +203,7 @@ abstract contract Strategy is UUPSUpgradeable {
         locker.safeExecute(gauge, 0, abi.encodeWithSignature("deposit(uint256)", amount));
     }
 
-    /// @notice Withdraw from the gauge trhoug the Locker.
+    /// @notice Withdraw from the gauge through the Locker.
     /// @param asset Address of LP token to withdraw.
     /// @param gauge Address of Liqudity gauge corresponding to LP token.
     /// @param amount Amount of LP token to withdraw.
