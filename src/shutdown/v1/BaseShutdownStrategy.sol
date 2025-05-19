@@ -60,6 +60,7 @@ abstract contract BaseShutdownStrategy is Ownable2Step {
     /// @param _gateway The gateway contract address
     /// @param _governance The governance address
     constructor(address _locker, address _gateway, address _governance) Ownable() {
+    	if (_gateway_ == address(0)) revert ADDRESS_ZERO();
         LOCKER = _locker;
         GATEWAY = _gateway;
 
