@@ -1,3 +1,4 @@
 solady=node_modules/solady
+@safe=node_modules/@safe-global/safe-smart-account
 forge-std=node_modules/forge-std/
 openzeppelin=node_modules/@openzeppelin/contracts

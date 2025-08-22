@@ -21,4 +21,11 @@ interface IStrategy {
     function acceptRewardDistributorOwnership(address rewardDistributor) external;
     function setRewardDistributor(address gauge, address rewardDistributor) external;
     function addRewardReceiver(address gauge, address rewardReceiver) external;
+
+    function gauges(address _token) external view returns (address);
+    function multiGauges(address _gauge) external view returns (address);
+    function vaults(address _gauge) external view returns (bool);
+
+    function governance() external view returns (address);
+    function sdGauges(address _token) external view returns (address);
 }
