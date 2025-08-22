@@ -16,4 +16,6 @@ interface ILocker {
     function increaseAmount(uint256 _value) external;
 
     function release() external;
+
+    function claimRewards(address _rewardToken, address _recipient) external;
 }

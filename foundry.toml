@@ -3,7 +3,7 @@ src = 'src'
 out = 'out'
 tests = 'test'
 libs = ["node_modules"]
-verbosity = 3
+verbosity = 4
 evm_version = 'cancun'
 
 gas_reports = [
@@ -17,3 +17,9 @@ gas_reports = [
 # Enable before deploying.
 optimizer = true
 optimizers_runs = 200
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_KEY}" }
+
+[rpc_endpoints]
+mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}"

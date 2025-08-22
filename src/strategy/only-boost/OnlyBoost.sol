@@ -24,7 +24,7 @@ abstract contract OnlyBoost is Strategy {
     /// @param asset _asset staked to claim for.
     /// @param claimExtra True to claim extra rewards. False can save gas.
     /// @param claimFallbacksRewards  True to claim fallbacks, False can save gas.
-    function harvest(address asset, bool distributeSDT, bool claimExtra, bool claimFallbacksRewards) public {
+    function harvest(address asset, bool distributeSDT, bool claimExtra, bool claimFallbacksRewards) public virtual {
         /// If optimzer is not set, use default withdraw.
         if (address(optimizer) == address(0)) {
             return super.harvest(asset, distributeSDT, claimExtra);
@@ -77,7 +77,7 @@ abstract contract OnlyBoost is Strategy {
 
     /// @notice Rebalance `_asset` splitted into the fallbacks.
     /// @param asset Asset to rebalance.
-    function rebalance(address asset) public {
+    function rebalance(address asset) public virtual {
         if (address(optimizer) == address(0)) revert ADDRESS_NULL();
 
         address gauge = gauges[asset];
@@ -135,7 +135,7 @@ abstract contract OnlyBoost is Strategy {
     /// @notice Deposit `_amount` of `_asset` splitted into the fallbacks.
     /// @param asset Asset to deposit.
     /// @param amount Amount to deposit.
-    function _deposit(address asset, uint256 amount) internal override {
+    function _deposit(address asset, uint256 amount) internal virtual override {
         // If optimizer is not set, use default deposit
         if (address(optimizer) == address(0)) {
             return super._deposit(asset, amount);
@@ -167,7 +167,7 @@ abstract contract OnlyBoost is Strategy {
     /// @param asset Asset to withdraw.
     /// @param amount Amount to withdraw.
     /// @dev The optimizer contract would make sure to always withdraw from the biggest pool first.
-    function _withdraw(address asset, uint256 amount) internal override {
+    function _withdraw(address asset, uint256 amount) internal virtual override {
         /// If optimzer is not set, use default withdraw.
         if (address(optimizer) == address(0)) {
             return super._withdraw(asset, amount);
