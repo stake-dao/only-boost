@@ -50,11 +50,23 @@ import "src/CRVStrategy.sol";
 
 /// @notice Strategy contract, supporting Shutdown.
 contract CurveShutdownStrategy is CRVStrategy {
+    enum ShutdownMode {
+        NORMAL, // No automatic shutdown
+        AUTO_SHUTDOWN, // Current behavior - each harvest shuts down gauge
+        SELECTIVE_SHUTDOWN // Only owner can shutdown by harvesting
+
+    }
+
+    ShutdownMode public shutdownMode; // Will be initialized in constructor or via setter
+
     /// @notice Mapping of shutdown gauges.
     mapping(address => bool) public isShutdown;
 
     /// @notice Mapping of protected gauges.
     mapping(address => bool) public protectedGauges;
+
+    /// @notice Event emitted when shutdown mode is changed.
+    event ShutdownModeChanged(ShutdownMode newMode);
 
     /// @notice Error thrown when a shutdown gauge is harvested.
     error SHUTDOWN();
@@ -68,7 +80,7 @@ contract CurveShutdownStrategy is CRVStrategy {
         revert SHUTDOWN();
     }
 
-    /// @notice Harvest the asset and shutdown the gauge.
+    /// @notice Harvest the asset with flexible shutdown logic based on mode.
     /// @param asset The asset to harvest.
     function harvest(address asset, bool, bool, bool) public override {
         address gauge = gauges[asset];
@@ -77,24 +89,32 @@ contract CurveShutdownStrategy is CRVStrategy {
         /// Harvest as usual.
         super.harvest(asset, false, true, true);
 
-        /// Don't shutdown protected gauges.
-        if (protectedGauges[gauge]) {
-            return;
+        /// Determine if we should shutdown based on mode
+        bool shouldShutdown = false;
+
+        if (shutdownMode == ShutdownMode.NORMAL) {
+            shouldShutdown = false; // Never auto-shutdown
+        } else if (shutdownMode == ShutdownMode.AUTO_SHUTDOWN) {
+            shouldShutdown = !protectedGauges[gauge]; // Current behavior
+        } else if (shutdownMode == ShutdownMode.SELECTIVE_SHUTDOWN) {
+            shouldShutdown = (msg.sender == governance); // Only owner can shutdown
         }
 
-        /// 1. Get the vault address.
-        address rewardDistributor = rewardDistributors[gauge];
-        address vault = ILiquidityGauge(rewardDistributor).staking_token();
+        if (shouldShutdown) {
+            /// 1. Get the vault address.
+            address rewardDistributor = rewardDistributors[gauge];
+            address vault = ILiquidityGauge(rewardDistributor).staking_token();
 
-        /// 2. Withdraw all the funds from the gauge.
-        uint256 balance = balanceOf(asset);
-        _withdraw(asset, balance);
+            /// 2. Withdraw all the funds from the gauge.
+            uint256 balance = balanceOf(asset);
+            _withdraw(asset, balance);
 
-        /// 3. Send the funds back to the vault.
-        SafeTransferLib.safeTransfer(asset, vault, balance);
+            /// 3. Send the funds back to the vault.
+            SafeTransferLib.safeTransfer(asset, vault, balance);
 
-        /// 4. Mark the gauge as shutdown.
-        isShutdown[gauge] = true;
+            /// 4. Mark the gauge as shutdown.
+            isShutdown[gauge] = true;
+        }
     }
 
     function rebalance(address asset) public override {
@@ -132,5 +152,12 @@ contract CurveShutdownStrategy is CRVStrategy {
         for (uint256 i = 0; i < _gauges.length; i++) {
             protectedGauges[_gauges[i]] = false;
         }
+    }
+
+    /// @notice Set the shutdown mode.
+    /// @param _mode The new shutdown mode.
+    function setShutdownMode(ShutdownMode _mode) external onlyGovernance {
+        shutdownMode = _mode;
+        emit ShutdownModeChanged(_mode);
     }
 }
