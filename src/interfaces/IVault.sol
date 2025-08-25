@@ -8,6 +8,7 @@ interface IVault {
 
     function withdraw(uint256 _shares) external;
     function initialize() external;
+    function earn() external;
 
     function token() external view returns (address);
     function liquidityGauge() external view returns (address);

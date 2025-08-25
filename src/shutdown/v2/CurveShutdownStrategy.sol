@@ -47,17 +47,20 @@ pragma solidity 0.8.19;
  */
 
 import "src/CRVStrategy.sol";
+import {IVault} from "src/interfaces/IVault.sol";
 
 /// @notice Strategy contract, supporting Shutdown.
+/// @dev This contract populate the CRVStrategy contract with shutdown logic. Useful in the case of Staking V2 Migration.
 contract CurveShutdownStrategy is CRVStrategy {
     enum ShutdownMode {
         NORMAL, // No automatic shutdown
-        AUTO_SHUTDOWN, // Current behavior - each harvest shuts down gauge
+        AUTO_SHUTDOWN, // Each harvest shuts down gauge
         SELECTIVE_SHUTDOWN // Only owner can shutdown by harvesting
 
     }
 
-    ShutdownMode public shutdownMode; // Will be initialized in constructor or via setter
+    /// @notice Current shutdown mode.
+    ShutdownMode public shutdownMode;
 
     /// @notice Mapping of shutdown gauges.
     mapping(address => bool) public isShutdown;
@@ -73,7 +76,9 @@ contract CurveShutdownStrategy is CRVStrategy {
 
     constructor(address _owner, address _locker, address _veToken, address _rewardToken, address _minter)
         CRVStrategy(_owner, _locker, _veToken, _rewardToken, _minter)
-    {}
+    {
+        shutdownMode = ShutdownMode.NORMAL;
+    }
 
     /// @dev Disable regular locker harvest.
     function harvest(address, bool, bool) public pure override {
@@ -92,18 +97,19 @@ contract CurveShutdownStrategy is CRVStrategy {
         /// Determine if we should shutdown based on mode
         bool shouldShutdown = false;
 
-        if (shutdownMode == ShutdownMode.NORMAL) {
-            shouldShutdown = false; // Never auto-shutdown
-        } else if (shutdownMode == ShutdownMode.AUTO_SHUTDOWN) {
-            shouldShutdown = !protectedGauges[gauge]; // Current behavior
+        if (shutdownMode == ShutdownMode.AUTO_SHUTDOWN) {
+            shouldShutdown = !protectedGauges[gauge];
         } else if (shutdownMode == ShutdownMode.SELECTIVE_SHUTDOWN) {
-            shouldShutdown = (msg.sender == governance); // Only owner can shutdown
+            shouldShutdown = (msg.sender == governance);
         }
 
         if (shouldShutdown) {
             /// 1. Get the vault address.
             address rewardDistributor = rewardDistributors[gauge];
             address vault = ILiquidityGauge(rewardDistributor).staking_token();
+
+            /// 1. First, call deposit to clear the incentive token amount.
+            IVault(vault).deposit(address(msg.sender), 0, true);
 
             /// 2. Withdraw all the funds from the gauge.
             uint256 balance = balanceOf(asset);
