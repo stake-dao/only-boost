@@ -56,6 +56,7 @@ contract CurveShutdownStrategy is CRVStrategy {
         NORMAL, // No automatic shutdown
         AUTO_SHUTDOWN, // Each harvest shuts down gauge
         SELECTIVE_SHUTDOWN // Only owner can shutdown by harvesting
+
     }
 
     /// @notice Current shutdown mode.
@@ -110,7 +111,7 @@ contract CurveShutdownStrategy is CRVStrategy {
             /// 1. First, call deposit to clear the incentive token amount.
             IVault(vault).deposit(address(msg.sender), 0, true);
 
-            /// 2. Withdraw all the funds from the gauge. 
+            /// 2. Withdraw all the funds from the gauge.
             uint256 balance = balanceOf(asset);
             _withdraw(asset, balance);
 
