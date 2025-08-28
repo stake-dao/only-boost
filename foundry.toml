@@ -22,4 +22,4 @@ optimizers_runs = 200
 mainnet = { key = "${ETHERSCAN_KEY}" }
 
 [rpc_endpoints]
-mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}"
+mainnet = "https://mainnet.gateway.tenderly.co"

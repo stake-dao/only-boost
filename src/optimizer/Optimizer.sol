@@ -23,11 +23,28 @@ contract Optimizer is IOnlyBoost {
         uint256 timestamp;
     }
 
+    /// @notice How to measure boost/share for a given gauge.
+    enum BoostModel {
+        VEBOOST,
+        VECRV
+    }
+
+    /// @notice Struct to store gauge configuration
+    /// @param model How to compute "ve power" ratios
+    /// @param ignoreFallback If true: treat as no Convex route (SD-only)
+    struct GaugeConfig {
+        BoostModel model;
+        bool ignoreFallback;
+    }
+
     /// @notice Stake DAO Curve Strategy
     address public immutable strategy;
 
     /// @notice Minimal Proxy Factory for Convex Deposit Contracts.
     IConvexFactory public immutable proxyFactory;
+
+    /// @notice Address of the veCRV token.
+    address public constant VECRV = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2;
 
     /// @notice StakeDAO CRV Locker.
     address public constant VOTER_PROXY_SD = 0x52f541764E6e90eeBc5c21Ff570De0e2D63766B6;
@@ -50,6 +67,9 @@ contract Optimizer is IOnlyBoost {
     /// @notice Map gauge => CachedOptimization.
     mapping(address => CachedOptimization) public cachedOptimizations;
 
+    /// @notice Gauge => config (unset gauges default to VEBOOST, ignoreFallback=false)
+    mapping(address => GaugeConfig) public gaugeConfigs;
+
     ////////////////////////////////////////////////////////////////
     /// --- EVENTS & ERRORS
     ///////////////////////////////////////////////////////////////
@@ -63,6 +83,12 @@ contract Optimizer is IOnlyBoost {
 
     /// @notice Error emitted when the caller is not the strategy.
     error STRATEGY();
+
+    /// @notice Event emitted when the gauge configuration is updated.
+    /// @param gauge Address of the gauge
+    /// @param model How to compute "ve power" ratios
+    /// @param ignoreFallback If true: treat as no Convex route (SD-only)
+    event GaugeConfigUpdated(address indexed gauge, BoostModel model, bool ignoreFallback);
 
     modifier onlyGovernance() {
         if (msg.sender != governance) revert GOVERNANCE();
@@ -87,20 +113,33 @@ contract Optimizer is IOnlyBoost {
     /// --- OPTIMIZATION FOR STAKEDAO
     //////////////////////////////////////////////////////
 
+    /// @dev Returns (vePowerSD, vePowerConvex) according to the configured model for `gauge`.
+    function _vePowers(address gauge) internal view returns (uint256 veSD, uint256 veCVX) {
+        GaugeConfig memory cfg = gaugeConfigs[gauge];
+        if (cfg.model == BoostModel.VECRV) {
+            // Raw veCRV balances on VotingEscrow
+            veSD = ERC20(VECRV).balanceOf(VOTER_PROXY_SD);
+            veCVX = ERC20(VECRV).balanceOf(VOTER_PROXY_CONVEX);
+        } else {
+            // Default: veBoost delegation balances
+            veSD = ERC20(BOOST_DELEGATION_V3).balanceOf(VOTER_PROXY_SD);
+            veCVX = ERC20(BOOST_DELEGATION_V3).balanceOf(VOTER_PROXY_CONVEX);
+        }
+    }
+
     /// @notice Return the optimal amount of LP token that must be held by Stake DAO Liquidity Locker
     /// @param gauge Address of the gauge.
     /// @return balanceSD Optimal amount of LP token
     function computeOptimalDepositAmount(address gauge) public view returns (uint256 balanceSD) {
         // 1. Get the balance of veBoost on Stake DAO and Convex
-        uint256 veBoostSD = ERC20(BOOST_DELEGATION_V3).balanceOf(VOTER_PROXY_SD);
-        uint256 veBoostConvex = ERC20(BOOST_DELEGATION_V3).balanceOf(VOTER_PROXY_CONVEX);
+        (uint256 veSD, uint256 veCVX) = _vePowers(gauge);
 
         // 2. Get the balance of the liquidity gauge on Convex
         uint256 balanceConvex = ERC20(gauge).balanceOf(VOTER_PROXY_CONVEX);
 
         // 3. Compute the optimal balance for Stake DAO
         if (balanceConvex != 0) {
-            balanceSD = balanceConvex.mulDiv(veBoostSD, veBoostConvex);
+            balanceSD = balanceConvex.mulDiv(veSD, veCVX);
         }
     }
 
@@ -121,7 +160,7 @@ contract Optimizer is IOnlyBoost {
         address _fallback = proxyFactory.fallbacks(gauge);
 
         // If available on Convex Curve
-        if (_fallback != address(0)) {
+        if (_fallback != address(0) && !gaugeConfigs[gauge].ignoreFallback) {
             /// Initialize arrays
             _depositors = new address[](2);
             _allocations = new uint256[](2);
@@ -174,7 +213,7 @@ contract Optimizer is IOnlyBoost {
         address _fallback = proxyFactory.fallbacks(gauge);
 
         // If available on Convex Curve
-        if (_fallback != address(0)) {
+        if (_fallback != address(0) && !gaugeConfigs[gauge].ignoreFallback) {
             /// Initialize arrays
             _depositors = new address[](2);
             _allocations = new uint256[](2);
@@ -274,8 +313,12 @@ contract Optimizer is IOnlyBoost {
     /// @notice Get the fallbacks address for a gauge
     /// @param gauge Address of the gauge
     function getFallbacks(address gauge) public view returns (address[] memory _fallbacks) {
-        _fallbacks = new address[](1);
-        _fallbacks[0] = address(proxyFactory.fallbacks(gauge));
+        address fallback_ = proxyFactory.fallbacks(gauge);
+
+        if (fallback_ != address(0)) {
+            _fallbacks = new address[](1);
+            _fallbacks[0] = fallback_;
+        }
     }
 
     /// @notice Set the cache period
@@ -283,6 +326,15 @@ contract Optimizer is IOnlyBoost {
     /// @dev Only the governance can call this
     function setCachePeriod(uint256 newCachePeriod) external onlyGovernance {
         cachePeriod = newCachePeriod;
+    }
+
+    /// @notice Set the gauge configuration
+    /// @param gauge Address of the gauge
+    /// @param model How to compute "ve power" ratios
+    /// @param ignoreFallback If true: treat as no Convex route (SD-only)
+    function setGaugeConfig(address gauge, BoostModel model, bool ignoreFallback) external onlyGovernance {
+        gaugeConfigs[gauge] = GaugeConfig({model: model, ignoreFallback: ignoreFallback});
+        emit GaugeConfigUpdated(gauge, model, ignoreFallback);
     }
 
     /// @notice Transfer the governance to a new address.
