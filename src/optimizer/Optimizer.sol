@@ -288,7 +288,7 @@ contract Optimizer is IOnlyBoost {
         _withdrawalTargets[0] = proxyFactory.fallbacks(gauge);
 
         uint256 balanceSD = ERC20(gauge).balanceOf(VOTER_PROXY_SD);
-        uint256 balanceConvex = IFallback(_withdrawalTargets[0]).balanceOf(gauge);
+        uint256 balanceConvex = _withdrawalTargets[0] != address(0) ? IFallback(_withdrawalTargets[0]).balanceOf(gauge) : 0;
 
         // Calculate optimal boost for both pools
         uint256 optimalSD = cachedOptimizations[gauge].value;
